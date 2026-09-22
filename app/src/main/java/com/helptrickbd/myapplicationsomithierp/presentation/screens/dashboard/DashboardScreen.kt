@@ -98,14 +98,15 @@ fun DashboardScreen(
                 DashboardTopBar(
                     state = state,
                     onOpenDrawer = { scope.launch { drawerState.open() } },
-                    onNavigateToNotifications = onNavigateToNotifications,
-                    onNavigateToAdminHub = onNavigateToAdminHub,
-                    onNavigateToSettings = onNavigateToSettings
+                    onNavigateToNotifications = onNavigateToNotifications
                 )
             },
             bottomBar = {
                 DashboardBottomBar(
                     currentRoute = "home",
+                    userPhotoUrl = state.userPhotoUrl,
+                    userName = state.userName,
+                    userEmail = state.userEmail,
                     onNavigateHome = {},
                     onNavigateBranches = onNavigateToBranches,
                     onNavigatePayments = onNavigateToPayments,

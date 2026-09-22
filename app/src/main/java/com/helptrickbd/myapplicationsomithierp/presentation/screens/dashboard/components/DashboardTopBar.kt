@@ -1,31 +1,21 @@
 package com.helptrickbd.myapplicationsomithierp.presentation.screens.dashboard.components
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.helptrickbd.myapplicationsomithierp.R
-import com.helptrickbd.myapplicationsomithierp.domain.model.UserRole
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.dashboard.DashboardUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,8 +24,8 @@ fun DashboardTopBar(
     state: DashboardUiState,
     onOpenDrawer: () -> Unit,
     onNavigateToNotifications: () -> Unit,
-    onNavigateToAdminHub: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToAdminHub: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {}
 ) {
     CenterAlignedTopAppBar(
         navigationIcon = {
@@ -79,27 +69,6 @@ fun DashboardTopBar(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         actions = {
-            IconButton(onClick = onNavigateToAdminHub) {
-                BadgedBox(
-                    badge = {
-                        if (state.pendingApplicationsCount > 0) {
-                            Badge(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError
-                            ) {
-                                Text("${state.pendingApplicationsCount}")
-                            }
-                        }
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AdminPanelSettings,
-                        contentDescription = "Admin Hub",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
             IconButton(onClick = onNavigateToNotifications) {
                 BadgedBox(
                     badge = {
@@ -120,48 +89,7 @@ fun DashboardTopBar(
                     )
                 }
             }
-
-            IconButton(onClick = onNavigateToSettings) {
-                if (!state.userPhotoUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(state.userPhotoUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "User Profile",
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val initial = (state.userName.ifBlank { state.userEmail }).take(1).uppercase()
-                        if (initial.isNotBlank()) {
-                            Text(
-                                text = initial,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Profile",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-            }
         }
     )
 }
+

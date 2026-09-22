@@ -137,7 +137,7 @@ fun AppNavigation(
                 state = dashboardState.copy(
                     userRole = activeRole,
                     userName = activeUser?.displayName?.ifBlank { null } ?: if (isRootSuperAdmin) "মো: ওমর ফারুক" else "সম্মানিত সদস্য",
-                    userPhotoUrl = activeUser?.photoUrl,
+                    userPhotoUrl = activeUser?.photoUrl?.ifBlank { null } ?: firebaseAuthUser?.photoUrl?.toString(),
                     userEmail = currentAuthEmail,
                     currentBranchMembershipStatus = membershipStatus,
                     activeMemberId = currentMember?.id ?: ""
