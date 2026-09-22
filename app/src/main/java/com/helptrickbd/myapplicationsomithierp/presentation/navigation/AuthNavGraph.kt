@@ -86,30 +86,32 @@ fun NavGraphBuilder.addAuthNavRoutes(
             onSignIn = { email, pass ->
                 val cleanEmail = email.trim()
                 scope.launch {
-                    try {
-                        authRepo.signInWithEmail(cleanEmail, pass)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                    val isSuperAdmin = isSuperAdminEmail(cleanEmail)
-                    val targetRoute = if (isSuperAdmin) Screen.Dashboard.route else Screen.PendingApproval.route
-                    navController.navigate(targetRoute) {
-                        popUpTo(Screen.Auth.route) { inclusive = true }
+                    val result = authRepo.signInWithEmail(cleanEmail, pass)
+                    if (result is com.helptrickbd.myapplicationsomithierp.core.util.Resource.Success) {
+                        preferencesRepo.setOnboardingCompleted(true)
+                        val isSuperAdmin = isSuperAdminEmail(cleanEmail)
+                        val targetRoute = if (isSuperAdmin) Screen.Dashboard.route else Screen.PendingApproval.route
+                        navController.navigate(targetRoute) {
+                            popUpTo(Screen.Auth.route) { inclusive = true }
+                        }
+                    } else if (result is com.helptrickbd.myapplicationsomithierp.core.util.Resource.Error) {
+                        android.widget.Toast.makeText(context, result.message, android.widget.Toast.LENGTH_LONG).show()
                     }
                 }
             },
             onSignUp = { email, pass ->
                 val cleanEmail = email.trim()
                 scope.launch {
-                    try {
-                        authRepo.signUpWithEmail(cleanEmail, pass)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                    val isSuperAdmin = isSuperAdminEmail(cleanEmail)
-                    val targetRoute = if (isSuperAdmin) Screen.Dashboard.route else Screen.PendingApproval.route
-                    navController.navigate(targetRoute) {
-                        popUpTo(Screen.Auth.route) { inclusive = true }
+                    val result = authRepo.signUpWithEmail(cleanEmail, pass)
+                    if (result is com.helptrickbd.myapplicationsomithierp.core.util.Resource.Success) {
+                        preferencesRepo.setOnboardingCompleted(true)
+                        val isSuperAdmin = isSuperAdminEmail(cleanEmail)
+                        val targetRoute = if (isSuperAdmin) Screen.Dashboard.route else Screen.PendingApproval.route
+                        navController.navigate(targetRoute) {
+                            popUpTo(Screen.Auth.route) { inclusive = true }
+                        }
+                    } else if (result is com.helptrickbd.myapplicationsomithierp.core.util.Resource.Error) {
+                        android.widget.Toast.makeText(context, result.message, android.widget.Toast.LENGTH_LONG).show()
                     }
                 }
             },
@@ -120,21 +122,34 @@ fun NavGraphBuilder.addAuthNavRoutes(
                 scope.launch {
                     val idToken = account.idToken
                     var finalUid = account.id ?: java.util.UUID.randomUUID().toString()
+                    var finalPhotoUrl: String? = account.photoUrl?.toString()
+                    var finalDisplayName: String? = account.displayName
+
                     if (!idToken.isNullOrBlank()) {
                         try {
                             val credential = com.google.firebase.auth.GoogleAuthProvider.getCredential(idToken, null)
                             val authResult = com.google.firebase.auth.FirebaseAuth.getInstance().signInWithCredential(credential).await()
-                            authResult.user?.uid?.let { finalUid = it }
+                            authResult.user?.let { user ->
+                                finalUid = user.uid
+                                if (finalPhotoUrl.isNullOrBlank()) {
+                                    finalPhotoUrl = user.photoUrl?.toString()
+                                }
+                                if (finalDisplayName.isNullOrBlank()) {
+                                    finalDisplayName = user.displayName
+                                }
+                            }
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
                     }
 
+                    preferencesRepo.setOnboardingCompleted(true)
+
                     authRepo.signInWithGoogleAccount(
                         uid = finalUid,
                         email = email,
-                        displayName = account.displayName,
-                        photoUrl = account.photoUrl?.toString()
+                        displayName = finalDisplayName,
+                        photoUrl = finalPhotoUrl
                     )
 
                     val targetRoute = if (isSuper) Screen.Dashboard.route else Screen.PendingApproval.route

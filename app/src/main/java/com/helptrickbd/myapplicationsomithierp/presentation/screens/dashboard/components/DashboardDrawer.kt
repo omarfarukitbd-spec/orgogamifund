@@ -63,32 +63,41 @@ fun DashboardDrawer(
                     .padding(20.dp)
             ) {
                 Column {
-                    if (!state.userPhotoUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(state.userPhotoUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Avatar",
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .border(2.dp, MaterialTheme.colorScheme.onPrimary, CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f))
+                            .border(2.dp, MaterialTheme.colorScheme.onPrimary, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val initial = state.userName.trim().take(1).uppercase()
+                        if (initial.isNotBlank()) {
+                            Text(
+                                text = initial,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(32.dp)
+                            )
+                        }
+                        if (!state.userPhotoUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(state.userPhotoUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Avatar",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
                             )
                         }
                     }

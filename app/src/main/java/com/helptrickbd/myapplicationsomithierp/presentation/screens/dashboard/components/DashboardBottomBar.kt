@@ -95,42 +95,39 @@ fun DashboardBottomBar(
             selected = false,
             onClick = onOpenDrawer,
             icon = {
-                if (!userPhotoUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(userPhotoUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = if (isBangla) "মেনু ও প্রোফাইল" else "Menu & Profile",
-                        modifier = Modifier
-                            .size(26.dp)
-                            .clip(CircleShape)
-                            .border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    val initial = (userName.ifBlank { userEmail }).take(1).uppercase()
+                val initial = (userName.ifBlank { userEmail }).take(1).uppercase()
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
                     if (initial.isNotBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .size(26.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = initial,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
+                        Text(
+                            text = initial,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     } else {
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
-                            contentDescription = if (isBangla) "মেনু" else "Menu",
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(26.dp)
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    if (!userPhotoUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(userPhotoUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = if (isBangla) "মেনু ও প্রোফাইল" else "Menu & Profile",
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
                         )
                     }
                 }

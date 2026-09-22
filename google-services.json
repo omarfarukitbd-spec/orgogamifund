@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "1063848074047",
+    "firebase_url": "https://ogrogami-fund-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "ogrogami-fund",
     "storage_bucket": "ogrogami-fund.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "com.helptrickbd.ogrogamifund"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1063848074047-h35hfi9n3210u4i2g6eovuo9jo5ht7vf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.helptrickbd.ogrogamifund",
+            "certificate_hash": "50258df3db32d01282977e9d577b41f3b8d9b3fb"
+          }
+        },
+        {
+          "client_id": "1063848074047-ksr0cpftlh74bd30tqioj4blgm6vhst5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBXKSOPoAwbj8ZhxcWRyyAtszeW_e8k8QU"
@@ -20,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1063848074047-ksr0cpftlh74bd30tqioj4blgm6vhst5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

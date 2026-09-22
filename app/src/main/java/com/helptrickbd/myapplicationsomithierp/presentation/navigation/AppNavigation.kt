@@ -84,7 +84,16 @@ fun AppNavigation(
         ?: ""
     val isRootSuperAdmin = isSuperAdminEmail(currentAuthEmail)
 
-    val activeUser = currentUser ?: firebaseAuthUser?.let { fbUser ->
+    val authRepo = remember { com.helptrickbd.myapplicationsomithierp.data.repository.AuthRepositoryImpl() }
+    val userProfileResource by remember(firebaseAuthUser?.uid) {
+        val uid = firebaseAuthUser?.uid
+        if (uid != null) authRepo.getUserProfileFlow(uid)
+        else kotlinx.coroutines.flow.flowOf(null)
+    }.collectAsStateWithLifecycle(initialValue = null)
+
+    val firestoreUser = (userProfileResource as? com.helptrickbd.myapplicationsomithierp.core.util.Resource.Success)?.data
+
+    val activeUser = firestoreUser ?: currentUser ?: firebaseAuthUser?.let { fbUser ->
         val userEmail = fbUser.email ?: ""
         val isSuper = isSuperAdminEmail(userEmail)
         User(
@@ -99,8 +108,10 @@ fun AppNavigation(
     val activeRole = if (isRootSuperAdmin) UserRole.SUPER_ADMIN else (activeUser?.role ?: UserRole.MEMBER)
 
     val resolvedStartDestination = startDestination ?: when {
-        preferences?.isOnboardingCompleted != true -> Screen.Onboarding.route
-        currentUser == null && firebaseAuthUser == null -> Screen.Auth.route
+        currentUser == null && firebaseAuthUser == null -> {
+            if (preferences?.isOnboardingCompleted != true) Screen.Onboarding.route
+            else Screen.Auth.route
+        }
         isRootSuperAdmin -> Screen.Dashboard.route
         activeUser?.approvalStatus == ApprovalStatus.APPROVED -> Screen.Dashboard.route
         else -> Screen.PendingApproval.route
@@ -229,6 +240,7 @@ fun AppNavigation(
                     backupManager.shareBackupFile(backupFile)
                 },
                 onSignOut = {
+                    scope.launch { authRepo.signOut() }
                     navController.navigate(Screen.Auth.route) {
                         popUpTo(Screen.Dashboard.route) { inclusive = true }
                     }
