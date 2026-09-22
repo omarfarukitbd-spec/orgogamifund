@@ -1,0 +1,145 @@
+<resources>
+    <string name="app_name">Ogrogami Fund</string>
+    <string name="app_tagline">A Savings &amp; Welfare Cooperative Society</string>
+    <string name="org_name">Ogrogami Fund</string>
+    <string name="nav_admin_approvals">Admin Approvals</string>
+    <string name="member_application_title">Member Registration Application</string>
+    <string name="member_id_card_title">Member ID Card</string>
+
+    <!-- Navigation & Common -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_members">Members</string>
+    <string name="nav_contributions">Contributions</string>
+    <string name="nav_expenses">Expenses</string>
+    <string name="nav_loans">Loans</string>
+    <string name="nav_committee">Committee</string>
+    <string name="nav_notices">Notice Board</string>
+    <string name="nav_reports">Reports</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Roles -->
+    <string name="role_super_admin">Super Admin</string>
+    <string name="role_branch_admin">Branch Admin / Treasurer</string>
+    <string name="role_member">Member</string>
+
+    <!-- Auth & Approval -->
+    <string name="sign_in">Sign In</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="google_sign_in">Sign in with Google</string>
+    <string name="pending_approval_title">Account Pending Approval</string>
+    <string name="pending_approval_msg">Your registration is received and pending Admin review. Full access will be granted once approved and linked to your branch.</string>
+    <string name="check_status">Check Status</string>
+
+    <!-- Dashboard & Finance -->
+    <string name="total_fund_balance">Total Fund Balance</string>
+    <string name="monthly_collection">This Month\'s Collection</string>
+    <string name="total_expenses">Total Expenses</string>
+    <string name="active_loans">Active Loans Disbursed</string>
+    <string name="outstanding_dues">Total Outstanding Dues</string>
+    <string name="recent_transactions">Recent Transactions</string>
+    <string name="quick_actions">Quick Actions</string>
+    <string name="btn_collect_payment">Collect Chada</string>
+    <string name="btn_add_expense">Add Expense</string>
+    <string name="btn_issue_loan">Issue Loan</string>
+    <string name="btn_add_member">Add Member</string>
+
+    <!-- Contributions / Payments -->
+    <string name="payment_type">Payment Type</string>
+    <string name="payment_type_monthly">Monthly Contribution</string>
+    <string name="payment_type_yearly">Yearly Contribution</string>
+    <string name="payment_type_special">Special Contribution</string>
+    <string name="payment_type_fine">Late Penalty (Fine)</string>
+    <string name="payment_method">Payment Method</string>
+    <string name="method_cash">Cash</string>
+    <string name="method_bkash">bKash</string>
+    <string name="method_bank">Bank Transfer</string>
+    <string name="amount">Amount</string>
+    <string name="for_month">For Month</string>
+    <string name="for_year">For Year</string>
+    <string name="purpose_note">Purpose / Note</string>
+    <string name="receipt_number">Receipt No</string>
+    <string name="print_receipt">Print Receipt</string>
+    <string name="share_receipt">Share Receipt</string>
+    <string name="duplicate_warning_title">Duplicate Payment Warning</string>
+    <string name="duplicate_warning_msg">A payment of this type has already been recorded for this member for the specified period. Do you still want to proceed?</string>
+    <string name="confirm_anyway">Yes, Confirm Anyway</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Defaulters -->
+    <string name="defaulters_list">Defaulters List</string>
+    <string name="defaulter_due">Due: </string>
+    <string name="action_call">Call</string>
+    <string name="action_whatsapp">WhatsApp</string>
+
+    <!-- Member Management -->
+    <string name="member_name">Full Name</string>
+    <string name="member_phone">Phone Number</string>
+    <string name="member_address">Address</string>
+    <string name="member_nid">National ID (NID)</string>
+    <string name="member_branch">Branch</string>
+    <string name="member_join_date">Joining Date</string>
+    <string name="emergency_contact_name">Emergency Contact Name</string>
+    <string name="emergency_contact_phone">Emergency Contact Phone</string>
+    <string name="member_status_active">Active</string>
+    <string name="member_status_left">Left / Resigned</string>
+    <string name="generate_id_card">Generate Membership ID Card</string>
+
+    <!-- Loans -->
+    <string name="loan_amount">Loan Amount</string>
+    <string name="loan_reason">Reason</string>
+    <string name="loan_date_issued">Date Issued</string>
+    <string name="loan_repaid">Amount Repaid</string>
+    <string name="loan_outstanding">Outstanding Balance</string>
+    <string name="interest_enabled">Enable Interest</string>
+    <string name="interest_rate">Interest Rate (%)</string>
+
+    <!-- Offline & System -->
+    <string name="offline_banner">Offline Mode — Changes will sync automatically when connected</string>
+    <string name="online_synced">Back online — All data synced</string>
+    <string name="check_for_updates">Check for Updates</string>
+    <string name="update_available">Update Available</string>
+    <string name="update_download">Download APK</string>
+    <string name="latest_version_installed">You are using the latest version</string>
+    <string name="biometric_prompt_title">Unlock Shomiti Manager</string>
+    <string name="biometric_prompt_subtitle">Authenticate using Fingerprint or Face to access</string>
+    <string name="language_toggle">Language / ভাষা</string>
+    <string name="theme_toggle">Theme Mode</string>
+    <string name="theme_system">System Default</string>
+    <string name="theme_light">Light Mode</string>
+    <string name="theme_dark">Dark Mode</string>
+    
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_title_1">Smart Shomiti Management</string>
+    <string name="onboarding_desc_1">End the era of manual paper registers. Track member contributions, expenses, and overall fund health with 100% transparency.</string>
+    <string name="onboarding_title_2">Digital Receipts &amp; Member IDs</string>
+    <string name="onboarding_desc_2">Generate instant printable PDF receipts on every collection and issue high-resolution 2-sided membership ID cards in one click.</string>
+    <string name="onboarding_title_3">100% Offline First &amp; Cloud Sync</string>
+    <string name="onboarding_desc_3">Record entries seamlessly without internet access. All data queues locally and safely auto-syncs as soon as connection is restored.</string>
+    <string name="view_tutorial">View App Tutorial</string>
+
+    <!-- Notifications -->
+    <string name="notification_center_title">Notification Center</string>
+    <string name="mark_all_read">Mark All Read</string>
+    <string name="clear_all_notifications">Clear All</string>
+    <string name="no_notifications">No notifications found</string>
+    <string name="no_notifications_desc">You\'re all caught up! New updates, receipts, and announcements will appear here.</string>
+    <string name="filter_all">All</string>
+    <string name="filter_unread">Unread</string>
+    <string name="filter_payments">Payments</string>
+    <string name="filter_reminders">Reminders</string>
+    <string name="filter_notices">Notices</string>
+
+    <!-- Language Selection & In Words -->
+    <string name="onboarding_lang_title">Choose Your Language</string>
+    <string name="onboarding_lang_desc">Select your preferred language. You can easily switch this anytime from Settings.</string>
+    <string name="lang_bangla">বাংলা (Bangla) [Default]</string>
+    <string name="lang_english">English</string>
+    <string name="lang_settings_hint">Language can be changed anytime from App Settings.</string>
+    <string name="amount_in_words">In Words</string>
+    <string name="amount_in_numbers">In Numbers</string>
+</resources>

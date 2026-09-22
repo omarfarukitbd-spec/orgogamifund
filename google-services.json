@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1063848074047",
+    "project_id": "ogrogami-fund",
+    "storage_bucket": "ogrogami-fund.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1063848074047:android:539038990b7df8d28a118a",
+        "android_client_info": {
+          "package_name": "com.helptrickbd.ogrogamifund"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXKSOPoAwbj8ZhxcWRyyAtszeW_e8k8QU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

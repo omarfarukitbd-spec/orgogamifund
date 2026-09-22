@@ -1,0 +1,181 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isMasterAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'omarfaruktitbd@gmail.com' ||
+        request.auth.token.email == 'omarfarukitbd@gmail.com'
+      );
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isApproved() {
+      return isMasterAdmin() || (isAuthenticated() && getUserData().approvalStatus == 'approved');
+    }
+
+    function isSuperAdmin() {
+      return isMasterAdmin() || (isApproved() && getUserData().role == 'superAdmin');
+    }
+
+    function isBranchAdmin(branchId) {
+      return isApproved() && 
+             getUserData().role == 'branchAdmin' && 
+             getUserData().branchId == branchId;
+    }
+
+    function isBranchAdminAny() {
+      return isApproved() && getUserData().role == 'branchAdmin';
+    }
+
+    function isMemberUser(memberId) {
+      return isApproved() && 
+             getUserData().role == 'member' && 
+             getUserData().linkedMemberId == memberId;
+    }
+
+    // --- 1. Organizations (সংগঠন তথ্য) ---
+    match /organizations/{orgId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // --- 2. Branches (সমিতিসমূহ - সাধারণ তথ্য যে কেউ সাইন-ইন করে দেখতে পারবে) ---
+    match /branches/{branchId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // --- 3. Users (ইউজার প্রোফাইল ও অনুমোদন স্ট্যাটাস) ---
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      // সাইন-আপ করার সময় পেন্ডিং প্রোফাইল তৈরি করার অনুমতি
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      // শুধুমাত্র সুপার অ্যাডমিন রোল বা অনুমোদন পরিবর্তন করতে পারবে
+      allow update: if isSuperAdmin() || 
+                       (isAuthenticated() && request.auth.uid == userId && 
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approvalStatus', 'branchId', 'linkedMemberId']));
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 4. Member Applications (সদস্যপদের আবেদন ও অ্যাডমিন অনুমোদন) ---
+    match /memberApplications/{appId} {
+      // আবেদনকারী নিজের আবেদন এবং অ্যাডমিনরা সকল আবেদন দেখতে পারবে
+      allow read: if isSuperAdmin() || isBranchAdminAny() || 
+                     (isAuthenticated() && (resource.data.email == request.auth.token.email || resource.data.applicantId == request.auth.uid));
+      // যেকোনো সাইন-ইন করা ইউজার সদস্যপদের জন্য নতুন আবেদন জমা দিতে পারবে
+      allow create: if isAuthenticated();
+      // শুধুমাত্র সুপার অ্যাডমিন বা শাখা অ্যাডমিন আবেদন অনুমোদন বা বাতিল করতে পারবে
+      allow update: if isSuperAdmin() || isBranchAdminAny();
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 5. Members (সদস্য তালিকা ও ডিজিটাল আইডি কার্ড) ---
+    match /members/{memberId} {
+      // সুপার অ্যাডমিন সব দেখতে পারবে; শাখা অ্যাডমিন তার শাখার সদস্য দেখতে পারবে;
+      // অনুমোদিত সদস্য শুধুমাত্র নিজের আইডি কার্ড ও তার নিজস্ব শাখার সক্রিয় তালিকা দেখতে পারবে
+      allow read: if isSuperAdmin() || 
+                     (isBranchAdminAny() && resource.data.branchId == getUserData().branchId) ||
+                     isMemberUser(memberId) ||
+                     (isApproved() && resource.data.branchId == getUserData().branchId && resource.data.status == 'active');
+      allow create, update: if isSuperAdmin() || (isBranchAdmin(request.resource.data.branchId));
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 6. Sessions (ডিভাইস সেশন ম্যানেজমেন্ট) ---
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+    }
+
+    // --- 7. Edit Requests (সদস্য তথ্য সংশোধন আবেদন) ---
+    match /editRequests/{requestId} {
+      allow read: if isSuperAdmin() || isBranchAdminAny() || 
+                     (isApproved() && resource.data.memberId == getUserData().linkedMemberId);
+      allow create: if isApproved() && request.resource.data.memberId == getUserData().linkedMemberId;
+      allow update: if isSuperAdmin() || isBranchAdminAny();
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 8. Payments / Contributions (চাঁদা ও আর্থিক লেনদেন) ---
+    match /payments/{paymentId} {
+      // শুধুমাত্র সুপার অ্যাডমিন, সংশ্লিষ্ট শাখা অ্যাডমিন এবং সংশ্লিষ্ট সদস্য নিজের পেমেন্ট দেখতে পারবে
+      allow read: if isSuperAdmin() || 
+                     (isBranchAdminAny() && resource.data.branchId == getUserData().branchId) ||
+                     (isApproved() && resource.data.memberId == getUserData().linkedMemberId);
+      allow create: if isSuperAdmin() || 
+                       isBranchAdmin(request.resource.data.branchId) ||
+                       (isApproved() && request.resource.data.memberId == getUserData().linkedMemberId);
+      allow update: if isSuperAdmin() || isBranchAdmin(resource.data.branchId);
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 9. Expenses (সমিতির খরচের হিসাব) ---
+    match /expenses/{expenseId} {
+      // স্পর্শকাতর হিসাব - শুধুমাত্র সুপার অ্যাডমিন ও সংশ্লিষ্ট শাখা অ্যাডমিন দেখতে পারবে
+      allow read: if isSuperAdmin() || 
+                     (isBranchAdminAny() && resource.data.branchId == getUserData().branchId);
+      allow create, update: if isSuperAdmin() || isBranchAdmin(request.resource.data.branchId);
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 10. Loans & Repayments (ঋণ ও কিস্তি) ---
+    match /loans/{loanId} {
+      // শুধুমাত্র সুপার অ্যাডমিন, শাখা অ্যাডমিন ও ঋণগ্রহীতা সদস্য দেখতে পারবে
+      allow read: if isSuperAdmin() || 
+                     (isBranchAdminAny() && resource.data.branchId == getUserData().branchId) ||
+                     (isApproved() && resource.data.memberId == getUserData().linkedMemberId);
+      allow create, update: if isSuperAdmin() || isBranchAdmin(request.resource.data.branchId);
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 11. Committee (পরিচালনা পরিষদ) ---
+    match /committee/{committeeMemberId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // --- 12. Notices & Meeting Minutes (নোটিশ ও রেজুলেশন) ---
+    match /notices/{noticeId} {
+      allow read: if isApproved();
+      allow create, update: if isSuperAdmin() || isBranchAdminAny();
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 13. Dividends (মুনাফা ও লভ্যাংশ বণ্টন) ---
+    match /dividends/{dividendRunId} {
+      allow read: if isApproved();
+      allow write: if isSuperAdmin();
+    }
+
+    // --- 14. Member Exits (সদস্যপদ প্রত্যাহার ও নিষ্পত্তি) ---
+    match /memberExits/{exitId} {
+      allow read: if isSuperAdmin() || (isApproved() && resource.data.memberId == getUserData().linkedMemberId);
+      allow write: if isSuperAdmin();
+    }
+
+    // --- 15. Audit Logs (অডিট ট্রেইল) ---
+    match /auditLogs/{logId} {
+      allow read: if isSuperAdmin() || isBranchAdminAny();
+      allow write: if false; 
+    }
+
+    // --- 16. Notifications (নোটিফিকেশন) ---
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && 
+                     (resource.data.toUserId == request.auth.uid || 
+                      resource.data.broadcast == true || isSuperAdmin());
+      allow update: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
+      allow write: if isSuperAdmin() || isBranchAdminAny();
+    }
+  }
+}
