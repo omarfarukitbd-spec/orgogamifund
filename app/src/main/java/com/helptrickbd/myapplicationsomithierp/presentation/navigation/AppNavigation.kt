@@ -1,9 +1,9 @@
 package com.helptrickbd.myapplicationsomithierp.presentation.navigation
 
-import android.app.Activity
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.helptrickbd.myapplicationsomithierp.core.backup.BackupPayload
 import com.helptrickbd.myapplicationsomithierp.core.backup.DataBackupManager
@@ -26,8 +27,6 @@ import com.helptrickbd.myapplicationsomithierp.core.datastore.AppThemeMode
 import com.helptrickbd.myapplicationsomithierp.core.datastore.UserPreferencesRepository
 import com.helptrickbd.myapplicationsomithierp.data.repository.NotificationRepositoryImpl
 import com.helptrickbd.myapplicationsomithierp.domain.model.*
-import com.helptrickbd.myapplicationsomithierp.presentation.components.ExitConfirmationDialog
-import com.helptrickbd.myapplicationsomithierp.presentation.screens.dashboard.DashboardScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.notifications.NotificationCenterScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.MemberDepositScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.search.GlobalSearchScreen
@@ -117,72 +116,52 @@ fun AppNavigation(
         else -> Screen.PendingApproval.route
     }
 
-    NavHost(
+    val currentMember = FirestoreDataManager.getCurrentMemberForUser(dashboardState.selectedBranchId, currentAuthEmail)
+    val membershipStatus = FirestoreDataManager.getMembershipStatus(dashboardState.selectedBranchId, currentAuthEmail, activeRole)
+
+    val fullDashboardState = dashboardState.copy(
+        userRole = activeRole,
+        userName = activeUser?.displayName?.ifBlank { null } ?: if (isRootSuperAdmin) "মো: ওমর ফারুক" else "সম্মানিত সদস্য",
+        userPhotoUrl = activeUser?.photoUrl?.ifBlank { null } ?: firebaseAuthUser?.photoUrl?.toString(),
+        userEmail = currentAuthEmail,
+        currentBranchMembershipStatus = membershipStatus,
+        activeMemberId = currentMember?.id ?: ""
+    )
+
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    val hideBottomBarRoutes = setOf(
+        Screen.Onboarding.route,
+        Screen.Auth.route,
+        Screen.PendingApproval.route
+    )
+    val effectiveRoute = currentRoute ?: resolvedStartDestination
+    val showBottomBar = effectiveRoute !in hideBottomBarRoutes &&
+        (isRootSuperAdmin || activeUser?.approvalStatus == ApprovalStatus.APPROVED)
+
+    MainAppScaffold(
         navController = navController,
-        startDestination = resolvedStartDestination
+        currentRoute = currentRoute,
+        showBottomBar = showBottomBar,
+        drawerState = drawerState,
+        scope = scope,
+        dashboardState = fullDashboardState,
+        activeMemberId = currentMember?.id ?: "m-101"
     ) {
-        addAuthNavRoutes(navController, preferences, preferencesRepo, scope, activeUser, isRootSuperAdmin)
+        NavHost(
+            navController = navController,
+            startDestination = resolvedStartDestination
+        ) {
+            addAuthNavRoutes(navController, preferences, preferencesRepo, scope, activeUser, isRootSuperAdmin)
 
-        composable(Screen.Dashboard.route) {
-            val activity = LocalContext.current as? Activity
-            var showExitDialog by remember { mutableStateOf(false) }
-
-            BackHandler(enabled = true) {
-                showExitDialog = true
-            }
-
-            if (showExitDialog) {
-                ExitConfirmationDialog(
-                    onConfirm = {
-                        showExitDialog = false
-                        activity?.finish()
-                    },
-                    onDismiss = { showExitDialog = false }
-                )
-            }
-
-            val membershipStatus = FirestoreDataManager.getMembershipStatus(dashboardState.selectedBranchId, currentAuthEmail, activeRole)
-            val currentMember = FirestoreDataManager.getCurrentMemberForUser(dashboardState.selectedBranchId, currentAuthEmail)
-
-            DashboardScreen(
-                state = dashboardState.copy(
-                    userRole = activeRole,
-                    userName = activeUser?.displayName?.ifBlank { null } ?: if (isRootSuperAdmin) "মো: ওমর ফারুক" else "সম্মানিত সদস্য",
-                    userPhotoUrl = activeUser?.photoUrl?.ifBlank { null } ?: firebaseAuthUser?.photoUrl?.toString(),
-                    userEmail = currentAuthEmail,
-                    currentBranchMembershipStatus = membershipStatus,
-                    activeMemberId = currentMember?.id ?: ""
-                ),
-                onSelectBranch = { branchId -> FirestoreDataManager.selectBranch(branchId) },
-                onApplyForMembership = { branchId -> navController.navigate(Screen.MemberApplication.createRoute(branchId)) },
-                onNavigateToMemberCard = { memberId -> navController.navigate(Screen.IDCardPreview.createRoute(memberId)) },
-                onNavigateToSearch = { navController.navigate(Screen.GlobalSearch.route) },
-                onNavigateToNotifications = { navController.navigate(Screen.NotificationCenter.route) },
-                onNavigateToCollectPayment = {
-                    if (activeRole == UserRole.SUPER_ADMIN || activeRole == UserRole.BRANCH_ADMIN) {
-                        navController.navigate(Screen.RecordPayment.route)
-                    } else {
-                        navController.navigate(Screen.MemberDeposit.route)
-                    }
-                },
-                onNavigateToAddExpense = { navController.navigate(Screen.AddExpense.route) },
-                onNavigateToIssueLoan = { navController.navigate(Screen.IssueLoan.route) },
-                onNavigateToAddMember = { navController.navigate(Screen.AddMember.route) },
-                onNavigateToDefaulters = { navController.navigate(Screen.Defaulters.route) },
-                onNavigateToMembers = { navController.navigate(Screen.Members.route) },
-                onNavigateToPayments = { navController.navigate(Screen.Contributions.route) },
-                onNavigateToCommittee = { navController.navigate(Screen.Committee.route) },
-                onNavigateToNotices = { navController.navigate(Screen.Notices.route) },
-                onNavigateToDividends = { navController.navigate(Screen.Dividends.route) },
-                onNavigateToExpenses = { navController.navigate(Screen.Expenses.route) },
-                onNavigateToLoans = { navController.navigate(Screen.Loans.route) },
-                onNavigateToBranches = { navController.navigate(Screen.Branches.route) },
-                onNavigateToReports = { navController.navigate(Screen.Reports.route) },
-                onNavigateToAdminHub = { navController.navigate(Screen.AdminHub.route) },
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                onNavigateToPassbook = { memberId -> navController.navigate(Screen.MemberPassbook.createRoute(memberId)) }
+            addDashboardNavRoute(
+                navController = navController,
+                dashboardUiState = fullDashboardState,
+                activeRole = activeRole,
+                onOpenDrawer = { scope.launch { drawerState.open() } }
             )
-        }
 
         composable(Screen.MemberDeposit.route) {
             val currentBranch = branches.find { it.id == dashboardState.selectedBranchId } ?: branches.firstOrNull() ?: Branch()
@@ -289,4 +268,5 @@ fun AppNavigation(
             launchCall = ::launchCall
         )
     }
+}
 }

@@ -39,6 +39,7 @@ data class DashboardUiState(
 @Composable
 fun DashboardScreen(
     state: DashboardUiState = DashboardUiState(),
+    onOpenDrawer: () -> Unit = {},
     onSelectBranch: (String) -> Unit = {},
     onApplyForMembership: (branchId: String) -> Unit = {},
     onNavigateToMemberCard: (memberId: String) -> Unit = {},
@@ -62,8 +63,6 @@ fun DashboardScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToPassbook: (memberId: String) -> Unit = {}
 ) {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
     var termsBranchToView by remember { mutableStateOf<Branch?>(null) }
 
     val activeBranch = state.branches.find { it.id == state.selectedBranchId }
@@ -73,55 +72,22 @@ fun DashboardScreen(
     val isApprovedAccess = state.userRole == UserRole.SUPER_ADMIN ||
         state.currentBranchMembershipStatus == ShomitiMembershipStatus.APPROVED_MEMBER
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            DashboardDrawer(
+    Scaffold(
+        topBar = {
+            DashboardTopBar(
                 state = state,
-                onCloseDrawer = { scope.launch { drawerState.close() } },
-                onNavigateToBranches = onNavigateToBranches,
-                onNavigateToMembers = onNavigateToMembers,
-                onNavigateToPayments = onNavigateToPayments,
-                onNavigateToLoans = onNavigateToLoans,
-                onNavigateToExpenses = onNavigateToExpenses,
-                onNavigateToNotices = onNavigateToNotices,
-                onNavigateToCommittee = onNavigateToCommittee,
-                onNavigateToDividends = onNavigateToDividends,
-                onNavigateToReports = onNavigateToReports,
-                onNavigateToAdminHub = onNavigateToAdminHub,
-                onNavigateToSettings = onNavigateToSettings
+                onOpenDrawer = onOpenDrawer,
+                onNavigateToNotifications = onNavigateToNotifications
             )
         }
-    ) {
-        Scaffold(
-            topBar = {
-                DashboardTopBar(
-                    state = state,
-                    onOpenDrawer = { scope.launch { drawerState.open() } },
-                    onNavigateToNotifications = onNavigateToNotifications
-                )
-            },
-            bottomBar = {
-                DashboardBottomBar(
-                    currentRoute = "home",
-                    userPhotoUrl = state.userPhotoUrl,
-                    userName = state.userName,
-                    userEmail = state.userEmail,
-                    onNavigateHome = {},
-                    onNavigateBranches = onNavigateToBranches,
-                    onNavigatePayments = onNavigateToPayments,
-                    onNavigateIdCard = { onNavigateToMemberCard(state.activeMemberId ?: "m-101") },
-                    onOpenDrawer = { scope.launch { drawerState.open() } }
-                )
-            }
-        ) { innerPadding ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
                 // 1. Sleek Branch Selector Bar
                 item {
                     BranchSelectorBar(
@@ -214,5 +180,4 @@ fun DashboardScreen(
                 }
             )
         }
-    }
 }
