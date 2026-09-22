@@ -54,6 +54,11 @@ fun NavGraphBuilder.addMemberNavRoutes(
             onCallClick = { phone -> launchCall(context, phone) },
             onWhatsAppClick = { phone -> launchWhatsApp(context, phone) },
             onEditClick = { navController.navigate(Screen.AddMember.route) },
+            onDeleteMember = { id ->
+                FirestoreWriteManager.deleteMember(id) {
+                    navController.popBackStack()
+                }
+            },
             onNavigateToIdCard = { id -> navController.navigate(Screen.IDCardPreview.createRoute(id)) },
             onNavigateToPassbook = { id -> navController.navigate(Screen.MemberPassbook.createRoute(id)) },
             onExitSettlementClick = {},

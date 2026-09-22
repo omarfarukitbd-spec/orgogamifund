@@ -195,3 +195,48 @@ fun DetailRow(label: String, value: String) {
         )
     }
 }
+
+@Composable
+fun MemberDeleteConfirmDialog(
+    member: Member,
+    isBangla: Boolean,
+    onConfirmDelete: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (isBangla) "সদস্য স্থায়ীভাবে মুছে ফেলুন" else "Permanently Delete Member",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        text = {
+            Text(
+                text = if (isBangla)
+                    "আপনি কি নিশ্চিত যে সদস্য '${member.name}' এবং তার সম্পূর্ণ প্রোফাইল ক্লাউড ফায়ারবেস থেকে চিরতরে মুছে ফেলতে চান? এই প্রক্রিয়াটি অপরিবর্তনীয়।"
+                else
+                    "Are you sure you want to permanently delete member '${member.name}' and all their data from Cloud Firebase? This action cannot be undone.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirmDelete()
+                    onDismiss()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text(text = if (isBangla) "হ্যাঁ, মুছে ফেলুন" else "Yes, Delete")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text(text = if (isBangla) "বাতিল" else "Cancel")
+            }
+        }
+    )
+}

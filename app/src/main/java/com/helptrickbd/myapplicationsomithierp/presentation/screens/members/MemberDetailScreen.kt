@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Person
@@ -33,6 +34,7 @@ import com.helptrickbd.myapplicationsomithierp.domain.model.Member
 import com.helptrickbd.myapplicationsomithierp.domain.model.MemberStatus
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.members.components.DetailRow
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.members.components.LedgerStatCard
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.members.components.MemberDeleteConfirmDialog
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.members.components.MemberExitSettlementDialog
 import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyDueAmber
 import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyExpenseRed
@@ -49,6 +51,7 @@ fun MemberDetailScreen(
     onCallClick: (phone: String) -> Unit = {},
     onWhatsAppClick: (phone: String) -> Unit = {},
     onEditClick: () -> Unit = {},
+    onDeleteMember: (memberId: String) -> Unit = {},
     onNavigateToIdCard: (memberId: String) -> Unit = {},
     onNavigateToPassbook: (memberId: String) -> Unit = {},
     onExitSettlementClick: () -> Unit = {},
@@ -58,6 +61,7 @@ fun MemberDetailScreen(
     val context = LocalContext.current
     val isBangla = LocalConfiguration.current.locales[0].language == "bn"
     var showSettlementDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     var selectedPayoutMethod by remember { mutableStateOf("Cash") }
     var settlementNote by remember { mutableStateOf("") }
 
@@ -77,30 +81,25 @@ fun MemberDetailScreen(
                     IconButton(onClick = onEditClick) {
                         Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit")
                     }
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { innerPadding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Member Header Profile Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         modifier = Modifier.size(80.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
@@ -144,7 +143,6 @@ fun MemberDetailScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(if (isBangla) "কল করুন" else "Call")
                         }
-
                         Button(
                             onClick = { onWhatsAppClick(member.phone) },
                             modifier = Modifier.weight(1f),
@@ -219,7 +217,7 @@ fun MemberDetailScreen(
                     Spacer(modifier = Modifier.width(6.dp))
                     Button(
                         onClick = {
-                            val pdfFile = MemberIdCardGenerator.generateIdCardPdf(context = context, member = member, orgName = orgName)
+                            val pdfFile = MemberIdCardGenerator.generateIdCardPdf(context, member, orgName)
                             MemberIdCardGenerator.printIdCard(context, pdfFile)
                         },
                         shape = RoundedCornerShape(10.dp),
@@ -235,9 +233,9 @@ fun MemberDetailScreen(
             // Financial Summary Ledger
             Text(text = if (isBangla) "আর্থিক সারসংক্ষেপ" else "Financial Summary", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                LedgerStatCard(title = if (isBangla) "মোট সঞ্চয়/জমা" else "Total Savings", amount = member.totalContributed, color = MoneyIncomeGreen, isBangla = isBangla, modifier = Modifier.weight(1f))
-                LedgerStatCard(title = if (isBangla) "বকেয়া চাঁদা" else "Dues", amount = member.outstandingDues, color = MoneyDueAmber, isBangla = isBangla, modifier = Modifier.weight(1f))
-                LedgerStatCard(title = if (isBangla) "চলতি ঋণ" else "Active Loan", amount = member.activeLoanBalance, color = MoneyExpenseRed, isBangla = isBangla, modifier = Modifier.weight(1f))
+                LedgerStatCard(if (isBangla) "মোট সঞ্চয়/জমা" else "Total Savings", member.totalContributed, MoneyIncomeGreen, isBangla, Modifier.weight(1f))
+                LedgerStatCard(if (isBangla) "বকেয়া চাঁদা" else "Dues", member.outstandingDues, MoneyDueAmber, isBangla, Modifier.weight(1f))
+                LedgerStatCard(if (isBangla) "চলতি ঋণ" else "Active Loan", member.activeLoanBalance, MoneyExpenseRed, isBangla, Modifier.weight(1f))
             }
 
             // Detailed Information Card
@@ -280,6 +278,15 @@ fun MemberDetailScreen(
             onNoteChange = { settlementNote = it },
             onConfirmExit = { method, note -> onConfirmExit(method, note); showSettlementDialog = false },
             onDismiss = { showSettlementDialog = false }
+        )
+    }
+
+    if (showDeleteDialog) {
+        MemberDeleteConfirmDialog(
+            member = member,
+            isBangla = isBangla,
+            onConfirmDelete = { onDeleteMember(member.id); showDeleteDialog = false },
+            onDismiss = { showDeleteDialog = false }
         )
     }
 }

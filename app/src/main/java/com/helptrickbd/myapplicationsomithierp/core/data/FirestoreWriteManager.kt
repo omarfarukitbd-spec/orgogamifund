@@ -33,6 +33,19 @@ object FirestoreWriteManager {
         }
     }
 
+    fun deleteMember(memberId: String, onComplete: ((Boolean) -> Unit)? = null) {
+        scope.launch {
+            try {
+                firestore.collection("members").document(memberId).delete()
+                ShomitiDataManager.deleteMember(memberId)
+                onComplete?.invoke(true)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                onComplete?.invoke(false)
+            }
+        }
+    }
+
     fun recordPayment(payment: Payment, onComplete: ((Boolean) -> Unit)? = null) {
         scope.launch {
             try {

@@ -381,6 +381,11 @@ object ShomitiDataManager {
         refreshState()
     }
 
+    fun deleteMember(memberId: String) {
+        _members.value = _members.value.filter { it.id != memberId }
+        refreshState()
+    }
+
     // --- Branch Management ---
 
     fun addBranch(branch: Branch) {
