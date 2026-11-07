@@ -66,6 +66,34 @@ class FirestoreService {
         );
   }
 
+  /// নতুন সমিতি খোলা — শুধু অ্যাডমিনের জন্য। অ্যাপে সমিতি
+  /// তৈরির আর কোনো পথ নেই, তাই খালি তালিকায় অ্যাডমিন
+  /// এখান থেকেই প্রথম সমিতি খুলতে পারে।
+  Future<void> createBranch({
+    required String name,
+    required String description,
+    required SamitiPurpose purpose,
+    required int monthlyDonation,
+    required String by,
+  }) async {
+    final branch = Branch(
+      id: '',
+      name: name,
+      description: description,
+      purpose: purpose,
+      monthlyDonation: monthlyDonation,
+      startDate: DateTime.now(),
+    );
+    final data = branch.toMap()
+      ..['createdAt'] = DateTime.now().toIso8601String();
+    final ref = await _db.collection(Collections.branches).add(data);
+    await _logAudit(
+      action: 'create_branch',
+      by: by,
+      detail: 'সমিতি: $name (${ref.id})',
+    );
+  }
+
   /// একটি সমিতি — বিস্তারিত পাতায় লাগে। নাম, উদ্দেশ্য,
   /// মাসিক দান আর সদস্য সংখ্যা — এগুলো সবার জন্য খোলা।
   Stream<Branch?> watchBranch(String branchId) {
@@ -652,7 +680,7 @@ class FirestoreService {
       if (!snap.exists || snap.data() == null) return;
       final loan = Loan.fromMap(snap.id, snap.data()!);
       final updated = [...loan.repayments, repayment];
-      final repaid = updated.fold(0, (total, r) => total + r.amount);
+      final repaid = updated.fold(0, (sum, r) => sum + r.amount);
       tx.update(ref, {
         'repayments': updated.map((r) => r.toMap()).toList(),
         'status':
@@ -748,11 +776,11 @@ class FirestoreService {
       ]);
       final approvedTotal = results[0].docs.fold<int>(
         0,
-        (total, d) => total + ((d.data()['amount'] as num?)?.toInt() ?? 0),
+        (sum, d) => sum + ((d.data()['amount'] as num?)?.toInt() ?? 0),
       );
       final expenseTotal = results[1].docs.fold<int>(
         0,
-        (total, d) => total + ((d.data()['amount'] as num?)?.toInt() ?? 0),
+        (sum, d) => sum + ((d.data()['amount'] as num?)?.toInt() ?? 0),
       );
       return HomeTotals(
         approvedTotal: approvedTotal,

@@ -35,8 +35,10 @@ class AgragamiFundApp extends StatelessWidget {
       title: 'অগ্রগামী ফান্ড',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
+      // অ্যাপ সবসময় হালকা থিমেই চলবে — ফোন ডার্ক মোডে
+      // থাকলেও। প্রিভিউয়ের মতো সাদা পটভূমি আর সাদা
+      // কার্ডই আসল রূপ, তাই ডার্ক থিমের পথ রাখা হয়নি।
+      themeMode: ThemeMode.light,
       routerConfig: AppRouter.router,
       // বাংলা লেখা ঠিকভাবে দেখাতে locale ঠিক করা আছে।
       // flutter_localizations ছাড়া বাংলা locale-এ

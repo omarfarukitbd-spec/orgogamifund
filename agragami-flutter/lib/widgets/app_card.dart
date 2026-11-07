@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// অ্যাপের সব কার্ড এক রকম দেখাবে — গোল কোণা, হালকা বর্ডার, ছায়া নেই।
+/// অ্যাপের সব কার্ড এক রকম দেখাবে — সাদা, গোল কোণা, নরম ছায়া।
+/// প্রিভিউয়ের মতোই: সাদা পটভূমির উপর ছায়া দিয়েই কার্ড আলাদা হয়।
 class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -18,7 +19,7 @@ class AppCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(padding: padding, child: child),
       ),
     );
@@ -62,7 +63,7 @@ class StatCard extends StatelessWidget {
             Text(
               note!,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
             ),
           ],

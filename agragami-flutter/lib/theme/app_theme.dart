@@ -51,10 +51,10 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: AppColors.card,
-        elevation: 0,
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: 0.08),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.line),
+          borderRadius: BorderRadius.circular(20),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -98,54 +98,6 @@ class AppTheme {
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         selectedItemColor: AppColors.green,
         unselectedItemColor: AppColors.muted,
-        type: BottomNavigationBarType.fixed,
-        showUnselectedLabels: true,
-      ),
-    );
-  }
-
-  static ThemeData dark() {
-    const scheme = ColorScheme.dark(
-      primary: Color(0xFF4CAF7D),
-      onPrimary: Color(0xFF062B1A),
-      secondary: AppColors.gold,
-      onSecondary: AppColors.ink,
-      surface: Color(0xFF1C2420),
-      onSurface: Color(0xFFEDF2EF),
-      error: Color(0xFFFF8A80),
-    );
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      scaffoldBackgroundColor: const Color(0xFF121815),
-      textTheme: _textTheme(const Color(0xFFEDF2EF)),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF0B6B3A),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: false,
-      ),
-      cardTheme: CardThemeData(
-        color: const Color(0xFF1C2420),
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFF2E3B34)),
-        ),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.green,
-          foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        selectedItemColor: Color(0xFF4CAF7D),
-        unselectedItemColor: Color(0xFF9AA8A0),
         type: BottomNavigationBarType.fixed,
         showUnselectedLabels: true,
       ),

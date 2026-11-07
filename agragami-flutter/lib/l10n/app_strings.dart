@@ -87,6 +87,17 @@ class AppStrings {
   static const String samitiList = 'সমিতিসমূহ';
   static const String monthlyDonation = 'মাসিক দান';
   static const String createSamiti = 'নতুন সমিতি খুলুন';
+  static const String samitiEmptyTitle = 'এখনো কোনো সমিতি তৈরি হয়নি';
+  static const String samitiEmptyBody =
+      'অ্যাডমিন নতুন সমিতি খুললে এখানে দেখা যাবে।';
+  static const String samitiEmptyAdminBody =
+      'প্রথম সমিতিটা খুলে শুরু করুন — নাম, উদ্দেশ্য আর মাসিক দান বসালেই হবে।';
+  static const String samitiNameLabel = 'সমিতির নাম';
+  static const String samitiPurposeLabel = 'সমিতির উদ্দেশ্য';
+  static const String samitiDescriptionLabel = 'বিবরণ (ঐচ্ছিক)';
+  static const String samitiCreated = 'সমিতি খোলা হয়েছে';
+  static const String samitiCreateFailed =
+      'সমিতি খোলা যায়নি — ইন্টারনেট দেখে আবার চেষ্টা করুন।';
   static const String memberCountLabel = 'সদস্য';
   static const String joinSamiti = 'সদস্য হতে আবেদন করুন';
   static const String alreadyMember = 'আপনি এই সমিতির সদস্য';
