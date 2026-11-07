@@ -77,7 +77,7 @@ fun OnboardingScreen(
             badgeText = if (isBangla) "স্মার্ট সমিতি ইআরপি" else "Smart Somithi ERP",
             tagList = listOf(
                 Icons.AutoMirrored.Filled.TrendingUp to if (isBangla) "স্বচ্ছ তহবিল ট্র্যাকিং" else "Fund Tracking",
-                Icons.Filled.AccountBalance to if (isBangla) "সদস্য চাঁদা ও ঋণ হিসাব" else "Contributions & Loans"
+                Icons.Filled.AccountBalance to if (isBangla) "সদস্য চাঁদা ও সঞ্চয় হিসাব" else "Contributions & Savings"
             )
         ),
         OnboardingPageData(

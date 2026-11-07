@@ -9,13 +9,13 @@ sealed class Screen(val route: String) {
     data object MemberDetail : Screen("member_detail/{memberId}") {
         fun createRoute(memberId: String) = "member_detail/$memberId"
     }
-    data object AddMember : Screen("add_member")
+    data object AddMember : Screen("add_member?memberId={memberId}") {
+        fun createRoute(memberId: String? = null) = if (!memberId.isNullOrBlank()) "add_member?memberId=$memberId" else "add_member"
+    }
     data object Contributions : Screen("contributions")
     data object RecordPayment : Screen("record_payment")
     data object Expenses : Screen("expenses")
     data object AddExpense : Screen("add_expense")
-    data object Loans : Screen("loans")
-    data object IssueLoan : Screen("issue_loan")
     data object Committee : Screen("committee")
     data object Notices : Screen("notices")
     data object Reports : Screen("reports")
@@ -38,6 +38,10 @@ sealed class Screen(val route: String) {
     data object MemberDeposit : Screen("member_deposit")
     data object AdminPendingDeposits : Screen("admin_pending_deposits")
     data object CreateSomithiFund : Screen("create_somithi_fund")
+    data object EditSomithiFund : Screen("edit_somithi_fund/{branchId}") {
+        fun createRoute(branchId: String) = "edit_somithi_fund/$branchId"
+    }
+
     data object MemberPassbook : Screen("member_passbook/{memberId}") {
         fun createRoute(memberId: String) = "member_passbook/$memberId"
     }

@@ -11,7 +11,7 @@
     <string name="nav_members">Members</string>
     <string name="nav_contributions">Contributions</string>
     <string name="nav_expenses">Expenses</string>
-    <string name="nav_loans">Loans</string>
+    <string name="nav_defaulters">Dues Register</string>
     <string name="nav_committee">Committee</string>
     <string name="nav_notices">Notice Board</string>
     <string name="nav_reports">Reports</string>
@@ -36,13 +36,12 @@
     <string name="total_fund_balance">Total Fund Balance</string>
     <string name="monthly_collection">This Month\'s Collection</string>
     <string name="total_expenses">Total Expenses</string>
-    <string name="active_loans">Active Loans Disbursed</string>
     <string name="outstanding_dues">Total Outstanding Dues</string>
     <string name="recent_transactions">Recent Transactions</string>
     <string name="quick_actions">Quick Actions</string>
     <string name="btn_collect_payment">Collect Chada</string>
     <string name="btn_add_expense">Add Expense</string>
-    <string name="btn_issue_loan">Issue Loan</string>
+    <string name="btn_defaulters">Due Register</string>
     <string name="btn_add_member">Add Member</string>
 
     <!-- Contributions / Payments -->
@@ -85,15 +84,6 @@
     <string name="member_status_active">Active</string>
     <string name="member_status_left">Left / Resigned</string>
     <string name="generate_id_card">Generate Membership ID Card</string>
-
-    <!-- Loans -->
-    <string name="loan_amount">Loan Amount</string>
-    <string name="loan_reason">Reason</string>
-    <string name="loan_date_issued">Date Issued</string>
-    <string name="loan_repaid">Amount Repaid</string>
-    <string name="loan_outstanding">Outstanding Balance</string>
-    <string name="interest_enabled">Enable Interest</string>
-    <string name="interest_rate">Interest Rate (%)</string>
 
     <!-- Offline & System -->
     <string name="offline_banner">Offline Mode — Changes will sync automatically when connected</string>

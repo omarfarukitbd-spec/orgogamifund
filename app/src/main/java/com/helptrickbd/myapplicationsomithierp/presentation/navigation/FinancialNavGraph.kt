@@ -10,8 +10,6 @@ import com.helptrickbd.myapplicationsomithierp.domain.repository.NotificationRep
 import com.helptrickbd.myapplicationsomithierp.domain.model.*
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.expenses.AddExpenseScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.expenses.ExpenseListScreen
-import com.helptrickbd.myapplicationsomithierp.presentation.screens.loans.IssueLoanScreen
-import com.helptrickbd.myapplicationsomithierp.presentation.screens.loans.LoanListScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.DefaulterListScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.PaymentHistoryScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.RecordPaymentScreen
@@ -24,8 +22,7 @@ fun NavGraphBuilder.addFinancialNavRoutes(
     notificationRepo: NotificationRepository,
     members: List<Member>,
     payments: List<Payment>,
-    expenses: List<Expense>,
-    loans: List<Loan>
+    expenses: List<Expense>
 ) {
     composable(Screen.Contributions.route) {
         PaymentHistoryScreen(
@@ -76,28 +73,6 @@ fun NavGraphBuilder.addFinancialNavRoutes(
         AddExpenseScreen(
             onSaveExpense = { newExpense ->
                 FirestoreWriteManager.recordExpense(newExpense)
-                navController.popBackStack()
-            },
-            onNavigateBack = { navController.popBackStack() }
-        )
-    }
-
-    composable(Screen.Loans.route) {
-        LoanListScreen(
-            loans = loans,
-            onIssueLoanClick = { navController.navigate(Screen.IssueLoan.route) },
-            onRepayInstallment = { loanId, amount, method ->
-                ShomitiDataManager.repayLoanInstallment(loanId, amount, method)
-            },
-            onNavigateBack = { navController.popBackStack() }
-        )
-    }
-
-    composable(Screen.IssueLoan.route) {
-        IssueLoanScreen(
-            members = members,
-            onDisburseLoan = { newLoan ->
-                FirestoreWriteManager.disburseLoan(newLoan)
                 navController.popBackStack()
             },
             onNavigateBack = { navController.popBackStack() }

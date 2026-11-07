@@ -11,7 +11,6 @@ import android.graphics.pdf.PdfDocument
 import com.helptrickbd.myapplicationsomithierp.core.util.CurrencyFormatter
 import com.helptrickbd.myapplicationsomithierp.core.util.safeRound
 import com.helptrickbd.myapplicationsomithierp.domain.model.Expense
-import com.helptrickbd.myapplicationsomithierp.domain.model.Loan
 import com.helptrickbd.myapplicationsomithierp.domain.model.Member
 import com.helptrickbd.myapplicationsomithierp.domain.model.Payment
 import java.io.File
@@ -33,15 +32,14 @@ object ReportPdfGenerator {
         orgName: String = "সোনার বাংলা সমবায় সমিতি",
         members: List<Member> = emptyList(),
         payments: List<Payment> = emptyList(),
-        expenses: List<Expense> = emptyList(),
-        loans: List<Loan> = emptyList()
+        expenses: List<Expense> = emptyList()
     ): File {
         val pdfDocument = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create()
         val page = pdfDocument.startPage(pageInfo)
         val canvas = page.canvas
 
-        drawReportDocument(canvas, reportTitle, orgName, members, payments, expenses, loans)
+        drawReportDocument(canvas, reportTitle, orgName, members, payments, expenses)
 
         pdfDocument.finishPage(page)
 
@@ -60,8 +58,7 @@ object ReportPdfGenerator {
         orgName: String,
         members: List<Member>,
         payments: List<Payment>,
-        expenses: List<Expense>,
-        loans: List<Loan>
+        expenses: List<Expense>
     ) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
@@ -112,13 +109,13 @@ object ReportPdfGenerator {
 
         when {
             reportTitle.contains("সারসংক্ষেপ") -> {
-                currentY = drawSummarySection(canvas, paint, currentY, members, payments, expenses, loans)
+                currentY = drawSummarySection(canvas, paint, currentY, members, payments, expenses)
             }
             reportTitle.contains("খরচ") -> {
                 currentY = drawExpenseSection(canvas, paint, currentY, expenses)
             }
-            reportTitle.contains("ঋণ") -> {
-                currentY = drawLoanSection(canvas, paint, currentY, loans)
+            reportTitle.contains("বকেয়া") -> {
+                currentY = drawDefaultersSection(canvas, paint, currentY, members)
             }
             else -> {
                 currentY = drawMemberLedgerSection(canvas, paint, currentY, members)
@@ -141,20 +138,19 @@ object ReportPdfGenerator {
         startY: Float,
         members: List<Member>,
         payments: List<Payment>,
-        expenses: List<Expense>,
-        loans: List<Loan>
+        expenses: List<Expense>
     ): Float {
         var y = startY
         val totalCollections = safeRound(payments.sumOf { safeRound(it.amount) })
         val totalExpenses = safeRound(expenses.sumOf { safeRound(it.amount) })
-        val totalActiveLoans = safeRound(loans.filter { it.status.name == "ACTIVE" }.sumOf { safeRound(it.outstandingBalance) })
         val totalDues = safeRound(members.sumOf { safeRound(it.outstandingDues) })
-        val runningBalance = safeRound(1250000.0 + totalCollections - totalExpenses - totalActiveLoans)
+        val runningBalance = safeRound(1250000.0 + totalCollections - totalExpenses)
+        val activeMemberCount = members.count { it.status.name == "ACTIVE" }
 
         val metrics = listOf(
             "মোট সংগৃহীত চাঁদা ও সঞ্চয়" to CurrencyFormatter.formatBDT(totalCollections),
             "মোট নির্বাহকৃত সমিতি খরচ" to CurrencyFormatter.formatBDT(totalExpenses),
-            "সদস্যদের মাঝে চলতি বিতরণকৃত ঋণ" to CurrencyFormatter.formatBDT(totalActiveLoans),
+            "সক্রিয় অনুমোদিত সদস্য সংখ্যা" to "$activeMemberCount জন",
             "সদস্যদের মোট বকেয়া চাঁদা" to CurrencyFormatter.formatBDT(totalDues),
             "সমিতির নেট বর্তমান তহবিল স্থিতি" to CurrencyFormatter.formatBDT(runningBalance)
         )
@@ -212,7 +208,7 @@ object ReportPdfGenerator {
         return y
     }
 
-    private fun drawLoanSection(canvas: Canvas, paint: Paint, startY: Float, loans: List<Loan>): Float {
+    private fun drawDefaultersSection(canvas: Canvas, paint: Paint, startY: Float, members: List<Member>): Float {
         var y = startY
         paint.color = Color.rgb(241, 245, 249)
         canvas.drawRect(40f, y, PAGE_WIDTH - 40f, y + 26f, paint)
@@ -220,24 +216,25 @@ object ReportPdfGenerator {
         paint.textSize = 10f
         paint.isFakeBoldText = true
         canvas.drawText("সদস্যের নাম", 50f, y + 18f, paint)
-        canvas.drawText("বিতরণ", 180f, y + 18f, paint)
-        canvas.drawText("আদায়", 300f, y + 18f, paint)
+        canvas.drawText("মোবাইল নম্বর", 190f, y + 18f, paint)
+        canvas.drawText("মোট সঞ্চয়", 330f, y + 18f, paint)
         paint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("অবশিষ্ট বকেয়া", PAGE_WIDTH - 50f, y + 18f, paint)
+        canvas.drawText("বকেয়া চাঁদা", PAGE_WIDTH - 50f, y + 18f, paint)
         paint.textAlign = Paint.Align.LEFT
 
         y += 34f
         paint.isFakeBoldText = false
         paint.textSize = 10f
 
-        loans.take(12).forEach { loan ->
+        val defaulters = members.filter { it.outstandingDues > 0 }
+        defaulters.take(15).forEach { member ->
             paint.color = Color.rgb(51, 65, 85)
-            canvas.drawText(loan.memberName, 50f, y, paint)
-            canvas.drawText(CurrencyFormatter.formatBDT(safeRound(loan.amount)), 180f, y, paint)
-            canvas.drawText(CurrencyFormatter.formatBDT(safeRound(loan.totalRepaid)), 300f, y, paint)
+            canvas.drawText(member.name, 50f, y, paint)
+            canvas.drawText(member.phone, 190f, y, paint)
+            canvas.drawText(CurrencyFormatter.formatBDT(safeRound(member.totalContributed)), 330f, y, paint)
             paint.textAlign = Paint.Align.RIGHT
             paint.color = Color.rgb(220, 38, 38)
-            canvas.drawText(CurrencyFormatter.formatBDT(safeRound(loan.outstandingBalance)), PAGE_WIDTH - 50f, y, paint)
+            canvas.drawText(CurrencyFormatter.formatBDT(safeRound(member.outstandingDues)), PAGE_WIDTH - 50f, y, paint)
             paint.textAlign = Paint.Align.LEFT
 
             y += 24f

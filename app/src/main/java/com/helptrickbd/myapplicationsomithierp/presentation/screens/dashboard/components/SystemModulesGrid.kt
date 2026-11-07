@@ -22,7 +22,7 @@ fun SystemModulesGrid(
     onMembers: () -> Unit,
     onPayments: () -> Unit,
     onExpenses: () -> Unit,
-    onLoans: () -> Unit,
+    onDefaulters: () -> Unit = {},
     onBranches: () -> Unit,
     onReports: () -> Unit,
     onNotices: () -> Unit,
@@ -88,11 +88,11 @@ fun SystemModulesGrid(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             ModuleTile(
-                title = "ঋণ ও দাদন",
-                icon = Icons.Default.CreditCard,
+                title = "বকেয়া খাতা",
+                icon = Icons.Default.AssignmentLate,
                 color = Color(0xFFD97706),
                 modifier = Modifier.weight(1f),
-                onClick = onLoans
+                onClick = onDefaulters
             )
             ModuleTile(
                 title = "শাখা ব্যবস্থাপনা",

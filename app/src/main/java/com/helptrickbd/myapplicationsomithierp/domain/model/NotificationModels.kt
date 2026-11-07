@@ -5,7 +5,6 @@ enum class NotificationType {
     DUE_REMINDER,
     DEFAULTER_ALERT,
     NEW_NOTICE,
-    LOAN_REMINDER,
     EDIT_REQUEST_STATUS,
     DIVIDEND_PAYOUT,
     SYSTEM_ALERT

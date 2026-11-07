@@ -6,7 +6,6 @@ import androidx.core.content.FileProvider
 import com.helptrickbd.myapplicationsomithierp.domain.model.AuditLog
 import com.helptrickbd.myapplicationsomithierp.domain.model.CommitteeMember
 import com.helptrickbd.myapplicationsomithierp.domain.model.Expense
-import com.helptrickbd.myapplicationsomithierp.domain.model.Loan
 import com.helptrickbd.myapplicationsomithierp.domain.model.Member
 import com.helptrickbd.myapplicationsomithierp.domain.model.Notice
 import com.helptrickbd.myapplicationsomithierp.domain.model.Payment
@@ -24,7 +23,6 @@ data class BackupPayload(
     val members: List<Member> = emptyList(),
     val payments: List<Payment> = emptyList(),
     val expenses: List<Expense> = emptyList(),
-    val loans: List<Loan> = emptyList(),
     val notices: List<Notice> = emptyList(),
     val committee: List<CommitteeMember> = emptyList(),
     val auditLogs: List<AuditLog> = emptyList()
@@ -36,7 +34,6 @@ data class BackupSummary(
     val memberCount: Int,
     val paymentCount: Int,
     val expenseCount: Int,
-    val loanCount: Int,
     val noticeCount: Int,
     val committeeCount: Int
 )
@@ -63,7 +60,6 @@ class DataBackupManager(private val context: Context) {
             obj.put("status", m.status.name)
             obj.put("totalContributed", m.totalContributed)
             obj.put("outstandingDues", m.outstandingDues)
-            obj.put("activeLoanBalance", m.activeLoanBalance)
             membersArray.put(obj)
         }
         root.put("members", membersArray)
@@ -101,26 +97,6 @@ class DataBackupManager(private val context: Context) {
         }
         root.put("expenses", expensesArray)
 
-        // Loans
-        val loansArray = JSONArray()
-        payload.loans.forEach { l ->
-            val obj = JSONObject()
-            obj.put("id", l.id)
-            obj.put("memberId", l.memberId)
-            obj.put("memberName", l.memberName)
-            obj.put("branchId", l.branchId)
-            obj.put("amount", l.amount)
-            obj.put("dateIssued", l.dateIssued)
-            obj.put("reason", l.reason)
-            obj.put("interestEnabled", l.interestEnabled)
-            obj.put("interestRate", l.interestRate)
-            obj.put("totalPayable", l.totalPayable)
-            obj.put("totalRepaid", l.totalRepaid)
-            obj.put("outstandingBalance", l.outstandingBalance)
-            obj.put("status", l.status.name)
-            loansArray.put(obj)
-        }
-        root.put("loans", loansArray)
 
         // Notices
         val noticesArray = JSONArray()

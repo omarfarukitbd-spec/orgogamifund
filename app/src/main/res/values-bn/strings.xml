@@ -11,7 +11,7 @@
     <string name="nav_members">সদস্যবৃন্দ</string>
     <string name="nav_contributions">চাঁদা/কালেকশন</string>
     <string name="nav_expenses">খরচ হিসাব</string>
-    <string name="nav_loans">ঋণ/দাদন</string>
+    <string name="nav_defaulters">বকেয়া খাতা</string>
     <string name="nav_committee">কমিটি</string>
     <string name="nav_notices">নোটিশ বোর্ড</string>
     <string name="nav_reports">রিপোর্টস</string>
@@ -36,13 +36,12 @@
     <string name="total_fund_balance">মোট ফান্ড ব্যালেন্স</string>
     <string name="monthly_collection">চলতি মাসের কালেকশন</string>
     <string name="total_expenses">মোট সর্বমোট খরচ</string>
-    <string name="active_loans">বিতরণকৃত সক্রিয় ঋণ</string>
     <string name="outstanding_dues">মোট বকেয়া চাঁদা</string>
     <string name="recent_transactions">সাম্প্রতিক লেনদেন</string>
     <string name="quick_actions">কুইক অ্যাকশন</string>
     <string name="btn_collect_payment">চাঁদা জমা নিন</string>
     <string name="btn_add_expense">খরচ লিখুন</string>
-    <string name="btn_issue_loan">ঋণ দিন</string>
+    <string name="btn_defaulters">বকেয়া খাতা</string>
     <string name="btn_add_member">নতুন সদস্য যোগ</string>
 
     <!-- Contributions / Payments -->
@@ -86,15 +85,6 @@
     <string name="member_status_left">অব্যাহতিপ্রাপ্ত</string>
     <string name="generate_id_card">মেম্বারশিপ আইডি কার্ড প্রিন্ট</string>
 
-    <!-- Loans -->
-    <string name="loan_amount">ঋণের পরিমাণ</string>
-    <string name="loan_reason">ঋণ গ্রহণের কারণ</string>
-    <string name="loan_date_issued">বিতরণের তারিখ</string>
-    <string name="loan_repaid">পরিশোধিত অর্থ</string>
-    <string name="loan_outstanding">বকেয়া ঋণ</string>
-    <string name="interest_enabled">সুদ/মুনাফা প্রযোজ্য</string>
-    <string name="interest_rate">সুদের হার (%)</string>
-
     <!-- Offline & System -->
     <string name="offline_banner">অফলাইন মোড — সংযোগ পেলে স্বয়ংক্রিয়ভাবে সিঙ্ক হবে</string>
     <string name="online_synced">সংযোগ ফিরে এসেছে — ডাটা সিঙ্ক সম্পন্ন</string>
@@ -115,7 +105,7 @@
     <string name="onboarding_next">পরবর্তী</string>
     <string name="onboarding_get_started">শুরু করুন</string>
     <string name="onboarding_title_1">স্মার্ট সমিতি ও তহবিল ব্যবস্থাপনা</string>
-    <string name="onboarding_desc_1">কাগজের হিসাবের দিন শেষ! সদস্যদের চাঁদা, ঋণ ও ব্যয়ের স্বচ্ছ হিসাব রাখুন এক ছাতার নিচে শতভাগ নির্ভুলতার সাথে।</string>
+    <string name="onboarding_desc_1">কাগজের হিসাবের দিন শেষ! সদস্যদের চাঁদা, সঞ্চয় ও ব্যয়ের স্বচ্ছ হিসাব রাখুন এক ছাতার নিচে শতভাগ নির্ভুলতার সাথে।</string>
     <string name="onboarding_title_2">ডিজিটাল মানি রসিদ ও আইডি কার্ড</string>
     <string name="onboarding_desc_2">টাকা জমার সাথে সাথে মানি রসিদ প্রিন্ট করুন এবং প্রতিটি সদস্যের ছবিযুক্ত প্রফেশনাল ২-সাইডেড আইডি কার্ড তৈরি করুন।</string>
     <string name="onboarding_title_3">১০০% অফলাইন সুবিধা ও ক্লাউড সিঙ্ক</string>

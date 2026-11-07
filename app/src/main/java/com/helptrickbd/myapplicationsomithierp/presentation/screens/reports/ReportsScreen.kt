@@ -24,7 +24,6 @@ import com.helptrickbd.myapplicationsomithierp.core.pdf.ReportPdfGenerator
 import com.helptrickbd.myapplicationsomithierp.core.util.CurrencyFormatter
 import com.helptrickbd.myapplicationsomithierp.core.util.safeRound
 import com.helptrickbd.myapplicationsomithierp.domain.model.Expense
-import com.helptrickbd.myapplicationsomithierp.domain.model.Loan
 import com.helptrickbd.myapplicationsomithierp.domain.model.Member
 import com.helptrickbd.myapplicationsomithierp.domain.model.Payment
 import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyDueAmber
@@ -37,7 +36,6 @@ fun ReportsScreen(
     members: List<Member> = emptyList(),
     payments: List<Payment> = emptyList(),
     expenses: List<Expense> = emptyList(),
-    loans: List<Loan> = emptyList(),
     onNavigateBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -47,12 +45,12 @@ fun ReportsScreen(
         if (isBangla) listOf(
             "সারসংক্ষেপ বিবরণী",
             "খরচ রেজিস্টার",
-            "ঋণ ও আদায়",
+            "বকেয়া খতিয়ান",
             "সদস্যদের লেজার"
         ) else listOf(
             "Executive Summary",
             "Expense Register",
-            "Loans & Collections",
+            "Dues Register",
             "Member Ledger"
         )
     }
@@ -60,7 +58,7 @@ fun ReportsScreen(
     val currentReportTitle = when (selectedReportIndex) {
         0 -> if (isBangla) "সমিতির সার্বিক মাসিক ও বার্ষিক সারসংক্ষেপ বিবরণী" else "Overall Society Financial Summary Statement"
         1 -> if (isBangla) "সমিতির খরচ ও ভাউচার রেজিস্টার বিবরণী" else "Society Expense & Voucher Register Statement"
-        2 -> if (isBangla) "ঋণ বিতরণ ও কিস্তি আদায় বিবরণী" else "Loan Disbursement & Collection Statement"
+        2 -> if (isBangla) "সমিতির বকেয়া চাঁদা ও অনাদায়ী খতিয়ান বিবরণী" else "Society Overdue & Defaulters Register Statement"
         else -> if (isBangla) "সদস্যদের চাঁদা, সঞ্চয় ও বকেয়া লেজার বিবরণী" else "Member Contribution, Savings & Dues Ledger"
     }
 
@@ -101,8 +99,7 @@ fun ReportsScreen(
                                 reportTitle = currentReportTitle,
                                 members = members,
                                 payments = payments,
-                                expenses = expenses,
-                                loans = loans
+                                expenses = expenses
                             )
                             ReportPdfGenerator.shareReportPdf(context, pdf)
                         },
@@ -121,8 +118,7 @@ fun ReportsScreen(
                                 reportTitle = currentReportTitle,
                                 members = members,
                                 payments = payments,
-                                expenses = expenses,
-                                loans = loans
+                                expenses = expenses
                             )
                             ReportPdfGenerator.printReport(context, pdf)
                         },
@@ -159,9 +155,9 @@ fun ReportsScreen(
 
             // Report Preview Content
             when (selectedReportIndex) {
-                0 -> SummaryReportPreview(members = members, payments = payments, expenses = expenses, loans = loans, isBangla = isBangla)
+                0 -> SummaryReportPreview(members = members, payments = payments, expenses = expenses, isBangla = isBangla)
                 1 -> ExpenseReportPreview(expenses = expenses, isBangla = isBangla)
-                2 -> LoanReportPreview(loans = loans, isBangla = isBangla)
+                2 -> DefaultersReportPreview(members = members, isBangla = isBangla)
                 3 -> MemberLedgerReportPreview(members = members, isBangla = isBangla)
             }
         }
@@ -173,14 +169,12 @@ fun SummaryReportPreview(
     members: List<Member>,
     payments: List<Payment>,
     expenses: List<Expense>,
-    loans: List<Loan>,
     isBangla: Boolean = true
 ) {
     val totalCollections = safeRound(payments.sumOf { safeRound(it.amount) })
     val totalExpenses = safeRound(expenses.sumOf { safeRound(it.amount) })
-    val totalActiveLoans = safeRound(loans.filter { it.status.name == "ACTIVE" }.sumOf { safeRound(it.outstandingBalance) })
     val totalDues = safeRound(members.sumOf { safeRound(it.outstandingDues) })
-    val runningBalance = safeRound(1250000.0 + totalCollections - totalExpenses - totalActiveLoans)
+    val runningBalance = safeRound(1250000.0 + totalCollections - totalExpenses)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -190,7 +184,7 @@ fun SummaryReportPreview(
         item {
             ReportHeaderCard(
                 title = if (isBangla) "মাসিক ও বার্ষিক আর্থিক স্থিতি বিবরণী" else "Monthly & Annual Financial Position Statement",
-                subtitle = if (isBangla) "সমিতির সকল চাঁদা, সঞ্চয়, খরচ এবং ঋণ পরিস্থিতির পূর্ণাঙ্গ হিসাব।" else "Comprehensive report of all contributions, savings, expenses and loans."
+                subtitle = if (isBangla) "সমিতির সকল চাঁদা, সঞ্চয়, খরচ এবং তহবিলের সার্বিক চিত্র।" else "Comprehensive overview of all contributions, savings, expenses and funds."
             )
         }
 
@@ -214,10 +208,10 @@ fun SummaryReportPreview(
 
         item {
             ReportMetricCard(
-                title = if (isBangla) "সদস্যদের মাঝে বিতরণকৃত ঋণ স্থিতি" else "Active Loan Balance Disbursed",
-                value = CurrencyFormatter.formatBDT(totalActiveLoans, toBanglaDigits = isBangla),
+                title = if (isBangla) "সক্রিয় অনুমোদিত সদস্য সংখ্যা" else "Active Approved Members",
+                value = if (isBangla) "${members.count { it.status.name == "ACTIVE" }} জন" else "${members.count { it.status.name == "ACTIVE" }} members",
                 color = Color(0xFF0284C7),
-                icon = Icons.Default.CreditCard
+                icon = Icons.Default.Group
             )
         }
 
@@ -316,10 +310,9 @@ fun ExpenseReportPreview(expenses: List<Expense>, isBangla: Boolean = true) {
 }
 
 @Composable
-fun LoanReportPreview(loans: List<Loan>, isBangla: Boolean = true) {
-    val totalDisbursed = safeRound(loans.sumOf { safeRound(it.amount) })
-    val totalRepaid = safeRound(loans.sumOf { safeRound(it.totalRepaid) })
-    val totalDue = safeRound(loans.sumOf { safeRound(it.outstandingBalance) })
+fun DefaultersReportPreview(members: List<Member>, isBangla: Boolean = true) {
+    val defaulters = members.filter { it.outstandingDues > 0 }
+    val totalDues = safeRound(defaulters.sumOf { safeRound(it.outstandingDues) })
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -328,12 +321,12 @@ fun LoanReportPreview(loans: List<Loan>, isBangla: Boolean = true) {
     ) {
         item {
             ReportHeaderCard(
-                title = if (isBangla) "ঋণ ও কিস্তি আদায় বিবরণী" else "Loan Disbursement & Collection Statement",
-                subtitle = if (isBangla) "মোট ঋণ: ${CurrencyFormatter.formatBDT(totalDisbursed, toBanglaDigits = true)} | আদায়: ${CurrencyFormatter.formatBDT(totalRepaid, toBanglaDigits = true)} | বকেয়া: ${CurrencyFormatter.formatBDT(totalDue, toBanglaDigits = true)}" else "Total Disbursed: ${CurrencyFormatter.formatBDT(totalDisbursed, toBanglaDigits = false)} | Collected: ${CurrencyFormatter.formatBDT(totalRepaid, toBanglaDigits = false)} | Outstanding: ${CurrencyFormatter.formatBDT(totalDue, toBanglaDigits = false)}"
+                title = if (isBangla) "বকেয়া চাঁদা ও অনাদায়ী খতিয়ান বিবরণী" else "Overdue Dues & Defaulters Register",
+                subtitle = if (isBangla) "মোট বকেয়া সদস্য: ${defaulters.size} জন | মোট বকেয়া: ${CurrencyFormatter.formatBDT(totalDues, toBanglaDigits = true)}" else "Total Overdue Members: ${defaulters.size} | Total Dues: ${CurrencyFormatter.formatBDT(totalDues, toBanglaDigits = false)}"
             )
         }
 
-        items(loans, key = { it.id }) { loan ->
+        items(defaulters, key = { it.id }) { member ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -347,11 +340,12 @@ fun LoanReportPreview(loans: List<Loan>, isBangla: Boolean = true) {
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(loan.memberName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(member.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Text(
-                            text = if (isBangla) "বকেয়া: ${CurrencyFormatter.formatBDT(safeRound(loan.outstandingBalance), toBanglaDigits = true)}" else "Outstanding: ${CurrencyFormatter.formatBDT(safeRound(loan.outstandingBalance), toBanglaDigits = false)}",
+                            text = if (isBangla) "বকেয়া: ${CurrencyFormatter.formatBDT(safeRound(member.outstandingDues), toBanglaDigits = true)}" else "Due: ${CurrencyFormatter.formatBDT(safeRound(member.outstandingDues), toBanglaDigits = false)}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MoneyExpenseRed
@@ -359,7 +353,7 @@ fun LoanReportPreview(loans: List<Loan>, isBangla: Boolean = true) {
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (isBangla) "বিতরণ: ${CurrencyFormatter.formatBDT(safeRound(loan.amount), toBanglaDigits = true)} | আদায়: ${CurrencyFormatter.formatBDT(safeRound(loan.totalRepaid), toBanglaDigits = true)}" else "Disbursed: ${CurrencyFormatter.formatBDT(safeRound(loan.amount), toBanglaDigits = false)} | Repaid: ${CurrencyFormatter.formatBDT(safeRound(loan.totalRepaid), toBanglaDigits = false)}",
+                        text = if (isBangla) "মোবাইল: ${member.phone} | মোট জমা: ${CurrencyFormatter.formatBDT(safeRound(member.totalContributed), toBanglaDigits = true)}" else "Mobile: ${member.phone} | Deposit: ${CurrencyFormatter.formatBDT(safeRound(member.totalContributed), toBanglaDigits = false)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -19,7 +19,6 @@ object ShomitiDataManager {
     private val initialMembers = emptyList<Member>()
     private val initialPayments = emptyList<Payment>()
     private val initialExpenses = emptyList<Expense>()
-    private val initialLoans = emptyList<Loan>()
     private val initialCommittee = emptyList<CommitteeMember>()
     private val initialNotices = emptyList<Notice>()
     private val initialEditRequests = emptyList<EditRequest>()
@@ -34,9 +33,6 @@ object ShomitiDataManager {
 
     private val _expenses = MutableStateFlow(initialExpenses)
     val expenses: StateFlow<List<Expense>> = _expenses.asStateFlow()
-
-    private val _loans = MutableStateFlow(initialLoans)
-    val loans: StateFlow<List<Loan>> = _loans.asStateFlow()
 
     private val _branches = MutableStateFlow(initialBranches)
     val branches: StateFlow<List<Branch>> = _branches.asStateFlow()
@@ -116,28 +112,20 @@ object ShomitiDataManager {
     private fun computeDashboardState(): DashboardUiState {
         val selBranchId = _selectedBranchId.value
         val branchPayments = _payments.value.filter { it.branchId == selBranchId }
-        val branchLoans = _loans.value.filter { it.branchId == selBranchId }
         val branchExpenses = _expenses.value.filter { it.branchId == selBranchId }
         val branchMembers = _members.value.filter { it.branchId == selBranchId && it.status == MemberStatus.ACTIVE }
 
         val totalContributions = safeRound(branchPayments.sumOf { safeRound(it.amount) })
-        val totalLoanRepayments = safeRound(branchLoans.sumOf { safeRound(it.totalRepaid) })
         val totalExpensesAmount = safeRound(branchExpenses.sumOf { safeRound(it.amount) })
-        val totalLoansDisbursed = safeRound(branchLoans.sumOf { safeRound(it.amount) })
         
         val targetBranch = _branches.value.find { it.id == selBranchId }
         val baseSeedFund = targetBranch?.balance ?: 0.0
         val totalFundBalance = safeRound(
-            baseSeedFund + (totalContributions + totalLoanRepayments) - totalExpensesAmount - totalLoansDisbursed
+            baseSeedFund + totalContributions - totalExpensesAmount
         )
 
         val thisMonthCollection = safeRound(
             branchPayments.sumOf { safeRound(it.amount) }
-        )
-
-        val activeLoansBalance = safeRound(
-            branchLoans.filter { it.status == LoanStatus.ACTIVE }
-                .sumOf { safeRound(it.outstandingBalance) }
         )
 
         val totalOutstandingDues = safeRound(
@@ -158,7 +146,6 @@ object ShomitiDataManager {
             totalFundBalance = totalFundBalance,
             thisMonthCollection = thisMonthCollection,
             totalExpenses = totalExpensesAmount,
-            activeLoans = activeLoansBalance,
             totalOutstandingDues = totalOutstandingDues,
             topDefaulterCount = topDefaulterCount,
             pendingApplicationsCount = pendingAppsCount,
@@ -230,81 +217,6 @@ object ShomitiDataManager {
         refreshState()
     }
 
-    fun disburseLoan(loan: Loan) {
-        val roundedAmount = safeRound(loan.amount)
-        val roundedRate = safeRound(loan.interestRate)
-        val sanitizedLoan = loan.copy(
-            id = if (loan.id.isEmpty()) "ln-${UUID.randomUUID().toString().take(8)}" else loan.id,
-            amount = roundedAmount,
-            interestRate = roundedRate,
-            dateIssued = if (loan.dateIssued == 0L) System.currentTimeMillis() else loan.dateIssued
-        )
-
-        _loans.value = listOf(sanitizedLoan) + _loans.value
-
-        // Update member active loan balance with safeRound
-        _members.value = _members.value.map { member ->
-            if (member.id == sanitizedLoan.memberId) {
-                member.copy(
-                    activeLoanBalance = safeRound(member.activeLoanBalance + sanitizedLoan.totalPayable)
-                )
-            } else {
-                member
-            }
-        }
-
-        // Deduct principal from branch balance
-        _branches.value = _branches.value.map { branch ->
-            if (branch.id == sanitizedLoan.branchId || branch.id == "b-1") {
-                branch.copy(balance = safeRound(branch.balance - roundedAmount))
-            } else {
-                branch
-            }
-        }
-
-        refreshState()
-    }
-
-    fun repayLoanInstallment(loanId: String, repaymentAmount: Double, method: String = "Cash") {
-        val safeAmount = safeRound(repaymentAmount)
-        var memberIdToUpdate: String? = null
-
-        _loans.value = _loans.value.map { loan ->
-            if (loan.id == loanId) {
-                memberIdToUpdate = loan.memberId
-                val newRepayment = LoanRepayment(amount = safeAmount, date = System.currentTimeMillis(), method = method)
-                val updatedRepayments = loan.repayments + newRepayment
-                val updatedLoan = loan.copy(repayments = updatedRepayments)
-                val newStatus = if (updatedLoan.outstandingBalance <= 0.0) LoanStatus.PAID_OFF else LoanStatus.ACTIVE
-                updatedLoan.copy(status = newStatus)
-            } else {
-                loan
-            }
-        }
-
-        memberIdToUpdate?.let { mId ->
-            _members.value = _members.value.map { member ->
-                if (member.id == mId) {
-                    member.copy(
-                        activeLoanBalance = safeRound((member.activeLoanBalance - safeAmount).coerceAtLeast(0.0))
-                    )
-                } else {
-                    member
-                }
-            }
-        }
-
-        // Credit to branch balance
-        _branches.value = _branches.value.map { branch ->
-            if (branch.id == "b-1") {
-                branch.copy(balance = safeRound(branch.balance + safeAmount))
-            } else {
-                branch
-            }
-        }
-
-        refreshState()
-    }
 
     // --- Member Resignation / Exit Settlement Workflow (§6.1) ---
 
@@ -313,10 +225,9 @@ object ShomitiDataManager {
         
         val safeContributed = safeRound(member.totalContributed)
         val safeDues = safeRound(member.outstandingDues)
-        val safeLoans = safeRound(member.activeLoanBalance)
 
-        // Settlement Formula: Net Refund = Contributed - Dues - ActiveLoans
-        val netSettlement = safeRound((safeContributed - safeDues - safeLoans).coerceAtLeast(0.0))
+        // Settlement Formula: Net Refund = Contributed - Dues
+        val netSettlement = safeRound((safeContributed - safeDues).coerceAtLeast(0.0))
 
         val exitRecord = MemberExit(
             id = "exit-${UUID.randomUUID().toString().take(8)}",
@@ -324,7 +235,6 @@ object ShomitiDataManager {
             memberName = member.name,
             totalContributed = safeContributed,
             outstandingDues = safeDues,
-            outstandingLoan = safeLoans,
             finalSettlementAmount = netSettlement,
             payoutDate = System.currentTimeMillis(),
             payoutMethod = payoutMethod,
@@ -337,8 +247,7 @@ object ShomitiDataManager {
                 m.copy(
                     status = MemberStatus.LEFT,
                     exitDate = System.currentTimeMillis(),
-                    outstandingDues = 0.0,
-                    activeLoanBalance = 0.0
+                    outstandingDues = 0.0
                 )
             } else {
                 m
@@ -364,8 +273,7 @@ object ShomitiDataManager {
         val sanitized = member.copy(
             id = if (member.id.isEmpty()) "m-${UUID.randomUUID().toString().take(6)}" else member.id,
             totalContributed = safeRound(member.totalContributed),
-            outstandingDues = safeRound(member.outstandingDues),
-            activeLoanBalance = safeRound(member.activeLoanBalance)
+            outstandingDues = safeRound(member.outstandingDues)
         )
         _members.value = _members.value + sanitized
         refreshState()
@@ -374,8 +282,7 @@ object ShomitiDataManager {
     fun updateMember(updated: Member) {
         val sanitized = updated.copy(
             totalContributed = safeRound(updated.totalContributed),
-            outstandingDues = safeRound(updated.outstandingDues),
-            activeLoanBalance = safeRound(updated.activeLoanBalance)
+            outstandingDues = safeRound(updated.outstandingDues)
         )
         _members.value = _members.value.map { if (it.id == sanitized.id) sanitized else it }
         refreshState()
@@ -507,8 +414,7 @@ object ShomitiDataManager {
             joinDate = System.currentTimeMillis(),
             status = MemberStatus.ACTIVE,
             totalContributed = initialDeposit,
-            outstandingDues = 0.0,
-            activeLoanBalance = 0.0
+            outstandingDues = 0.0
         )
 
         _members.value = _members.value + newMember

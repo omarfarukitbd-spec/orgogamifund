@@ -20,37 +20,48 @@ data class SomithiPermissions(
     val canMembersViewTotalFund: Boolean = true,
     val canMembersViewExpenses: Boolean = true,
     val canMembersViewMemberList: Boolean = true,
-    val canMembersViewNotices: Boolean = true
+    val canMembersViewNotices: Boolean = true,
+    val canMembersViewPaymentHistory: Boolean = true
 ) {
     val allowMembersViewTotalFund: Boolean get() = canMembersViewTotalFund
     val allowMembersViewExpenses: Boolean get() = canMembersViewExpenses
     val allowMembersViewAllMembers: Boolean get() = canMembersViewMemberList
     val allowMembersViewNotices: Boolean get() = canMembersViewNotices
+    val allowMembersViewPaymentHistory: Boolean get() = canMembersViewPaymentHistory
 }
 
 data class Branch(
     val id: String = "",
     val name: String = "",
     val code: String = "",
-    val establishedYear: String = "২০২৩",
+    val establishedYear: String = "২০২৪",
     val description: String = "",
-    val monthlyDepositAmount: Double = 1000.0,
-    val admissionFee: Double = 500.0,
-    val sharePrice: Double = 1000.0,
+    val monthlyDepositAmount: Double = 500.0,
+    val admissionFee: Double = 0.0,
+    val sharePrice: Double = 0.0,
+    val optionalDepositEnabled: Boolean = false,
+    val minOptionalDeposit: Double = 0.0,
+    val monthlyDueDay: Int = 10,
+    val lateFineAmount: Double = 0.0,
     val memberCount: Int = 0,
     val treasurerUserId: String? = null,
     val balance: Double = 0.0,
-    val bkashNumber: String = "01800000000",
-    val nagadNumber: String = "01800000000",
+    val bkashNumber: String = "",
+    val nagadNumber: String = "",
+    val logoUrl: String = "",
+    val bannerUrl: String = "",
+    val activityPhotos: List<String> = emptyList(),
     val bankDetails: BankAccountDetails = BankAccountDetails(),
     val permissions: SomithiPermissions = SomithiPermissions(),
     val termsAndConditions: List<String> = listOf(
-        "প্রতি মাসে নির্ধারিত তারিখের মধ্যে বাধ্যতামূলক মাসিক সঞ্চয় বা চাঁদা পরিশোধ করতে হবে।",
-        "সমিতির সাধারণ বিধিমালা এবং পরিচালনা পরিষদের যৌক্তিক সকল সিদ্ধান্ত মেনে চলতে হবে।",
-        "ঋণ গ্রহণের পর নির্ধারিত কিস্তির তারিখে হিসাব ক্লিয়ার রাখা বাধ্যতামূলক।",
-        "সমিতির অভ্যন্তরীণ গোপনীয়তা এবং শৃঙ্খলা বিরোধী কোনো কার্যকলাপে যুক্ত থাকা যাবে না।"
+        "প্রতি মাসে নির্ধারিত তারিখের মধ্যে বাধ্যতামূলক মাসিক চাঁদা পরিশোধ করতে হবে।",
+        "মাদ্রাসার উন্নয়ন ও শিক্ষার্থীদের কল্যাণে সংগৃহীত অর্থ ব্যয় করা হবে।",
+        "সমিতির সাধারণ বিধিমালা ও পরিচালনা পরিষদের সিদ্ধান্ত মেনে চলতে হবে।",
+        "সমিতির অভ্যন্তরীণ শৃঙ্খলা ও ঐক্য বজায় রাখতে হবে।"
     )
 )
+
+typealias Somithi = Branch
 
 enum class PaymentType {
     MONTHLY,
@@ -97,38 +108,3 @@ data class Expense(
     val attachmentUrl: String? = null,
     val recordedBy: String = ""
 )
-
-enum class LoanStatus {
-    ACTIVE,
-    PAID_OFF,
-    DEFAULTED
-}
-
-data class LoanRepayment(
-    val amount: Double = 0.0,
-    val date: Long = System.currentTimeMillis(),
-    val method: String = "Cash"
-)
-
-data class Loan(
-    val id: String = "",
-    val memberId: String = "",
-    val memberName: String = "",
-    val branchId: String = "",
-    val amount: Double = 0.0,
-    val dateIssued: Long = System.currentTimeMillis(),
-    val reason: String = "",
-    val interestEnabled: Boolean = false,
-    val interestRate: Double = 0.0,
-    val status: LoanStatus = LoanStatus.ACTIVE,
-    val repayments: List<LoanRepayment> = emptyList()
-) {
-    val totalRepaid: Double
-        get() = safeRound(repayments.sumOf { safeRound(it.amount) })
-
-    val totalPayable: Double
-        get() = safeRound(if (interestEnabled) safeRound(amount + safeRound(amount * interestRate / 100.0)) else safeRound(amount))
-
-    val outstandingBalance: Double
-        get() = safeRound((totalPayable - totalRepaid).coerceAtLeast(0.0))
-}

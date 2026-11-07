@@ -1,5 +1,6 @@
 package com.helptrickbd.myapplicationsomithierp.data.repository
 
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
@@ -20,6 +21,33 @@ class MemberRepositoryImpl(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) : MemberRepository {
 
+    private fun parseMember(doc: DocumentSnapshot): Member {
+        val emergencyMap = doc.get("emergencyContact") as? Map<*, *>
+        val emergencyContact = EmergencyContact(
+            name = emergencyMap?.get("name") as? String ?: "",
+            phone = emergencyMap?.get("phone") as? String ?: ""
+        )
+        val statusStr = doc.getString("status") ?: "active"
+        val memberStatus = if (statusStr.equals("left", ignoreCase = true)) MemberStatus.LEFT else MemberStatus.ACTIVE
+
+        return Member(
+            id = doc.id,
+            name = doc.getString("name") ?: "",
+            phone = doc.getString("phone") ?: "",
+            address = doc.getString("address") ?: "",
+            photoUrl = doc.getString("photoUrl"),
+            nid = doc.getString("nid") ?: "",
+            nidPhotoUrl = doc.getString("nidPhotoUrl"),
+            emergencyContact = emergencyContact,
+            branchId = doc.getString("branchId") ?: "",
+            joinDate = doc.getLong("joinDate") ?: System.currentTimeMillis(),
+            status = memberStatus,
+            exitDate = doc.getLong("exitDate"),
+            totalContributed = doc.getDouble("totalContributed") ?: 0.0,
+            outstandingDues = doc.getDouble("outstandingDues") ?: 0.0
+        )
+    }
+
     override fun getMembersFlow(branchId: String?, status: MemberStatus?): Flow<Resource<List<Member>>> = callbackFlow {
         trySend(Resource.Loading)
         var query: Query = firestore.collection("members")
@@ -37,35 +65,7 @@ class MemberRepositoryImpl(
                 return@addSnapshotListener
             }
 
-            val list = snapshot?.documents?.mapNotNull { doc ->
-                val emergencyMap = doc.get("emergencyContact") as? Map<*, *>
-                val emergencyContact = EmergencyContact(
-                    name = emergencyMap?.get("name") as? String ?: "",
-                    phone = emergencyMap?.get("phone") as? String ?: ""
-                )
-
-                val statusStr = doc.getString("status") ?: "active"
-                val memberStatus = if (statusStr.equals("left", ignoreCase = true)) MemberStatus.LEFT else MemberStatus.ACTIVE
-
-                Member(
-                    id = doc.id,
-                    name = doc.getString("name") ?: "",
-                    phone = doc.getString("phone") ?: "",
-                    address = doc.getString("address") ?: "",
-                    photoUrl = doc.getString("photoUrl"),
-                    nid = doc.getString("nid") ?: "",
-                    nidPhotoUrl = doc.getString("nidPhotoUrl"),
-                    emergencyContact = emergencyContact,
-                    branchId = doc.getString("branchId") ?: "",
-                    joinDate = doc.getLong("joinDate") ?: System.currentTimeMillis(),
-                    status = memberStatus,
-                    exitDate = doc.getLong("exitDate"),
-                    totalContributed = doc.getDouble("totalContributed") ?: 0.0,
-                    outstandingDues = doc.getDouble("outstandingDues") ?: 0.0,
-                    activeLoanBalance = doc.getDouble("activeLoanBalance") ?: 0.0
-                )
-            } ?: emptyList()
-
+            val list = snapshot?.documents?.mapNotNull { parseMember(it) } ?: emptyList()
             trySend(Resource.Success(list))
         }
 
@@ -81,32 +81,7 @@ class MemberRepositoryImpl(
             }
 
             if (doc != null && doc.exists()) {
-                val emergencyMap = doc.get("emergencyContact") as? Map<*, *>
-                val emergencyContact = EmergencyContact(
-                    name = emergencyMap?.get("name") as? String ?: "",
-                    phone = emergencyMap?.get("phone") as? String ?: ""
-                )
-                val statusStr = doc.getString("status") ?: "active"
-                val memberStatus = if (statusStr.equals("left", ignoreCase = true)) MemberStatus.LEFT else MemberStatus.ACTIVE
-
-                val member = Member(
-                    id = doc.id,
-                    name = doc.getString("name") ?: "",
-                    phone = doc.getString("phone") ?: "",
-                    address = doc.getString("address") ?: "",
-                    photoUrl = doc.getString("photoUrl"),
-                    nid = doc.getString("nid") ?: "",
-                    nidPhotoUrl = doc.getString("nidPhotoUrl"),
-                    emergencyContact = emergencyContact,
-                    branchId = doc.getString("branchId") ?: "",
-                    joinDate = doc.getLong("joinDate") ?: System.currentTimeMillis(),
-                    status = memberStatus,
-                    exitDate = doc.getLong("exitDate"),
-                    totalContributed = doc.getDouble("totalContributed") ?: 0.0,
-                    outstandingDues = doc.getDouble("outstandingDues") ?: 0.0,
-                    activeLoanBalance = doc.getDouble("activeLoanBalance") ?: 0.0
-                )
-                trySend(Resource.Success(member))
+                trySend(Resource.Success(parseMember(doc)))
             } else {
                 trySend(Resource.Error("Member record not found"))
             }
@@ -140,7 +115,6 @@ class MemberRepositoryImpl(
                 "customFields" to member.customFields,
                 "totalContributed" to 0.0,
                 "outstandingDues" to 0.0,
-                "activeLoanBalance" to 0.0,
                 "createdAt" to System.currentTimeMillis()
             )
 
@@ -303,7 +277,6 @@ class MemberRepositoryImpl(
                     "memberName" to exit.memberName,
                     "totalContributed" to exit.totalContributed,
                     "outstandingDues" to exit.outstandingDues,
-                    "outstandingLoan" to exit.outstandingLoan,
                     "finalSettlementAmount" to exit.finalSettlementAmount,
                     "payoutDate" to exit.payoutDate,
                     "payoutMethod" to exit.payoutMethod,

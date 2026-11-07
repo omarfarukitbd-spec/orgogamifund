@@ -126,7 +126,6 @@ fun MemberPassbookScreen(
                 PassbookSummaryRow(
                     totalSavings = totalSavings,
                     dues = member.outstandingDues,
-                    loans = member.activeLoanBalance,
                     pendingDepositsCount = pendingCount,
                     isBangla = isBangla
                 )

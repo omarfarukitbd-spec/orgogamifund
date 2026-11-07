@@ -125,8 +125,8 @@ fun HeroBalanceCard(
                         value = if (isBalanceVisible) CurrencyFormatter.formatBDT(state.totalExpenses) else "৳ • • •"
                     )
                     HeroSubMetricItem(
-                        label = "ঋণ বিতরণ",
-                        value = if (isBalanceVisible) CurrencyFormatter.formatBDT(state.activeLoans) else "৳ • • •"
+                        label = stringResource(R.string.outstanding_dues),
+                        value = if (isBalanceVisible) CurrencyFormatter.formatBDT(state.totalOutstandingDues) else "৳ • • •"
                     )
                 }
 

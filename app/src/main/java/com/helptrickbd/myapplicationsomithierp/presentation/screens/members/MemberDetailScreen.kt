@@ -22,12 +22,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.helptrickbd.myapplicationsomithierp.R
 import com.helptrickbd.myapplicationsomithierp.core.pdf.MemberIdCardGenerator
 import com.helptrickbd.myapplicationsomithierp.domain.model.Member
@@ -35,6 +37,7 @@ import com.helptrickbd.myapplicationsomithierp.domain.model.MemberStatus
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.members.components.DetailRow
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.members.components.LedgerStatCard
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.members.components.MemberDeleteConfirmDialog
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.members.components.MemberDetailExpandedInfo
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.members.components.MemberExitSettlementDialog
 import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyDueAmber
 import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyExpenseRed
@@ -104,7 +107,16 @@ fun MemberDetailScreen(
                         modifier = Modifier.size(80.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
+                        if (!member.photoUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = member.photoUrl,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -235,22 +247,14 @@ fun MemberDetailScreen(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 LedgerStatCard(if (isBangla) "মোট সঞ্চয়/জমা" else "Total Savings", member.totalContributed, MoneyIncomeGreen, isBangla, Modifier.weight(1f))
                 LedgerStatCard(if (isBangla) "বকেয়া চাঁদা" else "Dues", member.outstandingDues, MoneyDueAmber, isBangla, Modifier.weight(1f))
-                LedgerStatCard(if (isBangla) "চলতি ঋণ" else "Active Loan", member.activeLoanBalance, MoneyExpenseRed, isBangla, Modifier.weight(1f))
+                LedgerStatCard(if (isBangla) "নিট স্থিতি" else "Net Balance", (member.totalContributed - member.outstandingDues).coerceAtLeast(0.0), MaterialTheme.colorScheme.primary, isBangla, Modifier.weight(1f))
             }
 
-            // Detailed Information Card
-            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    DetailRow(label = stringResource(R.string.member_phone), value = member.phone)
-                    DetailRow(label = stringResource(R.string.member_address), value = member.address.ifEmpty { if (isBangla) "ঠিকানা দেওয়া হয়নি" else "Address not provided" })
-                    DetailRow(label = stringResource(R.string.member_nid), value = member.nid.ifEmpty { if (isBangla) "NID দেওয়া হয়নি" else "NID not provided" })
-                    DetailRow(label = stringResource(R.string.member_branch), value = member.branchId.ifEmpty { if (isBangla) "প্রধান শাখা" else "Main Branch" })
-                    DetailRow(label = stringResource(R.string.member_join_date), value = joinDateStr)
-                    if (member.emergencyContact.name.isNotEmpty()) {
-                        DetailRow(label = if (isBangla) "জরুরি যোগাযোগ" else "Emergency Contact", value = "${member.emergencyContact.name} (${member.emergencyContact.phone})")
-                    }
-                }
-            }
+            MemberDetailExpandedInfo(
+                member = member,
+                isBangla = isBangla,
+                joinDateStr = joinDateStr
+            )
 
             // Exit / Resignation Settlement Workflow Trigger
             if (member.status == MemberStatus.ACTIVE) {

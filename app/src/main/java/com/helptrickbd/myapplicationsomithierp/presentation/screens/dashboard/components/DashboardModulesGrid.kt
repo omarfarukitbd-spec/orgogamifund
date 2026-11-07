@@ -7,9 +7,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.AssignmentLate
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Paid
@@ -36,7 +36,7 @@ fun DashboardModulesGrid(
     onMembers: () -> Unit,
     onPayments: () -> Unit,
     onExpenses: () -> Unit,
-    onLoans: () -> Unit,
+    onDefaulters: () -> Unit,
     onBranches: () -> Unit,
     onReports: () -> Unit,
     onNotices: () -> Unit,
@@ -92,10 +92,10 @@ fun DashboardModulesGrid(
                     modifier = Modifier.weight(1f)
                 )
                 ModuleItem(
-                    icon = Icons.Default.CreditCard,
-                    title = if (isBangla) "ঋণ ও সাহায্য" else "Loans & Aid",
+                    icon = Icons.Default.AssignmentLate,
+                    title = if (isBangla) "বকেয়া খাতা" else "Due Register",
                     tint = Color(0xFFF59E0B),
-                    onClick = onLoans,
+                    onClick = onDefaulters,
                     modifier = Modifier.weight(1f)
                 )
             }

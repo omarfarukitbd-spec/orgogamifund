@@ -1,0 +1,156 @@
+rules_version = '2';
+
+// অগ্রগামী ফান্ড — Firestore-এর নিয়ম।
+// নিয়মটা এই রকম: লগইন করা যে কেউ সমিতির তালিকা দেখতে পায়
+// (নাম, উদ্দেশ্য, মাসিক দান, সদস্য সংখ্যা), কিন্তু সমিতির
+// ভেতরের তথ্য — সদস্য কে কে, কত টাকা আছে, কে জমা দিলো,
+// কার বকেয়া আছে — শুধু ওই সমিতির অনুমোদিত সদস্য বা
+// অ্যাডমিন দেখতে পায়। সদস্যপদ memberships কালেকশনে থাকে,
+// একজনের এক সমিতিতে একটাই সদস্যপদ (id: userId_branchId)।
+//
+// বসানোর উপায়:
+//   firebase deploy --only firestore:rules
+// অথবা এই ফাইলটা রিপোর firestore.rules-এ কপি করে Firebase
+// Console থেকে Firestore > Rules-এ বসান। অ্যাপ একা এই
+// নিয়ম চালু করতে পারে না — না বসালে শুধু অ্যাপের পাতাগুলোই
+// আটকাবে, সরাসরি ডেটাবেসে ঢুকলে আটকাবে না।
+//
+// প্রথম অ্যাডমিনের কথা: /setup থেকে প্রথম অ্যাডমিন বানাতে
+// নিজের users ডকুমেন্ট বানাতে হয়। তাই users-এ create
+// খোলা রাখা হয়েছে। অ্যাডমিন তৈরি হয়ে গেলে নিরাপত্তার জন্য
+// নিচের users create নিয়মটা শক্ত করুন — শুধু role
+// 'pending' দিয়ে বানাতে দিন (কমেন্ট করা লাইনটা দেখুন)।
+// নইলে যে কেউ নিজের ডকুমেন্টে সুপার অ্যাডমিন লিখে নিতে পারবে।
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myUid() {
+      return request.auth.uid;
+    }
+
+    function myUserDoc() {
+      return get(/databases/$(database)/documents/users/$(myUid()));
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && myUserDoc().data.role in ['superAdmin', 'branchAdmin'];
+    }
+
+    // ওই সমিতির অনুমোদিত সদস্য কি না।
+    function isMemberOf(branchId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/memberships/$(myUid() + '_' + branchId)).data.status == 'approved';
+    }
+
+    // সমিতি — নাম, উদ্দেশ্য, মাসিক দান, সদস্য সংখ্যা:
+    // লগইন করা সবাই পড়তে পারে। লেখা শুধু অ্যাডমিন।
+    match /branches/{branchId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // সদস্যপদ — নিজেরটা নিজে পড়তে পারে, অ্যাডমিন সব পড়ে।
+    // নতুন সদস্যপদ নিজে বানাতে পারে শুধু pending অবস্থায়;
+    // অনুমোদন বা বাতিল শুধু অ্যাডমিন করে।
+    match /memberships/{membershipId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == myUid());
+      allow create: if signedIn()
+        && request.resource.data.userId == myUid()
+        && request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+
+    // সদস্যের রেকর্ড — ওই সমিতির সদস্য, নিজের রেকর্ডের
+    // মালিক, বা অ্যাডমিন পড়তে পারে। লেখা শুধু অ্যাডমিন।
+    match /members/{memberId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.linkedUserId == myUid())
+        || isMemberOf(resource.data.branchId);
+      allow write: if isAdmin();
+    }
+
+    // সদস্য হওয়ার আবেদন — নিজের আবেদন নিজে বানাতে ও পড়তে
+    // পারে; অনুমোদন বা বাতিল শুধু অ্যাডমিন।
+    match /memberApplications/{applicationId} {
+      allow create: if signedIn()
+        && request.resource.data.applicantUid == myUid();
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.applicantUid == myUid());
+      allow update, delete: if isAdmin();
+    }
+
+    // জমা — ওই সমিতির সদস্য বা অ্যাডমিন পড়তে পারে।
+    // নতুন জমা দিতে পারে শুধু ওই সমিতির সদস্য।
+    match /payments/{paymentId} {
+      allow read: if isAdmin()
+        || isMemberOf(resource.data.branchId);
+      allow create: if signedIn()
+        && isMemberOf(request.resource.data.branchId);
+      allow update, delete: if isAdmin();
+    }
+
+    // খরচ — জমার মতোই: ওই সমিতির সদস্য বা অ্যাডমিন।
+    match /expenses/{expenseId} {
+      allow read: if isAdmin()
+        || isMemberOf(resource.data.branchId);
+      allow create, update, delete: if isAdmin();
+    }
+
+    // কর্জে হাসানা ঋণ — জমার মতোই।
+    match /loans/{loanId} {
+      allow read: if isAdmin()
+        || isMemberOf(resource.data.branchId);
+      allow create, update, delete: if isAdmin();
+    }
+
+    // পেমেন্ট মাধ্যম — লগইন করা সবাই পড়তে পারে
+    // (জমা দেওয়ার সময় মাধ্যম দেখতে হয়), লেখা শুধু অ্যাডমিন।
+    match /paymentMethods/{methodId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // নোটিশ আর কমিটি — লগইন করা সবাই পড়তে পারে,
+    // লেখা শুধু অ্যাডমিন।
+    match /notices/{noticeId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /committee/{memberId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // ব্যবহারকারীর ডকুমেন্ট — নিজেরটা নিজে পড়তে পারে,
+    // অ্যাডমিন সব পড়ে। নতুন ডকুমেন্ট নিজে বানাতে পারে
+    // (লগইন আর /setup-এর জন্য)।
+    // অ্যাডমিন তৈরি হয়ে গেলে নিচের শক্ত নিয়মটা ব্যবহার
+    // করুন (এখনকার লাইনটার বদলে):
+    //   allow create: if signedIn() && myUid() == userId
+    //     && request.resource.data.role == 'pending';
+    // নিজের রোল বা অনুমোদন নিজে বদলাতে পারে না —
+    // সেটা শুধু অ্যাডমিনের কাজ।
+    match /users/{userId} {
+      allow read: if isAdmin()
+        || (signedIn() && myUid() == userId);
+      allow create: if signedIn() && myUid() == userId;
+      allow update: if isAdmin()
+        || (signedIn() && myUid() == userId
+          && !request.resource.data.diff(resource.data)
+            .affectedKeys().hasAny(['role', 'approvalStatus']));
+      allow delete: if isAdmin();
+    }
+
+    // অডিট লগ — শুধু অ্যাডমিন।
+    match /auditLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

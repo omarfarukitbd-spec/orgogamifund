@@ -50,7 +50,6 @@ fun AppNavigation(
     val members by FirestoreDataManager.members.collectAsStateWithLifecycle()
     val payments by FirestoreDataManager.payments.collectAsStateWithLifecycle()
     val expenses by FirestoreDataManager.expenses.collectAsStateWithLifecycle()
-    val loans by FirestoreDataManager.loans.collectAsStateWithLifecycle()
     val branches by FirestoreDataManager.branches.collectAsStateWithLifecycle()
     val committee by ShomitiDataManager.committee.collectAsStateWithLifecycle()
     val notices by ShomitiDataManager.notices.collectAsStateWithLifecycle()
@@ -234,6 +233,7 @@ fun AppNavigation(
             members = members,
             branches = branches,
             payments = payments,
+            userRole = activeRole,
             launchCall = ::launchCall,
             launchWhatsApp = ::launchWhatsApp
         )
@@ -244,8 +244,7 @@ fun AppNavigation(
             notificationRepo = notificationRepo,
             members = members,
             payments = payments,
-            expenses = expenses,
-            loans = loans
+            expenses = expenses
         )
 
         addAdminNavRoutes(
@@ -256,7 +255,6 @@ fun AppNavigation(
             members = members,
             payments = payments,
             expenses = expenses,
-            loans = loans,
             branches = branches,
             committee = committee,
             notices = notices,

@@ -25,7 +25,7 @@ class NotificationRepositoryImpl : NotificationRepository {
             NotificationItem(
                 id = "notif-2",
                 title = "মাসিক চাঁদা পরিশোধের তাগাদা",
-                message = "আগামী ১০ তারিখের মধ্যে চলতি মাসের কিস্তি/চাঁদা পরিশোধ করতে অনুরোধ করা যাচ্ছে।",
+                message = "আগামী ১০ তারিখের মধ্যে চলতি মাসের নিয়মিত চাঁদা পরিশোধ করতে অনুরোধ করা যাচ্ছে।",
                 timestamp = System.currentTimeMillis() - (1000 * 60 * 60 * 3), // 3 hours ago
                 type = NotificationType.DUE_REMINDER,
                 isRead = false,
@@ -42,12 +42,12 @@ class NotificationRepositoryImpl : NotificationRepository {
             ),
             NotificationItem(
                 id = "notif-4",
-                title = "ঋণ বিতরণ ও কিস্তি অনুমোদন",
-                message = "আপনার আবেদনের প্রেক্ষিতে সদস্য ঋণ নং LN-004 অনুমোদিত হয়েছে। বিস্তারিত লেজারে দেখুন।",
+                title = "সদস্য বই ও পাসবই আপডেট",
+                message = "আপনার পাসবই ও সঞ্চয় খতিয়ান সফলভাবে হালনাগাদ করা হয়েছে। বিস্তারিত পাসবই সেকশনে দেখুন।",
                 timestamp = System.currentTimeMillis() - (1000 * 60 * 60 * 48), // 2 days ago
-                type = NotificationType.LOAN_REMINDER,
+                type = NotificationType.SYSTEM_ALERT,
                 isRead = true,
-                targetRoute = Screen.Loans.route
+                targetRoute = Screen.Dashboard.route
             )
         )
     )

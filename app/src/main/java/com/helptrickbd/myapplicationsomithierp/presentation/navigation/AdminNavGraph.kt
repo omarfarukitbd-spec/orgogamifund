@@ -14,6 +14,7 @@ import com.helptrickbd.myapplicationsomithierp.domain.model.*
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.admin.AdminHubScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.admin.AdminPendingDepositsScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.admin.CreateSomithiFundScreen
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.admin.EditSomithiFundScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.branches.BranchManagementScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.dividends.DividendDistributionScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.governance.AdminApprovalScreen
@@ -33,7 +34,6 @@ fun NavGraphBuilder.addAdminNavRoutes(
     members: List<Member>,
     payments: List<Payment>,
     expenses: List<Expense>,
-    loans: List<Loan>,
     branches: List<Branch>,
     committee: List<CommitteeMember>,
     notices: List<Notice>,
@@ -59,7 +59,6 @@ fun NavGraphBuilder.addAdminNavRoutes(
             members = members,
             payments = payments,
             expenses = expenses,
-            loans = loans,
             onNavigateBack = { navController.popBackStack() }
         )
     }
@@ -157,12 +156,12 @@ fun NavGraphBuilder.addAdminNavRoutes(
             onNavigateToApprovals = { navController.navigate(Screen.AdminApprovals.route) },
             onNavigateToPendingDeposits = { navController.navigate(Screen.AdminPendingDeposits.route) },
             onNavigateToCreateSomithi = { navController.navigate(Screen.CreateSomithiFund.route) },
+            onNavigateToEditSomithi = { branchId -> navController.navigate(Screen.EditSomithiFund.createRoute(branchId)) },
             onNavigateToMembers = { navController.navigate(Screen.Members.route) },
             onNavigateToAddMember = { navController.navigate(Screen.AddMember.route) },
             onNavigateToEditRequests = { navController.navigate(Screen.EditRequests.route) },
             onNavigateToCollectPayment = { navController.navigate(Screen.RecordPayment.route) },
             onNavigateToAddExpense = { navController.navigate(Screen.AddExpense.route) },
-            onNavigateToIssueLoan = { navController.navigate(Screen.IssueLoan.route) },
             onNavigateToDividends = { navController.navigate(Screen.Dividends.route) },
             onNavigateToDefaulters = { navController.navigate(Screen.Defaulters.route) },
             onNavigateToBranches = { navController.navigate(Screen.Branches.route) },
@@ -174,8 +173,7 @@ fun NavGraphBuilder.addAdminNavRoutes(
                     BackupPayload(
                         members = members,
                         payments = payments,
-                        expenses = expenses,
-                        loans = loans
+                        expenses = expenses
                     )
                 )
                 backupManager.shareBackupFile(backupFile)
@@ -195,5 +193,16 @@ fun NavGraphBuilder.addAdminNavRoutes(
         CreateSomithiFundScreen(
             onNavigateBack = { navController.popBackStack() }
         )
+    }
+
+    composable(Screen.EditSomithiFund.route) { backStackEntry ->
+        val branchId = backStackEntry.arguments?.getString("branchId") ?: ""
+        val branch = branches.find { it.id == branchId } ?: branches.firstOrNull()
+        if (branch != null) {
+            EditSomithiFundScreen(
+                branch = branch,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
     }
 }

@@ -70,8 +70,15 @@ class BranchRepositoryImpl(
                 Branch(
                     id = doc.id,
                     name = doc.getString("name") ?: "",
+                    code = doc.getString("code") ?: "",
+                    establishedYear = doc.getString("establishedYear") ?: "২০২৪",
+                    description = doc.getString("description") ?: "",
+                    monthlyDepositAmount = doc.getDouble("monthlyDepositAmount") ?: 500.0,
+                    balance = doc.getDouble("balance") ?: 0.0,
                     treasurerUserId = doc.getString("treasurerUserId"),
-                    balance = doc.getDouble("balance") ?: 0.0
+                    logoUrl = doc.getString("logoUrl") ?: "",
+                    bannerUrl = doc.getString("bannerUrl") ?: "",
+                    activityPhotos = (doc.get("activityPhotos") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
                 )
             } ?: emptyList()
 
@@ -93,8 +100,15 @@ class BranchRepositoryImpl(
                 val branch = Branch(
                     id = snapshot.id,
                     name = snapshot.getString("name") ?: "",
+                    code = snapshot.getString("code") ?: "",
+                    establishedYear = snapshot.getString("establishedYear") ?: "২০২৪",
+                    description = snapshot.getString("description") ?: "",
+                    monthlyDepositAmount = snapshot.getDouble("monthlyDepositAmount") ?: 500.0,
+                    balance = snapshot.getDouble("balance") ?: 0.0,
                     treasurerUserId = snapshot.getString("treasurerUserId"),
-                    balance = snapshot.getDouble("balance") ?: 0.0
+                    logoUrl = snapshot.getString("logoUrl") ?: "",
+                    bannerUrl = snapshot.getString("bannerUrl") ?: "",
+                    activityPhotos = (snapshot.get("activityPhotos") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
                 )
                 trySend(Resource.Success(branch))
             } else {

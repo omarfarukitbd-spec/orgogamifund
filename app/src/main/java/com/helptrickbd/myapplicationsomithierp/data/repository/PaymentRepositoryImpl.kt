@@ -224,8 +224,7 @@ class PaymentRepositoryImpl(
                     joinDate = doc.getLong("joinDate") ?: System.currentTimeMillis(),
                     status = MemberStatus.ACTIVE,
                     totalContributed = doc.getDouble("totalContributed") ?: 0.0,
-                    outstandingDues = doc.getDouble("outstandingDues") ?: 0.0,
-                    activeLoanBalance = doc.getDouble("activeLoanBalance") ?: 0.0
+                    outstandingDues = doc.getDouble("outstandingDues") ?: 0.0
                 )
             } ?: emptyList()
 

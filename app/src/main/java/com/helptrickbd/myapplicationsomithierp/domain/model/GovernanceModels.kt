@@ -54,7 +54,6 @@ data class MemberExit(
     val memberName: String = "",
     val totalContributed: Double = 0.0,
     val outstandingDues: Double = 0.0,
-    val outstandingLoan: Double = 0.0,
     val finalSettlementAmount: Double = 0.0,
     val payoutDate: Long = System.currentTimeMillis(),
     val payoutMethod: String = "Cash",
@@ -79,7 +78,7 @@ enum class AuditAction {
 
 data class AuditLog(
     val id: String = "",
-    val entityType: String = "", // e.g. "Payment", "Expense", "Loan"
+    val entityType: String = "", // e.g. "Payment", "Expense", "Member"
     val entityId: String = "",
     val action: AuditAction = AuditAction.EDIT,
     val changedBy: String = "",

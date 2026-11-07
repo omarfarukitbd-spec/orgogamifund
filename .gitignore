@@ -12,3 +12,7 @@ app/build
 .externalNativeBuild
 .cxx
 *.hprof
+*.msi
+*.zip
+*.log
+

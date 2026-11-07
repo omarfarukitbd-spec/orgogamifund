@@ -137,8 +137,78 @@ This document establishes the mandatory, binding rules for AI agents operating o
 
 ---
 
-## 15. Clean Material 3 Design & Prohibition of Ad-Hoc Shaped Cards (আজেবাজে শেপ ও ডাবল-বর্ডার কার্ড চিরতরে নিষিদ্ধ)
-- **Zero Ad-Hoc Shaped Shortcut Banners**: Never introduce custom double-bordered, weirdly tinted, or arbitrarily shaped shortcut cards (such as the deleted "এডমিন কন্ট্রোল হাব" shape card).
-- **Uniform Surface Architecture**: Every list item, card, and section must follow pure Material 3 guidelines using standard `ElevatedCard` or `Card` with `MaterialTheme.colorScheme.surface`, standard corner radius (12-16dp), clean typography, and zero artificial borders.
+## 15. Clean Material 3 Design & Prohibition of Ad-Hoc Shaped Cards (আজেবাজে শেপ, ৪ পাশের ফ্রেম ও ডাবল-বর্ডার কার্ড চিরতরে নিষিদ্ধ)
+- **Zero 4-Sided Tinted Shape Wrappers & Envelopes (৪ পাশের বাজে দেখতে শেপ/ফ্রেম কঠোরভাবে নিষিদ্ধ)**:
+  - Never wrap list items, banners, or notification cards in a darker/tinted outer container (`surfaceVariant`, gray frames, outer shells) that creates an ugly double-border or "box-inside-a-box" frame around content.
+  - Never introduce custom double-bordered, weirdly tinted, or arbitrarily shaped shortcut cards/hero banners (such as the deleted "এডমিন কন্ট্রোল হাব" shape card or notification hero bubble cards).
+  - Never apply `Modifier.border(...)` on a child layout (e.g. `Row` or `Column`) inside an already bordered or elevated `Card`.
+- **Uniform Flat Surface Architecture (একীভূত ও মার্জিত সারফেস আর্কিটেকচার)**:
+  - Every list item, card, and section across the entire application MUST follow pure, flat Material 3 guidelines using standard `ElevatedCard` or `Card` with `MaterialTheme.colorScheme.surface`.
+  - Both read and unread states must share the exact same clean `MaterialTheme.colorScheme.surface` background without any surrounding gray shells or outer bubble containers.
+  - Standard corner radius strictly between 12dp and 16dp, clean typography, single hairline border (`border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))`), and zero artificial envelopes.
 
 
+---
+
+## 16. Mandatory Firebase Integration Verification Checklist (বাধ্যতামূলক ফায়ারবেস ইন্টিগ্রেশন যাচাই)
+
+Whenever any Firebase-connected feature (Firestore read/write, Firebase Auth, Firebase Storage) is created or modified, the agent MUST verify ALL of the following before declaring the task complete:
+
+### A. Firestore Write Safety (ডেটা সেভ করার নিরাপত্তা)
+- **NEVER pass Kotlin data classes directly to `.set()` or `.update()`** when the class contains nested data classes, `List<T>`, or nullable fields. Always convert to an explicit `HashMap<String, Any>` to prevent Firebase SDK reflection/serialization crashes.
+- **ALWAYS use Firebase Task listeners** (`.addOnSuccessListener` / `.addOnFailureListener`) for callbacks — never call `onComplete` from inside `scope.launch(Dispatchers.IO)` directly, as this causes Compose state mutations and `Toast.show()` to crash from a background thread.
+- **Correct Pattern**:
+  ```kotlin
+  // CORRECT - Firebase listener dispatches on Main thread automatically
+  firestore.collection("x").document(id)
+      .set(hashMap, SetOptions.merge())
+      .addOnSuccessListener { onComplete?.invoke(true) }
+      .addOnFailureListener { onComplete?.invoke(false) }
+
+  // WRONG - IO thread callback crashes Compose state + Toast
+  scope.launch(Dispatchers.IO) {
+      firestore.collection("x").document(id).set(obj)
+      onComplete?.invoke(true)  // CRASH: Compose state from IO thread
+  }
+  ```
+
+### B. Firestore Read Safety (ডেটা পড়ার নিরাপত্তা)
+- All new Firestore collection fields added to a data model **MUST also be added** to `FirestoreDataManager.kt` deserialization with safe default values (`?: defaultValue`).
+- All new fields must be explicitly mapped: never rely on automatic Firestore-to-Kotlin data class deserialization via `toObject<T>()` for complex nested structures.
+
+### C. Firestore Security Rules Synchronization (ফায়ারস্টোর সিকিউরিটি রুলস)
+- Whenever a **new Firestore collection** is created or **write/read permissions change**, update `firestore.rules` to reflect the correct access model:
+  - `branches`: Read → authenticated users; Write → Super Admin only.
+  - `members`: Read → approved members of that branch; Write → Super Admin / Admin.
+  - `payments`, `expenses`: Read → approved members (based on branch permissions); Write → Admin.
+  - `memberApplications`: Read/Write → authenticated users (own doc) + Admin.
+  - `users`: Read/Write → own document + Super Admin.
+  - `notices`, `committee`: Read → approved members; Write → Admin.
+- After updating `firestore.rules`, verify the rules are deployed and consistent with `SomithiPermissions` flags in the `Branch` model.
+
+### D. Thread Safety for Compose State (কম্পোজ স্টেট থ্রেড নিরাপত্তা)
+- All Compose `mutableStateOf` variables (e.g., `isSubmitting`, `isLoading`, `errorMessage`) must ONLY be mutated from the **Main thread**.
+- Firebase Task listeners (`.addOnSuccessListener`, `.addOnFailureListener`) dispatch on Main thread by default — use them.
+- If using Kotlin Coroutines, always use `withContext(Dispatchers.Main)` before mutating Compose state.
+
+### E. New Model Fields — End-to-End Checklist
+When adding new fields to any data model (e.g., `Branch`, `Member`, `Payment`):
+  1. **Model** (`FinancialModels.kt`): Add field with correct type and default value.
+  2. **Reader** (`FirestoreDataManager.kt`): Add explicit deserialization with `?: default`.
+  3. **Writer** (`FirestoreWriteManager.kt`): Add field to the explicit `HashMap` — **never rely on auto-serialization**.
+  4. **UI** (Screen/Component): Wire the new field to the form and validate input.
+  5. **Firestore Rules** (`firestore.rules`): Confirm the field is permitted under existing rules (usually no change needed for new fields within existing documents).
+
+### F. Keyboard / IME Inset Safety (কীবোর্ড ইনসেট)
+- Every screen with `TextField` or `OutlinedTextField` input MUST include `Modifier.imePadding()` on the scrollable container so the keyboard never covers active input fields.
+- The parent `Scaffold` must set `contentWindowInsets = WindowInsets(0, 0, 0, 0)` to prevent double inset application when `imePadding()` is used on the child.
+
+---
+
+## 17. Phased Execution for Large Tasks (বড় কাজকে বাধ্যতামূলক ধাপে ধাপে ভাগ করে নিখুঁত বাস্তবায়ন)
+- **Zero Rushing on Complex Tasks (তাড়াহুড়ো করে একবারে সব করার চেষ্টা কঠোরভাবে নিষিদ্ধ)**:
+  - যখনই কোনো বড়, জটিল বা বহুমাত্রিক কাজ দেওয়া হবে, কখনই একসাথে সব কাজ একবারে শেষ করতে গিয়ে ভুল বা ত্রুটি করা যাবে না।
+- **Mandatory Phased Execution (ধাপে ধাপে বাস্তবায়ন ও ফলাফল প্রকাশ)**:
+  - বড় যেকোনো কাজকে যৌক্তিক ধাপে (Phase 1, Phase 2, Phase 3...) ভাগ করে নিতে হবে।
+  - প্রতিটি ফেজ শতভাগ মনোযোগ দিয়ে নিখুঁতভাবে শেষ করতে হবে, কোড যাচাই করতে হবে এবং ব্যবহারকারীকে ধাপে ধাপে অগ্রগতি ও ফলাফল জানাতে হবে।
+  - এর মাধ্যমে কোনো ত্রুটি বা বাগ তৈরি হবে না এবং কাজের কোয়ালিটি সবসময় সর্বোচ্চ মানের হবে।

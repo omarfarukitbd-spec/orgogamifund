@@ -34,9 +34,6 @@ object FirestoreDataManager {
     private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
     val expenses: StateFlow<List<Expense>> = _expenses.asStateFlow()
 
-    private val _loans = MutableStateFlow<List<Loan>>(emptyList())
-    val loans: StateFlow<List<Loan>> = _loans.asStateFlow()
-
     private val _memberApplications = MutableStateFlow<List<MemberApplication>>(emptyList())
     val memberApplications: StateFlow<List<MemberApplication>> = _memberApplications.asStateFlow()
 
@@ -64,23 +61,28 @@ object FirestoreDataManager {
                         id = doc.id,
                         name = doc.getString("name") ?: "",
                         code = doc.getString("code") ?: "",
-                        establishedYear = doc.getString("establishedYear") ?: "২০২৩",
+                        establishedYear = doc.getString("establishedYear") ?: "২০২৪",
                         description = doc.getString("description") ?: "",
-                        monthlyDepositAmount = doc.getDouble("monthlyDepositAmount") ?: 1000.0,
-                        admissionFee = doc.getDouble("admissionFee") ?: 500.0,
-                        sharePrice = doc.getDouble("sharePrice") ?: 1000.0,
+                        monthlyDepositAmount = doc.getDouble("monthlyDepositAmount") ?: 500.0,
+                        admissionFee = doc.getDouble("admissionFee") ?: 0.0,
+                        sharePrice = doc.getDouble("sharePrice") ?: 0.0,
+                        optionalDepositEnabled = doc.getBoolean("optionalDepositEnabled") ?: false,
+                        minOptionalDeposit = doc.getDouble("minOptionalDeposit") ?: 0.0,
+                        monthlyDueDay = doc.getLong("monthlyDueDay")?.toInt() ?: 10,
+                        lateFineAmount = doc.getDouble("lateFineAmount") ?: 0.0,
                         memberCount = doc.getLong("memberCount")?.toInt() ?: 0,
                         treasurerUserId = doc.getString("treasurerUserId"),
                         balance = doc.getDouble("balance") ?: 0.0,
-                        bkashNumber = doc.getString("bkashNumber") ?: "01824797072",
-                        nagadNumber = doc.getString("nagadNumber") ?: "01824797072",
-                        bankDetails = (doc.get("bankDetails") as? Map<*, *>)?.let { bMap ->
+                        bkashNumber = doc.getString("bkashNumber") ?: "",
+                        nagadNumber = doc.getString("nagadNumber") ?: "",
+                        logoUrl = doc.getString("logoUrl") ?: "",
+                        bannerUrl = doc.getString("bannerUrl") ?: "",
+                        activityPhotos = (doc.get("activityPhotos") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+                        bankDetails = (doc.get("bankDetails") as? Map<*, *>)?.let { b ->
                             BankAccountDetails(
-                                bankName = bMap["bankName"] as? String ?: "ইসলামী ব্যাংক বাংলাদেশ পিএলসি",
-                                branchName = bMap["branchName"] as? String ?: "ফেনী শাখা",
-                                accountName = bMap["accountName"] as? String ?: "অগ্রগামী ফান্ড",
-                                accountNumber = bMap["accountNumber"] as? String ?: "20501234567890123",
-                                routingNumber = bMap["routingNumber"] as? String ?: "125261453"
+                                bankName = b["bankName"] as? String ?: "ইসলামী ব্যাংক বাংলাদেশ পিএলসি",
+                                branchName = b["branchName"] as? String ?: "", accountName = b["accountName"] as? String ?: "",
+                                accountNumber = b["accountNumber"] as? String ?: "", routingNumber = b["routingNumber"] as? String ?: ""
                             )
                         } ?: BankAccountDetails(),
                         permissions = (doc.get("permissions") as? Map<*, *>)?.let { pMap ->
@@ -88,14 +90,14 @@ object FirestoreDataManager {
                                 canMembersViewTotalFund = pMap["canMembersViewTotalFund"] as? Boolean ?: true,
                                 canMembersViewExpenses = pMap["canMembersViewExpenses"] as? Boolean ?: true,
                                 canMembersViewMemberList = pMap["canMembersViewMemberList"] as? Boolean ?: true,
-                                canMembersViewNotices = pMap["canMembersViewNotices"] as? Boolean ?: true
+                                canMembersViewNotices = pMap["canMembersViewNotices"] as? Boolean ?: true,
+                                canMembersViewPaymentHistory = pMap["canMembersViewPaymentHistory"] as? Boolean ?: true
                             )
                         } ?: SomithiPermissions(),
                         termsAndConditions = (doc.get("termsAndConditions") as? List<*>)?.filterIsInstance<String>()
                             ?: listOf(
-                                "১. প্রতি মাসে নির্ধারিত তারিখের মধ্যে মাসিক সঞ্চয় পরিশোধ করতে হবে।",
-                                "২. সমিতির সাধারণ সিদ্ধান্ত ও পরিচালনা পরিষদের নিয়ম মেনে চলতে হবে।",
-                                "৩. নিয়মিত সঞ্চয় ও শৃঙ্খলার মাধ্যমে ঋণ সুবিধা নিশ্চিত করা হবে।"
+                                "প্রতি মাসে নির্ধারিত তারিখের মধ্যে বাধ্যতামূলক মাসিক চাঁদা পরিশোধ করতে হবে।",
+                                "মাদ্রাসার উন্নয়ন ও শিক্ষার্থীদের কল্যাণে সংগৃহীত অর্থ ব্যয় করা হবে।"
                             )
                     )
                 }
@@ -110,15 +112,34 @@ object FirestoreDataManager {
         firestore.collection("members").addSnapshotListener { snapshot, _ ->
             if (snapshot != null) {
                 val list = snapshot.documents.mapNotNull { doc ->
+                    val emergencyMap = doc.get("emergencyContact") as? Map<*, *>
                     Member(
                         id = doc.id,
-                        name = doc.getString("name") ?: "",
-                        phone = doc.getString("phone") ?: "",
-                        address = doc.getString("address") ?: "",
-                        photoUrl = doc.getString("photoUrl"),
-                        nid = doc.getString("nid") ?: "",
-                        branchId = doc.getString("branchId") ?: "b-1",
-                        status = if (doc.getString("status") == "left") MemberStatus.LEFT else MemberStatus.ACTIVE
+                        name = doc.getString("name") ?: "", nameEn = doc.getString("nameEn") ?: "",
+                        fatherName = doc.getString("fatherName") ?: "", dateOfBirth = doc.getString("dateOfBirth") ?: "",
+                        occupation = doc.getString("occupation") ?: "", memberType = doc.getString("memberType") ?: "",
+                        phone = doc.getString("phone") ?: "", whatsappNumber = doc.getString("whatsappNumber") ?: "",
+                        village = doc.getString("village") ?: "", upazila = doc.getString("upazila") ?: "",
+                        district = doc.getString("district") ?: "", address = doc.getString("address") ?: "",
+                        photoUrl = doc.getString("photoUrl"), nid = doc.getString("nid") ?: "",
+                        nidPhotoUrl = doc.getString("nidPhotoUrl"),
+                        emergencyContact = EmergencyContact(
+                            name = emergencyMap?.get("name") as? String ?: "",
+                            relation = emergencyMap?.get("relation") as? String ?: "",
+                            phone = emergencyMap?.get("phone") as? String ?: ""
+                        ),
+                        // Per-section custom fields
+                        customFieldsPersonal = doc.get("customFieldsPersonal").toStringMap(),
+                        customFieldsContact = doc.get("customFieldsContact").toStringMap(),
+                        customFieldsDocs = doc.get("customFieldsDocs").toStringMap(),
+                        customFieldsEmergency = doc.get("customFieldsEmergency").toStringMap(),
+                        customFields = doc.get("customFields").toStringMap(),
+                        // Membership
+                        branchId = doc.getString("branchId") ?: "",
+                        joinDate = doc.getLong("joinDate") ?: System.currentTimeMillis(),
+                        status = if (doc.getString("status") == "LEFT") MemberStatus.LEFT
+                        else MemberStatus.ACTIVE,
+                        linkedUserId = doc.getString("linkedUserId")
                     )
                 }
                 _members.value = list
@@ -199,8 +220,6 @@ object FirestoreDataManager {
         }
     }
 
-
-
     fun selectBranch(branchId: String) {
         _selectedBranchId.value = branchId
         recomputeDashboardState()
@@ -257,7 +276,6 @@ object FirestoreDataManager {
         val totalBalance = branch?.balance ?: 0.0
         val monthCollection = _payments.value.filter { it.branchId == selId }.sumOf { it.amount }.safeRound()
         val totalExp = _expenses.value.filter { it.branchId == selId }.sumOf { it.amount }.safeRound()
-        val totalLoans = _loans.value.filter { it.branchId == selId && it.status == LoanStatus.ACTIVE }.sumOf { it.outstandingBalance }.safeRound()
 
         _dashboardState.value = _dashboardState.value.copy(
             selectedBranchId = branch?.id ?: selId,
@@ -265,8 +283,9 @@ object FirestoreDataManager {
             totalFundBalance = totalBalance,
             thisMonthCollection = monthCollection,
             totalExpenses = totalExp,
-            activeLoans = totalLoans,
             pendingApplicationsCount = _memberApplications.value.count { it.status == ApprovalStatus.PENDING }
         )
     }
 }
+
+private fun Any?.toStringMap(): Map<String, String> = (this as? Map<*, *>)?.entries?.mapNotNull { (k, v) -> if (k is String && v is String) k to v else null }?.toMap() ?: emptyMap()

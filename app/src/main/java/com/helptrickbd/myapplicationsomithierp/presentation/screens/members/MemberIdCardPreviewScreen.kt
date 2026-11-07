@@ -252,7 +252,7 @@ fun MemberIdCardPreviewScreen(
                                         color = Color.White
                                     )
                                     Text(
-                                        text = "সঞ্চয় ও ঋণ সমবায় প্রতিষ্ঠান • সদস্য পরিচয়পত্র",
+                                        text = "সঞ্চয় ও সমাজকল্যাণ সমিতি • সদস্য পরিচয়পত্র",
                                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                                         color = Color(0xFFE0F2FE)
                                     )
