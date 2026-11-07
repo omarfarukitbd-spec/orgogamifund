@@ -262,7 +262,7 @@ class _CreateSamitiDialogState extends State<_CreateSamitiDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<SamitiPurpose>(
-                value: _purpose,
+                initialValue: _purpose,
                 decoration: const InputDecoration(
                   labelText: AppStrings.samitiPurposeLabel,
                 ),

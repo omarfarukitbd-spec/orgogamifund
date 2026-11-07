@@ -680,7 +680,7 @@ class FirestoreService {
       if (!snap.exists || snap.data() == null) return;
       final loan = Loan.fromMap(snap.id, snap.data()!);
       final updated = [...loan.repayments, repayment];
-      final repaid = updated.fold(0, (sum, r) => sum + r.amount);
+      final repaid = updated.fold(0, (total, r) => total + r.amount);
       tx.update(ref, {
         'repayments': updated.map((r) => r.toMap()).toList(),
         'status':
@@ -776,11 +776,11 @@ class FirestoreService {
       ]);
       final approvedTotal = results[0].docs.fold<int>(
         0,
-        (sum, d) => sum + ((d.data()['amount'] as num?)?.toInt() ?? 0),
+        (total, d) => total + ((d.data()['amount'] as num?)?.toInt() ?? 0),
       );
       final expenseTotal = results[1].docs.fold<int>(
         0,
-        (sum, d) => sum + ((d.data()['amount'] as num?)?.toInt() ?? 0),
+        (total, d) => total + ((d.data()['amount'] as num?)?.toInt() ?? 0),
       );
       return HomeTotals(
         approvedTotal: approvedTotal,
