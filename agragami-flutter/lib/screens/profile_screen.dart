@@ -62,8 +62,20 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text('সদস্য নম্বর: ${member?.id ?? '—'}'),
-                          Text('ফোন: ${member?.phone ?? '—'}'),
+                          Text(
+                            'সদস্য নম্বর: ${member?.id ?? '—'}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          Text(
+                            'ফোন: ${member?.phone ?? '—'}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -75,10 +87,18 @@ class ProfileScreen extends ConsumerWidget {
                 onTap: () => context.go('/passbook'),
                 child: const Row(
                   children: [
-                    Icon(Icons.book_outlined, color: Colors.green),
+                    ListIcon(icon: Icons.book_outlined),
                     SizedBox(width: 12),
-                    Expanded(child: Text('আমার পাসবই')),
-                    Icon(Icons.chevron_right_outlined),
+                    Expanded(
+                      child: Text(
+                        'আমার পাসবই',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_outlined, color: Colors.grey),
                   ],
                 ),
               ),
@@ -87,10 +107,18 @@ class ProfileScreen extends ConsumerWidget {
                 onTap: () => context.go('/id-card'),
                 child: const Row(
                   children: [
-                    Icon(Icons.badge_outlined, color: Colors.green),
+                    ListIcon(icon: Icons.badge_outlined),
                     SizedBox(width: 12),
-                    Expanded(child: Text('আমার আইডি কার্ড')),
-                    Icon(Icons.chevron_right_outlined),
+                    Expanded(
+                      child: Text(
+                        'আমার আইডি কার্ড',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_outlined, color: Colors.grey),
                   ],
                 ),
               ),
@@ -103,7 +131,7 @@ class ProfileScreen extends ConsumerWidget {
               const Text(
                 AppStrings.halalNote,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(fontSize: 13, color: Colors.grey),
               ),
             ],
           ),

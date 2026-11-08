@@ -235,46 +235,52 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
             )
           else
             ...notices.map(
-              (n) => AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.campaign_outlined),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            n.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
+              (n) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const ListIcon(icon: Icons.campaign_outlined),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              n.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 17,
+                              ),
                             ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(n.body, style: const TextStyle(fontSize: 15)),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${n.postedAt.day}/${n.postedAt.month}/${n.postedAt.year}'
+                        ' • ${n.scope == NoticeScope.org ? 'সবার জন্য' : 'সমিতির জন্য'}',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      if (n.attachmentUrl != null &&
+                          n.attachmentUrl!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            n.attachmentUrl!,
+                            height: 180,
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(n.body),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${n.postedAt.day}/${n.postedAt.month}/${n.postedAt.year}'
-                      ' • ${n.scope == NoticeScope.org ? 'সবার জন্য' : 'সমিতির জন্য'}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    if (n.attachmentUrl != null &&
-                        n.attachmentUrl!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          n.attachmentUrl!,
-                          height: 180,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),

@@ -18,7 +18,10 @@ class PrimaryButton extends StatelessWidget {
     return ElevatedButton.icon(
       onPressed: onPressed,
       icon: icon != null ? Icon(icon, size: 20) : const SizedBox.shrink(),
-      label: Text(label, style: const TextStyle(fontSize: 16)),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -34,7 +37,10 @@ class SecondaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton(
       onPressed: onPressed,
-      child: Text(label, style: const TextStyle(fontSize: 16)),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }

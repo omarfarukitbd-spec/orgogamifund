@@ -46,13 +46,26 @@ class NotMemberGate extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(Icons.lock_outlined, size: 64, color: Colors.green),
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.lock_outlined,
+              size: 48,
+              color: Colors.green,
+            ),
+          ),
           const SizedBox(height: 16),
           Text(
             hasBranch
                 ? AppStrings.notMemberTitle
                 : AppStrings.notMemberAnyTitle,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontSize: 22,
                   fontWeight: FontWeight.w700,
                 ),
             textAlign: TextAlign.center,
@@ -62,6 +75,7 @@ class NotMemberGate extends StatelessWidget {
             hasBranch
                 ? AppStrings.notMemberBody
                 : AppStrings.notMemberAnyBody,
+            style: const TextStyle(fontSize: 15.5, color: Colors.grey),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),

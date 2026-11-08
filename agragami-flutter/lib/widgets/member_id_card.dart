@@ -19,7 +19,7 @@ class MemberIdCardFront extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.line),
       ),
       clipBehavior: Clip.antiAlias,
@@ -28,17 +28,17 @@ class MemberIdCardFront extends StatelessWidget {
         children: [
           Container(
             color: AppColors.green,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                const AgragamiLogo(size: 32, radius: 8),
-                const SizedBox(width: 8),
+                const AgragamiLogo(size: 36, radius: 9),
+                const SizedBox(width: 10),
                 const Expanded(
                   child: Text(
                     'অগ্রগামী ফান্ড',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 17,
+                      fontSize: 19,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -67,7 +67,7 @@ class MemberIdCardFront extends StatelessWidget {
           Container(height: 3, color: AppColors.gold),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(16),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -80,7 +80,7 @@ class MemberIdCardFront extends StatelessWidget {
                         Text(
                           member.name,
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 20,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -111,11 +111,11 @@ class _PhotoBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = member.photoUrl;
     return Container(
-      width: 72,
-      height: 88,
+      width: 88,
+      height: 106,
       decoration: BoxDecoration(
         color: AppColors.greenSoft,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.line),
       ),
       clipBehavior: Clip.antiAlias,
@@ -147,13 +147,13 @@ class _Field extends StatelessWidget {
             width: 78,
             child: Text(
               label,
-              style: const TextStyle(fontSize: 12, color: AppColors.muted),
+              style: const TextStyle(fontSize: 13, color: AppColors.muted),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -177,12 +177,12 @@ class MemberIdCardBack extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.greenDark,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.line),
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             Expanded(
@@ -193,7 +193,7 @@ class MemberIdCardBack extends StatelessWidget {
                     'অগ্রগামী ফান্ড',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 15,
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

@@ -1,6 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/loan.dart';
 import '../models/member.dart';
@@ -12,6 +11,7 @@ import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
+import '../widgets/payment_method_card.dart';
 import '../widgets/skeleton_loader.dart';
 import 'passbook_screen.dart';
 
@@ -237,25 +237,38 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
                     Text(
                       name,
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text('কারণ: ${loan.reason}'),
+                    Text(
+                      'কারণ: ${loan.reason}',
+                      style: const TextStyle(fontSize: 14.5, color: Colors.grey),
+                    ),
                     Text(
                       'তারিখ: ${loan.dateIssued.day}/${loan.dateIssued.month}/${loan.dateIssued.year}',
+                      style: const TextStyle(fontSize: 14.5, color: Colors.grey),
                     ),
                     if (loan.monthlyInstallment != null &&
                         loan.installmentMonths != null)
                       Text(
                         'পরিকল্পনা: মাসে ${formatTaka(loan.monthlyInstallment!)} '
                         'করে ${loan.installmentMonths} মাসে',
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          color: Colors.grey,
+                        ),
                       ),
                     Text(
                       loan.status == LoanStatus.repaid
                           ? 'ফেরত দেওয়া হয়েছে'
                           : 'চলছে',
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green,
+                      ),
                     ),
                   ],
                 ),
@@ -284,6 +297,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
               Text(
                 'কিস্তি জমা নিন',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
               ),
@@ -304,78 +318,11 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
                     message: 'অ্যাডমিন মাধ্যম যোগ করলে এখানে দেখা যাবে।',
                   )
                 else
-                  RadioGroup<String>(
-                    groupValue: _methodId ?? '',
-                    onChanged: (v) => setState(() => _methodId = v),
-                    child: Column(
-                      children: methods.map(
-                        (m) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: AppCard(
-                            onTap: () => setState(() => _methodId = m.id),
-                            child: Row(
-                              children: [
-                                Radio<String>(value: m.id),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        m.name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${m.typeLabel} • ${m.accountHolderName}',
-                                      ),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              'নম্বর: ${m.accountNumber}',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            tooltip: 'নম্বর কপি করুন',
-                                            onPressed: () {
-                                              Clipboard.setData(
-                                                ClipboardData(
-                                                  text: m.accountNumber,
-                                                ),
-                                              );
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                const SnackBar(
-                                                  content:
-                                                      Text('নম্বর কপি হয়েছে'),
-                                                ),
-                                              );
-                                            },
-                                            icon: const Icon(Icons.copy_outlined),
-                                          ),
-                                        ],
-                                      ),
-                                      if (m.instructions != null &&
-                                          m.instructions!.isNotEmpty)
-                                        Text(
-                                          m.instructions!,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ).toList(),
+                  ...methods.map(
+                    (m) => PaymentMethodCard(
+                      method: m,
+                      selected: _methodId == m.id,
+                      onTap: () => setState(() => _methodId = m.id),
                     ),
                   ),
                 const SizedBox(height: 4),
@@ -428,6 +375,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
               Text(
                 'কিস্তির খাতা',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
               ),
@@ -440,35 +388,49 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
                 )
               else
                 ...loan.repayments.map(
-                  (r) => AppCard(
-                    child: Row(
-                      children: [
-                        const Icon(Icons.receipt_outlined),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${r.date.day}/${r.date.month}/${r.date.year}'
-                                ' • ${r.methodLabel}',
-                              ),
-                              if (r.trxId != null && r.trxId!.isNotEmpty)
+                  (r) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: AppCard(
+                      child: Row(
+                        children: [
+                          const ListIcon(
+                            icon: Icons.receipt_outlined,
+                            size: 36,
+                            iconSize: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Text(
-                                  'TrxID: ${r.trxId}',
+                                  '${r.date.day}/${r.date.month}/${r.date.year}'
+                                  ' • ${r.methodLabel}',
                                   style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                            ],
+                                if (r.trxId != null && r.trxId!.isNotEmpty)
+                                  Text(
+                                    'TrxID: ${r.trxId}',
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                        Text(
-                          formatTaka(r.amount),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ],
+                          Text(
+                            formatTaka(r.amount),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

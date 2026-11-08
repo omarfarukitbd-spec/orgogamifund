@@ -119,46 +119,58 @@ class _LoanListScreenState extends ConsumerState<LoanListScreen> {
             )
           else
             ...loans.map(
-              (loan) => AppCard(
-                onTap: () => context.go('/loans/${loan.id}'),
-                child: Row(
-                  children: [
-                    const Icon(Icons.handshake_outlined),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              (loan) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppCard(
+                  onTap: () => context.go('/loans/${loan.id}'),
+                  child: Row(
+                    children: [
+                      const ListIcon(icon: Icons.handshake_outlined),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              memberName(loan.memberId),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${loan.reason} • ${loan.dateIssued.day}/${loan.dateIssued.month}/${loan.dateIssued.year}'
+                              ' • ${loan.status == LoanStatus.repaid ? 'ফেরত দেওয়া হয়েছে' : 'চলছে'}',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            memberName(loan.memberId),
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${loan.reason} • ${loan.dateIssued.day}/${loan.dateIssued.month}/${loan.dateIssued.year}'
-                            ' • ${loan.status == LoanStatus.repaid ? 'ফেরত দেওয়া হয়েছে' : 'চলছে'}',
+                            formatTaka(loan.amount),
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            'বাকি ${formatTaka(loan.outstanding)}',
+                            style: const TextStyle(
+                              fontSize: 12.5,
                               color: Colors.grey,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          formatTaka(loan.amount),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        Text(
-                          'বাকি ${formatTaka(loan.outstanding)}',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

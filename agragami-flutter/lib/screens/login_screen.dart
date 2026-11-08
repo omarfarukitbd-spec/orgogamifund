@@ -107,18 +107,18 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 44, 24, 30),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 48),
-                const Center(child: AgragamiLogo(size: 96, radius: 24)),
+                const Center(child: AgragamiLogo(size: 104, radius: 26)),
                 const SizedBox(height: 16),
                 Text(
                   AppStrings.loginTitle,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontSize: 24,
                         fontWeight: FontWeight.w700,
                       ),
                   textAlign: TextAlign.center,
@@ -126,13 +126,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   AppStrings.appTagline,
+                  style: TextStyle(fontSize: 15, color: AppColors.muted),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   AppStrings.halalNote,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.gold),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.goldDark,
+                  ),
                 ),
                 const SizedBox(height: 32),
                 TextFormField(
@@ -145,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   validator: (v) =>
                       (v == null || !v.contains('@')) ? 'সঠিক ইমেইল দিন' : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 TextFormField(
                   controller: _password,
                   obscureText: true,

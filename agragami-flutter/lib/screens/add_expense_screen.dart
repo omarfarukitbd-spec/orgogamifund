@@ -9,6 +9,7 @@ import '../models/expense.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../widgets/app_button.dart';
+import '../widgets/app_card.dart';
 
 /// খরচ লেখা — শুধু অ্যাডমিন আর ব্রাঞ্চ অ্যাডমিন।
 /// ধরন, টাকা, তারিখ, কীসের খরচ, আর রসিদের ছবি (যদি থাকে)।
@@ -136,7 +137,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 .toList(),
             onChanged: (v) => setState(() => _branchId = v),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _category,
             decoration: const InputDecoration(
@@ -148,7 +149,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 .toList(),
             onChanged: (v) => setState(() => _category = v ?? _category),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           TextField(
             controller: _amount,
             keyboardType: TextInputType.number,
@@ -158,15 +159,23 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               prefixIcon: Icon(Icons.payments_outlined),
             ),
           ),
-          const SizedBox(height: 16),
-          ListTile(
-            leading: const Icon(Icons.calendar_today_outlined),
-            title: Text(
-              'তারিখ: ${_date.day}/${_date.month}/${_date.year}',
+          const SizedBox(height: 12),
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: ListTile(
+              leading: const ListIcon(icon: Icons.calendar_today_outlined),
+              title: Text(
+                'তারিখ: ${_date.day}/${_date.month}/${_date.year}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              trailing: const Icon(Icons.edit_outlined, color: Colors.grey),
+              onTap: _pickDate,
             ),
-            trailing: const Icon(Icons.edit_outlined),
-            onTap: _pickDate,
           ),
+          const SizedBox(height: 12),
           TextField(
             controller: _description,
             maxLines: 2,
@@ -176,7 +185,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               prefixIcon: Icon(Icons.notes_outlined),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: _pickReceipt,
             icon: const Icon(Icons.photo_outlined),

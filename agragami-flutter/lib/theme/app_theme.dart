@@ -8,6 +8,8 @@ class AppColors {
   static const Color greenSoft = Color(0xFFE6F2EB);
   static const Color gold = Color(0xFFC9A227);
   static const Color goldSoft = Color(0xFFF7F0D8);
+  static const Color goldDark = Color(0xFFA07D08);
+  static const Color greenTint = Color(0xFFF2F8F4);
   static const Color ink = Color(0xFF1A1F1C);
   static const Color muted = Color(0xFF5F6B64);
   static const Color line = Color(0xFFE3E8E5);
@@ -51,10 +53,10 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: AppColors.card,
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.08),
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.line),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -82,24 +84,47 @@ class AppTheme {
         fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.line),
+          borderSide: const BorderSide(color: AppColors.line, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.line),
+          borderSide: const BorderSide(color: AppColors.line, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.green, width: 2),
         ),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         selectedItemColor: AppColors.green,
         unselectedItemColor: AppColors.muted,
         type: BottomNavigationBarType.fixed,
         showUnselectedLabels: true,
+        selectedLabelStyle: TextStyle(fontSize: 13.5),
+        unselectedLabelStyle: TextStyle(fontSize: 13.5),
+      ),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: AppColors.green,
+        unselectedLabelColor: AppColors.muted,
+        indicatorColor: AppColors.green,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelStyle: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600),
+        unselectedLabelStyle:
+            TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: Colors.white,
+        selectedColor: AppColors.greenSoft,
+        disabledColor: Colors.white,
+        side: const BorderSide(color: AppColors.line),
+        labelStyle: const TextStyle(fontSize: 14.5),
+        secondaryLabelStyle: const TextStyle(fontSize: 14.5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
       ),
     );
   }

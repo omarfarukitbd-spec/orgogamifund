@@ -5,6 +5,7 @@ import '../l10n/app_strings.dart';
 import '../routes/app_router.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_icon.dart';
 
@@ -116,16 +117,16 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 44, 24, 30),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 48),
-              const Center(child: AgragamiLogo(size: 96, radius: 24)),
+              const Center(child: AgragamiLogo(size: 104, radius: 26)),
               const SizedBox(height: 16),
               Text(
                 AppStrings.setupTitle,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontSize: 24,
                       fontWeight: FontWeight.w700,
                     ),
                 textAlign: TextAlign.center,
@@ -133,6 +134,7 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
               const SizedBox(height: 8),
               const Text(
                 AppStrings.setupSubtitle,
+                style: TextStyle(fontSize: 15, color: AppColors.muted),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -146,7 +148,7 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
                     prefixIcon: Icon(Icons.person_outlined),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
@@ -155,7 +157,7 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
                     prefixIcon: Icon(Icons.mail_outlined),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _password,
                   obscureText: true,
@@ -164,7 +166,7 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
                     prefixIcon: Icon(Icons.lock_outlined),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _confirmPassword,
                   obscureText: true,

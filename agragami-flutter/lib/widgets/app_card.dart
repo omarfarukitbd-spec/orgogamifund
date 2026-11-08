@@ -19,7 +19,7 @@ class AppCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(padding: padding, child: child),
       ),
     );
@@ -48,26 +48,73 @@ class StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: theme.colorScheme.primary, size: 26),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: theme.colorScheme.primary, size: 24),
+          ),
           const SizedBox(height: 10),
           Text(
-            value,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontSize: 14.5,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
             ),
           ),
           const SizedBox(height: 2),
-          Text(label, style: theme.textTheme.bodyMedium),
+          Text(
+            value,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           if (note != null) ...[
             const SizedBox(height: 2),
             Text(
               note!,
               style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 13,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// তালিকার সারিতে আইকনের বাক্স — নরম সবুজ পটভূমিতে সবুজ আইকন।
+class ListIcon extends StatelessWidget {
+  final IconData icon;
+  final double size;
+  final double iconSize;
+
+  const ListIcon({
+    super.key,
+    required this.icon,
+    this.size = 44,
+    this.iconSize = 24,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(
+        icon,
+        color: Theme.of(context).colorScheme.primary,
+        size: iconSize,
       ),
     );
   }

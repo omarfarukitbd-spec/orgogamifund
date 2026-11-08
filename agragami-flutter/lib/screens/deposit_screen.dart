@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/app_strings.dart';
 import '../models/branch.dart';
@@ -10,9 +9,9 @@ import '../models/payment_method.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../widgets/app_button.dart';
-import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
+import '../widgets/payment_method_card.dart';
 import 'passbook_screen.dart';
 
 /// জমা দেওয়ার ফরম — সমিতি, মাস, টাকা আর TrxID।
@@ -229,6 +228,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
           const Text(
             'প্রথমে সমিতি বেছে নিন, তারপর নিচের মাধ্যমগুলো থেকে '
             'একটায় টাকা পাঠিয়ে ঘরগুলো পূরণ করুন।',
+            style: TextStyle(fontSize: 14.5, color: Colors.grey),
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
@@ -245,7 +245,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
               _methodId = null;
             }),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -275,11 +275,11 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           if (effectiveBranchId == null)
             const Text(
               'সমিতি বাছলে এখানে টাকা পাঠানোর মাধ্যমগুলো দেখাবে।',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(fontSize: 14.5, color: Colors.grey),
             )
           else if (loadingMethods)
             const Center(child: CircularProgressIndicator())
@@ -289,75 +289,14 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
               title: 'এই সমিতির জন্য এখনো কোনো পেমেন্ট মাধ্যম যোগ করা হয়নি',
             )
           else
-            RadioGroup<String>(
-              groupValue: _methodId ?? '',
-              onChanged: (v) => setState(() => _methodId = v),
-              child: Column(
-                children: methods.map(
-                  (m) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: AppCard(
-                      onTap: () => setState(() => _methodId = m.id),
-                      child: Row(
-                        children: [
-                          Radio<String>(value: m.id),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  m.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                Text('${m.typeLabel} • ${m.accountHolderName}'),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'নম্বর: ${m.accountNumber}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      tooltip: 'নম্বর কপি করুন',
-                                      onPressed: () {
-                                        Clipboard.setData(
-                                          ClipboardData(text: m.accountNumber),
-                                        );
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('নম্বর কপি হয়েছে'),
-                                          ),
-                                        );
-                                      },
-                                      icon: const Icon(Icons.copy_outlined),
-                                    ),
-                                  ],
-                                ),
-                                if (m.instructions != null &&
-                                    m.instructions!.isNotEmpty)
-                                  Text(
-                                    m.instructions!,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ).toList(),
+            ...methods.map(
+              (m) => PaymentMethodCard(
+                method: m,
+                selected: _methodId == m.id,
+                onTap: () => setState(() => _methodId = m.id),
               ),
             ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           TextField(
             controller: _amount,
             keyboardType: TextInputType.number,
@@ -369,7 +308,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
           ),
           if (chosen != null &&
               chosen.type == PaymentMethodType.mobileBanking) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             TextField(
               controller: _senderMobile,
               keyboardType: TextInputType.phone,
@@ -380,7 +319,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
             ),
           ],
           if (chosen != null && chosen.type != PaymentMethodType.cash) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             TextField(
               controller: _trxId,
               decoration: const InputDecoration(

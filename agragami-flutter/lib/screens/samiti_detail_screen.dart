@@ -72,22 +72,52 @@ class SamitiDetailScreen extends ConsumerWidget {
                   children: [
                     Text(
                       branch.name,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 4),
-                    Text(samitiPurposeText(branch.purpose)),
+                    Text(
+                      samitiPurposeText(branch.purpose),
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        color: Colors.grey,
+                      ),
+                    ),
                     if (branch.description.isNotEmpty) ...[
                       const SizedBox(height: 8),
-                      Text(branch.description),
+                      Text(
+                        branch.description,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ],
-                    const SizedBox(height: 8),
-                    Text(
-                      '${AppStrings.monthlyDonation}: ৳${branch.monthlyDonation}'
-                      '  •  ${AppStrings.memberCountLabel}: '
-                      '${branch.memberCount} জন',
+                    const SizedBox(height: 12),
+                    const Divider(height: 1),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Text(
+                          '${AppStrings.monthlyDonation}: ৳${branch.monthlyDonation}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.green,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${AppStrings.memberCountLabel}: '
+                          '${branch.memberCount} জন',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -95,17 +125,24 @@ class SamitiDetailScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               if (!canSee) ...[
                 if (membership?.isPending ?? false)
-                  const AppCard(
+                  AppCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                      children: const [
                         Text(
                           AppStrings.applicationPending,
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         SizedBox(height: 4),
                         Text(
                           'অনুমোদন হলে এই সমিতির ভেতরের হিসাব দেখা যাবে।',
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            color: Colors.grey,
+                          ),
                         ),
                       ],
                     ),
@@ -114,7 +151,10 @@ class SamitiDetailScreen extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(AppStrings.applicationRejected),
+                      const Text(
+                        AppStrings.applicationRejected,
+                        style: TextStyle(fontSize: 14.5, color: Colors.grey),
+                      ),
                       const SizedBox(height: 12),
                       PrimaryButton(
                         label: AppStrings.joinSamiti,
@@ -128,7 +168,10 @@ class SamitiDetailScreen extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(AppStrings.membersOnlyNote),
+                      const Text(
+                        AppStrings.membersOnlyNote,
+                        style: TextStyle(fontSize: 14.5, color: Colors.grey),
+                      ),
                       const SizedBox(height: 12),
                       PrimaryButton(
                         label: AppStrings.joinSamiti,
@@ -249,6 +292,7 @@ class _MemberDetail extends ConsumerWidget {
         Text(
           'সদস্যরা (${members.length} জন)',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontSize: 17,
                 fontWeight: FontWeight.w700,
               ),
         ),
@@ -262,30 +306,46 @@ class _MemberDetail extends ConsumerWidget {
           )
         else
           ...members.map(
-            (m) => AppCard(
-              child: Row(
-                children: [
-                  const Icon(Icons.person_outlined),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          m.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        Text(
-                          'ফোন: ${m.phone}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
+            (m) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: AppCard(
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 23,
+                      backgroundImage:
+                          m.photoUrl != null && m.photoUrl!.isNotEmpty
+                              ? NetworkImage(m.photoUrl!)
+                              : null,
+                      child: m.photoUrl == null || m.photoUrl!.isEmpty
+                          ? const Icon(Icons.person_outlined, size: 26)
+                          : null,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            m.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'ফোন: ${m.phone}',
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

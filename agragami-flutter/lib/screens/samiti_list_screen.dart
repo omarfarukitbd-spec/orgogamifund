@@ -103,25 +103,58 @@ class SamitiListScreen extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             b.name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                        const Icon(Icons.chevron_right_outlined),
+                        const Icon(
+                          Icons.chevron_right_outlined,
+                          color: Colors.grey,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(samitiPurposeText(b.purpose)),
+                    Text(
+                      samitiPurposeText(b.purpose),
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        color: Colors.grey,
+                      ),
+                    ),
                     if (b.description.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Text(b.description),
+                      Text(
+                        b.description,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ],
-                    const SizedBox(height: 8),
-                    Text(
-                      '${AppStrings.monthlyDonation}: ৳${b.monthlyDonation}'
-                      '  •  ${AppStrings.memberCountLabel}: ${b.memberCount} জন',
+                    const SizedBox(height: 12),
+                    const Divider(height: 1),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Text(
+                          '${AppStrings.monthlyDonation}: ৳${b.monthlyDonation}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.green,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${AppStrings.memberCountLabel}: ${b.memberCount} জন',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     if (isAdmin)
@@ -145,18 +178,20 @@ class SamitiListScreen extends ConsumerWidget {
                         children: [
                           const Text(AppStrings.applicationRejected),
                           const SizedBox(height: 8),
-                          SecondaryButton(
+                          PrimaryButton(
                             label: AppStrings.joinSamiti,
                             onPressed: () =>
                                 context.go('/apply?branchId=${b.id}'),
+                            icon: Icons.person_add_outlined,
                           ),
                         ],
                       )
                     else
-                      SecondaryButton(
+                      PrimaryButton(
                         label: AppStrings.joinSamiti,
                         onPressed: () =>
                             context.go('/apply?branchId=${b.id}'),
+                        icon: Icons.person_add_outlined,
                       ),
                   ],
                 ),
@@ -186,7 +221,11 @@ class _StateChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontWeight: FontWeight.w600, color: color),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }
@@ -262,7 +301,7 @@ class _CreateSamitiDialogState extends State<_CreateSamitiDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<SamitiPurpose>(
-                initialValue: _purpose,
+                value: _purpose,
                 decoration: const InputDecoration(
                   labelText: AppStrings.samitiPurposeLabel,
                 ),

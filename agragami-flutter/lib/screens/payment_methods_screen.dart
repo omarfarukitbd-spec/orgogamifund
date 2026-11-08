@@ -144,13 +144,16 @@ class PaymentMethodsScreen extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             m.name,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
+                            horizontal: 10,
+                            vertical: 4,
                           ),
                           decoration: BoxDecoration(
                             color: m.isActive
@@ -160,13 +163,25 @@ class PaymentMethodsScreen extends ConsumerWidget {
                           ),
                           child: Text(
                             m.isActive ? 'চালু' : 'বন্ধ',
-                            style: const TextStyle(fontSize: 12),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: m.isActive
+                                  ? Colors.green.shade800
+                                  : Colors.grey.shade700,
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text('${m.typeLabel} • $scope'),
+                    Text(
+                      '${m.typeLabel} • $scope',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
@@ -174,10 +189,15 @@ class PaymentMethodsScreen extends ConsumerWidget {
                           child: Text(
                             'নম্বর: ${m.accountNumber}'
                             '${m.accountHolderName.isEmpty ? '' : ' (${m.accountHolderName})'}',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                         IconButton(
                           tooltip: 'নম্বর কপি করুন',
+                          visualDensity: VisualDensity.compact,
                           onPressed: () {
                             Clipboard.setData(
                               ClipboardData(text: m.accountNumber),
@@ -188,7 +208,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
                               ),
                             );
                           },
-                          icon: const Icon(Icons.copy_outlined),
+                          icon: const Icon(Icons.copy_outlined, size: 20),
                         ),
                       ],
                     ),
@@ -196,53 +216,59 @@ class PaymentMethodsScreen extends ConsumerWidget {
                       Text(
                         m.instructions!,
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.5,
                           color: Colors.grey,
                         ),
                       ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () =>
-                                _openForm(context, ref, branchList, existing: m),
-                            icon: const Icon(Icons.edit_outlined, size: 18),
-                            label: const Text('বদলান'),
+                          child: SizedBox(
+                            height: 46,
+                            child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  _openForm(context, ref, branchList, existing: m),
+                              icon: const Icon(Icons.edit_outlined, size: 18),
+                              label: const Text('বদলান'),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              final ok = await _askConfirm(
-                                context,
+                          child: SizedBox(
+                            height: 46,
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final ok = await _askConfirm(
+                                  context,
+                                  m.isActive
+                                      ? '${m.name} বন্ধ করলে সদস্যরা নতুন জমায় আর এই মাধ্যম দেখতে পাবে না। আগের জমার হিসাব ঠিক থাকবে। বন্ধ করবেন?'
+                                      : '${m.name} আবার চালু করবেন?',
+                                );
+                                if (!ok || !context.mounted) return;
+                                final by = AuthService().uidOrEmpty;
+                                await _run(
+                                  context,
+                                  () => store.setPaymentMethodActive(
+                                    m.id,
+                                    active: !m.isActive,
+                                    by: by,
+                                    methodName: m.name,
+                                  ),
+                                  m.isActive
+                                      ? 'মাধ্যম বন্ধ করা হয়েছে'
+                                      : 'মাধ্যম চালু করা হয়েছে',
+                                );
+                              },
+                              icon: Icon(
                                 m.isActive
-                                    ? '${m.name} বন্ধ করলে সদস্যরা নতুন জমায় আর এই মাধ্যম দেখতে পাবে না। আগের জমার হিসাব ঠিক থাকবে। বন্ধ করবেন?'
-                                    : '${m.name} আবার চালু করবেন?',
-                              );
-                              if (!ok || !context.mounted) return;
-                              final by = AuthService().uidOrEmpty;
-                              await _run(
-                                context,
-                                () => store.setPaymentMethodActive(
-                                  m.id,
-                                  active: !m.isActive,
-                                  by: by,
-                                  methodName: m.name,
-                                ),
-                                m.isActive
-                                    ? 'মাধ্যম বন্ধ করা হয়েছে'
-                                    : 'মাধ্যম চালু করা হয়েছে',
-                              );
-                            },
-                            icon: Icon(
-                              m.isActive
-                                  ? Icons.pause_circle_outlined
-                                  : Icons.play_circle_outlined,
-                              size: 18,
+                                    ? Icons.pause_circle_outlined
+                                    : Icons.play_circle_outlined,
+                                size: 18,
+                              ),
+                              label: Text(m.isActive ? 'বন্ধ করুন' : 'চালু করুন'),
                             ),
-                            label: Text(m.isActive ? 'বন্ধ করুন' : 'চালু করুন'),
                           ),
                         ),
                       ],

@@ -6,6 +6,7 @@ import '../models/loan.dart';
 import '../models/member.dart';
 import '../services/firestore_service.dart';
 import '../widgets/app_button.dart';
+import '../widgets/app_card.dart';
 
 /// কর্জে হাসানা ঋণ দেওয়া — শুধু অ্যাডমিন আর ব্রাঞ্চ অ্যাডমিন।
 /// টাকা, কারণ, তারিখ, আর মাসে কত করে কত মাসে ফেরত দেবে —
@@ -121,7 +122,10 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('কর্জে হাসানা — সুদমুক্ত ঋণ। ফেরতের পরিকল্পনাটা নিচে লিখুন।'),
+          const Text(
+            'কর্জে হাসানা — সুদমুক্ত ঋণ। ফেরতের পরিকল্পনাটা নিচে লিখুন।',
+            style: TextStyle(fontSize: 14.5, color: Colors.grey),
+          ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _branchId,
@@ -137,7 +141,7 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
               _memberId = null;
             }),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _memberId,
             decoration: const InputDecoration(
@@ -149,7 +153,7 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
                 .toList(),
             onChanged: (v) => setState(() => _memberId = v),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           TextField(
             controller: _amount,
             keyboardType: TextInputType.number,
@@ -159,7 +163,7 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
               prefixIcon: Icon(Icons.payments_outlined),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           TextField(
             controller: _reason,
             maxLines: 2,
@@ -168,16 +172,23 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
               prefixIcon: Icon(Icons.notes_outlined),
             ),
           ),
-          const SizedBox(height: 16),
-          ListTile(
-            leading: const Icon(Icons.calendar_today_outlined),
-            title: Text(
-              'তারিখ: ${_date.day}/${_date.month}/${_date.year}',
+          const SizedBox(height: 12),
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: ListTile(
+              leading: const ListIcon(icon: Icons.calendar_today_outlined),
+              title: Text(
+                'তারিখ: ${_date.day}/${_date.month}/${_date.year}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              trailing: const Icon(Icons.edit_outlined, color: Colors.grey),
+              onTap: _pickDate,
             ),
-            trailing: const Icon(Icons.edit_outlined),
-            onTap: _pickDate,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(

@@ -35,28 +35,47 @@ class HomeScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const AgragamiLogo(size: 56, radius: 14),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppStrings.appName,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    Text(
-                      AppStrings.appTagline,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                const AgragamiLogo(size: 56, radius: 14),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppStrings.appName,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        AppStrings.appTagline,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           if (isAdmin) ...[
@@ -66,32 +85,38 @@ class HomeScreen extends ConsumerWidget {
               onTap: () => context.go('/approval'),
               child: const Row(
                 children: [
-                  Icon(Icons.fact_check_outlined, color: Colors.green),
+                  ListIcon(icon: Icons.fact_check_outlined),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'অনুমোদন কেন্দ্র — বাকি কাজগুলো এক জায়গায় দেখুন',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  Icon(Icons.chevron_right_outlined),
+                  Icon(Icons.chevron_right_outlined, color: Colors.grey),
                 ],
               ),
             ),
           ] else if (!isMember) ...[
-            const AppCard(
+            AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+                children: const [
                   Text(
                     AppStrings.notMemberAnyTitle,
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   SizedBox(height: 8),
-                  Text(AppStrings.notMemberAnyBody),
+                  Text(
+                    AppStrings.notMemberAnyBody,
+                    style: TextStyle(fontSize: 14.5, color: Colors.grey),
+                  ),
                 ],
               ),
             ),
@@ -109,54 +134,55 @@ class HomeScreen extends ConsumerWidget {
           Text(
             'দরকারি পাতা',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 17,
                   fontWeight: FontWeight.w700,
                 ),
           ),
           const SizedBox(height: 8),
-          const _Link(
+          _Link(
             icon: Icons.groups_outlined,
             label: 'সমিতিগুলো দেখুন',
             path: '/samiti',
           ),
           if (isAdmin || isMember) ...[
-            const _Link(
+            _Link(
               icon: Icons.receipt_long_outlined,
               label: 'খরচের হিসাব',
               path: '/expenses',
             ),
-            const _Link(
+            _Link(
               icon: Icons.handshake_outlined,
               label: 'কর্জে হাসানা ঋণ',
               path: '/loans',
             ),
-            const _Link(
+            _Link(
               icon: Icons.bar_chart_outlined,
               label: 'মাসিক রিপোর্ট আর বকেয়া সদস্য',
               path: '/reports',
             ),
-            const _Link(
+            _Link(
               icon: Icons.book_outlined,
               label: 'আমার পাসবই',
               path: '/passbook',
             ),
-            const _Link(
+            _Link(
               icon: Icons.badge_outlined,
               label: 'আমার আইডি কার্ড',
               path: '/id-card',
             ),
           ],
-          const _Link(
+          _Link(
             icon: Icons.campaign_outlined,
             label: 'নোটিশ বোর্ড',
             path: '/notices',
           ),
-          const _Link(
+          _Link(
             icon: Icons.groups_outlined,
             label: 'কমিটি',
             path: '/committee',
           ),
           if (isAdmin) ...[
-            const _Link(
+            _Link(
               icon: Icons.account_balance_outlined,
               label: 'পেমেন্ট মাধ্যম — নম্বর যোগ করুন',
               path: '/payment-methods',
@@ -295,7 +321,7 @@ class _OneSamitiTotals extends ConsumerWidget {
         children: [
           Text(
             branch.name,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Row(
@@ -369,7 +395,7 @@ class _PublicSamitiList extends ConsumerWidget {
               onTap: () => context.go('/samiti/${b.id}'),
               child: Row(
                 children: [
-                  const Icon(Icons.groups_outlined, color: Colors.green),
+                  const ListIcon(icon: Icons.groups_outlined),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -377,20 +403,24 @@ class _PublicSamitiList extends ConsumerWidget {
                       children: [
                         Text(
                           b.name,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           '${samitiPurposeText(b.purpose)}'
                           ' • ${AppStrings.memberCountLabel}: ${b.memberCount} জন',
                           style: const TextStyle(
-                            fontSize: 12,
+                            fontSize: 13.5,
                             color: Colors.grey,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_outlined),
+                  const Icon(Icons.chevron_right_outlined, color: Colors.grey),
                 ],
               ),
             ),
@@ -409,20 +439,26 @@ class _Link extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      onTap: () => context.go(path),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.green),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        onTap: () => context.go(path),
+        child: Row(
+          children: [
+            ListIcon(icon: icon),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-          ),
-          const Icon(Icons.chevron_right_outlined),
-        ],
+            const Icon(Icons.chevron_right_outlined, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }

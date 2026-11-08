@@ -19,21 +19,34 @@ class PendingApprovalScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(
-                Icons.hourglass_top_outlined,
-                size: 64,
-                color: Colors.green,
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.hourglass_top_outlined,
+                  size: 48,
+                  color: Colors.green,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
                 AppStrings.pendingTitle,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontSize: 22,
                       fontWeight: FontWeight.w700,
                     ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              const Text(AppStrings.pendingBody, textAlign: TextAlign.center),
+              const Text(
+                AppStrings.pendingBody,
+                style: TextStyle(fontSize: 15.5, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 32),
               // গুগল দিয়ে ঢুকে থাকলে আবেদন এখনো বাকি থাকতে
               // পারে — এখান থেকে ফরমটা শেষ করা যাবে।

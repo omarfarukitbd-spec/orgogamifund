@@ -289,6 +289,7 @@ class _PassbookBody extends ConsumerWidget {
           Text(
             '${DateTime.now().year} সালের জমা',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 17,
                   fontWeight: FontWeight.w700,
                 ),
           ),
@@ -298,6 +299,7 @@ class _PassbookBody extends ConsumerWidget {
           Text(
             'লেনদেনের খাতা',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 17,
                   fontWeight: FontWeight.w700,
                 ),
           ),
@@ -342,9 +344,18 @@ class _ProfileHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text('সমিতি: ${branchName ?? '—'}'),
-                Text('সদস্য নম্বর: ${member.id}'),
-                Text('ফোন: ${member.phone}'),
+                Text(
+                  'সমিতি: ${branchName ?? '—'}',
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                Text(
+                  'সদস্য নম্বর: ${member.id}',
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                Text(
+                  'ফোন: ${member.phone}',
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                ),
               ],
             ),
           ),
@@ -406,7 +417,7 @@ class _MonthGrid extends StatelessWidget {
           return Container(
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: color.withValues(alpha: 0.4)),
             ),
             alignment: Alignment.center,
@@ -415,9 +426,9 @@ class _MonthGrid extends StatelessWidget {
               children: [
                 Text(
                   bengaliMonths[i],
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color),
                 ),
-                Text(state, style: TextStyle(fontSize: 11, color: color)),
+                Text(state, style: TextStyle(fontSize: 12, color: color)),
               ],
             ),
           );
@@ -496,7 +507,11 @@ class _LedgerRow extends StatelessWidget {
     return AppCard(
       child: Row(
         children: [
-          const Icon(Icons.receipt_outlined),
+          const ListIcon(
+            icon: Icons.receipt_outlined,
+            size: 36,
+            iconSize: 20,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -504,26 +519,29 @@ class _LedgerRow extends StatelessWidget {
               children: [
                 Text(
                   '${bengaliMonths[payment.forMonth - 1]} ${payment.forYear} — $methodText',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${payment.date.day}/${payment.date.month}/${payment.date.year}'
                   ' • TrxID: ${payment.trxId ?? '—'}'
                   ' • $statusText',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: const TextStyle(fontSize: 12.5, color: Colors.grey),
                 ),
                 if (payment.receiptNumber != null)
                   Text(
                     'রসিদ: ${payment.receiptNumber}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: const TextStyle(fontSize: 12.5, color: Colors.grey),
                   ),
               ],
             ),
           ),
           Text(
             formatTaka(payment.amount),
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           ),
         ],
       ),

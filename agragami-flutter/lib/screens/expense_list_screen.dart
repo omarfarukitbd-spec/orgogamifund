@@ -64,10 +64,10 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
     );
     final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
     final total = expenses.fold(0, (sum, e) => sum + e.amount);
-    String branchName(String id) {
+    final branchName = (id) {
       final found = allBranches.where((b) => b.id == id).toList();
       return found.isEmpty ? '—' : found.first.name;
-    }
+    };
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -114,36 +114,45 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
             )
           else
             ...expenses.map(
-              (e) => AppCard(
-                child: Row(
-                  children: [
-                    const Icon(Icons.shopping_bag_outlined),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            e.description.isEmpty ? e.category : e.description,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${e.category} • ${branchName(e.branchId)} • '
-                            '${e.date.day}/${e.date.month}/${e.date.year}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
+              (e) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppCard(
+                  child: Row(
+                    children: [
+                      const ListIcon(icon: Icons.shopping_bag_outlined),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              e.description.isEmpty ? e.category : e.description,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              '${e.category} • ${branchName(e.branchId)} • '
+                              '${e.date.day}/${e.date.month}/${e.date.year}',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Text(
-                      formatTaka(e.amount),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ],
+                      Text(
+                        formatTaka(e.amount),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

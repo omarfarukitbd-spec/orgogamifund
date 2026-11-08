@@ -133,20 +133,24 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             onChanged: (v) => setState(() => _branchId = v),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('মাসের হিসাব'),
-                selected: _tab == 'report',
-                onSelected: (_) => setState(() => _tab = 'report'),
-              ),
-              ChoiceChip(
-                label: const Text('বকেয়া সদস্য'),
-                selected: _tab == 'defaulters',
-                onSelected: (_) => setState(() => _tab = 'defaulters'),
-              ),
-            ],
+          Container(
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Colors.grey, width: 1)),
+            ),
+            child: Row(
+              children: [
+                _ReportTab(
+                  label: 'মাসের হিসাব',
+                  selected: _tab == 'report',
+                  onTap: () => setState(() => _tab = 'report'),
+                ),
+                _ReportTab(
+                  label: 'বকেয়া সদস্য',
+                  selected: _tab == 'defaulters',
+                  onTap: () => setState(() => _tab = 'defaulters'),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           if (_tab == 'report')
@@ -233,6 +237,46 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       'loansGiven': loansGiven,
       'repayments': repayments,
     };
+  }
+}
+
+class _ReportTab extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ReportTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? Colors.green : Colors.grey,
+                ),
+              ),
+            ),
+            Container(
+              height: 3,
+              color: selected ? Colors.green : Colors.transparent,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -461,6 +505,7 @@ class _DefaulterList extends ConsumerWidget {
           children: [
             const Text(
               'এই মাস পর্যন্ত যাদের জমা বাকি আছে — ফোন বা হোয়াটসঅ্যাপে মনে করিয়ে দিন।',
+              style: TextStyle(fontSize: 14.5, color: Colors.grey),
             ),
             const SizedBox(height: 12),
             if (defaulters.isEmpty)
@@ -471,43 +516,54 @@ class _DefaulterList extends ConsumerWidget {
               )
             else
               ...defaulters.map(
-                (d) => AppCard(
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person_outlined),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              d.member.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                (d) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: AppCard(
+                    child: Row(
+                      children: [
+                        const ListIcon(icon: Icons.person_outlined),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                d.member.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            Text(
-                              '${d.branch.name} • ${d.dueMonths} মাস বাকি • '
-                              'বকেয়া ${formatTaka(d.dueAmount)}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
+                              const SizedBox(height: 2),
+                              Text(
+                                '${d.branch.name} • ${d.dueMonths} মাস বাকি • '
+                                'বকেয়া ${formatTaka(d.dueAmount)}',
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: Colors.grey,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.call_outlined),
-                        tooltip: 'ফোন করুন',
-                        onPressed: () => onCall(d.member.phone),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.chat_outlined),
-                        tooltip: 'হোয়াটসঅ্যাপ',
-                        onPressed: () => onWhatsApp(d.member.phone),
-                      ),
-                    ],
+                        IconButton(
+                          icon: const Icon(
+                            Icons.call_outlined,
+                            color: Colors.green,
+                          ),
+                          tooltip: 'ফোন করুন',
+                          onPressed: () => onCall(d.member.phone),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.chat_outlined,
+                            color: Colors.green,
+                          ),
+                          tooltip: 'হোয়াটসঅ্যাপ',
+                          onPressed: () => onWhatsApp(d.member.phone),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

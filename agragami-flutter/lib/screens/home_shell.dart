@@ -4,6 +4,7 @@ import '../l10n/app_strings.dart';
 import '../routes/app_router.dart';
 import '../theme/app_theme.dart';
 import '../widgets/agragami_app_bar.dart';
+import '../widgets/app_icon.dart';
 
 /// অ্যাপের খোলস — মোবাইলে নিচের মেনু, কম্পিউটারে বামের সাইডবার।
 /// পুরোনো অ্যাপের লেআউট কপি করা হয়নি — এটা নতুন করে সাজানো।
@@ -136,17 +137,27 @@ class _Sidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(20),
-            child: Text(
-              'অগ্রগামী ফান্ড',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+            child: Row(
+              children: [
+                const AgragamiLogo(size: 40, radius: 10),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'অগ্রগামী ফান্ড',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
+          const Divider(color: Colors.white24, height: 1),
+          const SizedBox(height: 8),
           for (var i = 0; i < items.length; i++)
             ListTile(
               leading: Icon(
@@ -162,6 +173,10 @@ class _Sidebar extends StatelessWidget {
                 ),
               ),
               selected: i == selectedIndex,
+              selectedTileColor: Colors.white.withValues(alpha: 0.08),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               onTap: () => onSelect(items[i].path),
             ),
         ],

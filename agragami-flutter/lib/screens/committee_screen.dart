@@ -54,7 +54,10 @@ class CommitteeScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('সংগঠনের দায়িত্বে যারা আছেন — প্রয়োজনে সরাসরি ফোন করুন।'),
+          const Text(
+            'সংগঠনের দায়িত্বে যারা আছেন — প্রয়োজনে সরাসরি ফোন করুন।',
+            style: TextStyle(fontSize: 14.5, color: Colors.grey),
+          ),
           const SizedBox(height: 16),
           if (committee.isEmpty)
             const EmptyState(
@@ -66,38 +69,60 @@ class CommitteeScreen extends ConsumerWidget {
             ...committee.map(
               (c) {
                 final phone = memberPhone(c.memberId);
-                return AppCard(
-                  onTap: phone.isEmpty ? null : () => _call(phone),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.badge_outlined),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              memberName(c.memberId),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Text(c.designation),
-                            if (phone.isNotEmpty)
+                final photoUrl = members
+                    .where((m) => m.id == c.memberId)
+                    .map((m) => m.photoUrl)
+                    .firstOrNull;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: AppCard(
+                    onTap: phone.isEmpty ? null : () => _call(phone),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 23,
+                          backgroundImage:
+                              photoUrl != null && photoUrl.isNotEmpty
+                                  ? NetworkImage(photoUrl)
+                                  : null,
+                          child: photoUrl == null || photoUrl.isEmpty
+                              ? const Icon(Icons.person_outlined, size: 26)
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                phone,
+                                memberName(c.memberId),
                                 style: const TextStyle(
-                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Text(
+                                c.designation,
+                                style: const TextStyle(
+                                  fontSize: 14.5,
                                   color: Colors.grey,
                                 ),
                               ),
-                          ],
+                              if (phone.isNotEmpty)
+                                Text(
+                                  phone,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
-                      if (phone.isNotEmpty)
-                        const Icon(Icons.call_outlined, color: Colors.green),
-                    ],
+                        if (phone.isNotEmpty)
+                          const Icon(Icons.call_outlined, color: Colors.green),
+                      ],
+                    ),
                   ),
                 );
               },

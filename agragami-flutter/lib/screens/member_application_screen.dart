@@ -11,6 +11,7 @@ import '../routes/app_router.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../widgets/app_button.dart';
+import '../widgets/app_card.dart';
 
 /// সদস্য হওয়ার আবেদন — ৩ ধাপে।
 /// ১. নিজের তথ্য  ২. ছবি আর এনআইডির ছবি  ৩. দেখে নিয়ে জমা।
@@ -459,26 +460,35 @@ class _MemberApplicationScreenState extends State<MemberApplicationScreen> {
               ),
             ],
             const SizedBox(height: 12),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.calendar_month_outlined),
-              title: const Text('ভর্তির তারিখ'),
-              subtitle: Text(
-                '${_joinDate.day}/${_joinDate.month}/${_joinDate.year}',
-              ),
-              trailing: TextButton(
-                onPressed: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _joinDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) {
-                    setState(() => _joinDate = picked);
-                  }
-                },
-                child: const Text('বদলান'),
+            AppCard(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: ListTile(
+                leading: const ListIcon(
+                  icon: Icons.calendar_month_outlined,
+                  size: 44,
+                ),
+                title: const Text(
+                  'ভর্তির তারিখ',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  '${_joinDate.day}/${_joinDate.month}/${_joinDate.year}',
+                  style: const TextStyle(fontSize: 13.5, color: Colors.grey),
+                ),
+                trailing: TextButton(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _joinDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) {
+                      setState(() => _joinDate = picked);
+                    }
+                  },
+                  child: const Text('বদলান'),
+                ),
               ),
             ),
           ],
@@ -575,16 +585,33 @@ class _LockedBranchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.groups_outlined),
-          title: Text(branchName ?? 'সমিতি'),
-          subtitle: const Text(AppStrings.lockedBranchNote),
-        ),
-      ],
+    return AppCard(
+      child: Row(
+        children: [
+          const ListIcon(icon: Icons.groups_outlined),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  branchName ?? 'সমিতি',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  AppStrings.lockedBranchNote,
+                  style: TextStyle(fontSize: 13.5, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.lock_outlined, size: 20, color: Colors.grey),
+        ],
+      ),
     );
   }
 }
@@ -628,15 +655,25 @@ class _StepDot extends StatelessWidget {
     return Column(
       children: [
         CircleAvatar(
-          radius: 16,
+          radius: 15,
           backgroundColor: color,
           child: Text(
             '$number',
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: color)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
       ],
     );
   }
@@ -655,18 +692,48 @@ class _PhotoPickTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: bytes != null
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.memory(bytes!, width: 56, height: 56, fit: BoxFit.cover),
-            )
-          : const Icon(Icons.image_outlined, size: 40),
-      title: Text(label),
-      subtitle: Text(bytes != null ? 'ছবি যোগ হয়েছে' : 'এখনো ছবি যোগ হয়নি'),
-      trailing: OutlinedButton(
-        onPressed: onPick,
-        child: Text(bytes != null ? 'বদলান' : 'ছবি নিন'),
+    return AppCard(
+      child: Row(
+        children: [
+          bytes != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.memory(
+                    bytes!,
+                    width: 64,
+                    height: 64,
+                    fit: BoxFit.cover,
+                  ),
+                )
+              : const ListIcon(icon: Icons.image_outlined, size: 56),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  bytes != null ? 'ছবি যোগ হয়েছে' : 'এখনো ছবি যোগ হয়নি',
+                  style: const TextStyle(fontSize: 13.5, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 40,
+            child: OutlinedButton(
+              onPressed: onPick,
+              child: Text(bytes != null ? 'বদলান' : 'ছবি নিন'),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -686,11 +753,20 @@ class _ReviewRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 130,
-            child: Text(label, style: const TextStyle(color: Colors.grey)),
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 14.5, color: Colors.grey),
+            ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -711,11 +787,11 @@ class _ReviewPhoto extends StatelessWidget {
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.memory(bytes, width: 72, height: 72, fit: BoxFit.cover),
+            borderRadius: BorderRadius.circular(10),
+            child: Image.memory(bytes, width: 64, height: 64, fit: BoxFit.cover),
           ),
           const SizedBox(width: 12),
-          Text(label),
+          Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
         ],
       ),
     );
