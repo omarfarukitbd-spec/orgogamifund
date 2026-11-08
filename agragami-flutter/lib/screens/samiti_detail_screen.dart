@@ -3,27 +3,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../l10n/app_strings.dart';
 import '../models/branch.dart';
-import '../models/member.dart';
 import '../models/membership.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
 import '../widgets/skeleton_loader.dart';
-import 'passbook_screen.dart';
+import 'samiti/samiti_member_detail.dart';
 
-/// একটি সমিতির বিস্তারিত পাতা।
-/// সদস্য নয় এমন লগইন করা ব্যবহারকারী এখানে শুধু খোলা তথ্য
-/// দেখে — নাম, উদ্দেশ্য, মাসিক দান, সদস্য সংখ্যা — আর
-/// আবেদনের বোতাম। সদস্যের নাম, টাকার হিসাব, জমার খাতা,
-/// বকেয়া — এগুলো দেখা যায় শুধু ওই সমিতির সদস্য বা
-/// অ্যাডমিন হলে, আর সেগুলোর জন্য প্রশ্নও তখনই পাঠানো হয়।
+/// একটি সমিতির বিস্তারিত পাতা — এইচটিএমএল প্রিভিউয়ের মতো হেডার কার্ড,
+/// সদস্য হলে ৪টি স্ট্যাট কার্ড ও সদস্য তালিকা; সদস্য না হলে লক কার্ড ও আবেদন বাটন।
 class SamitiDetailScreen extends ConsumerWidget {
   final String branchId;
 
   const SamitiDetailScreen({super.key, required this.branchId});
+
+  IconData _iconForPurpose(SamitiPurpose purpose) {
+    switch (purpose) {
+      case SamitiPurpose.madrasa:
+        return Icons.menu_book_outlined;
+      case SamitiPurpose.mosqueOrphanage:
+        return Icons.account_balance_outlined;
+      case SamitiPurpose.other:
+        return Icons.groups_outlined;
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -60,43 +67,74 @@ class SamitiDetailScreen extends ConsumerWidget {
             memberships.where((m) => m.branchId == branch.id).toList();
         final membership = found.isEmpty ? null : found.first;
         final canSee = isAdmin || (membership?.isApproved ?? false);
+        final theme = Theme.of(context);
+        final iconData = _iconForPurpose(branch.purpose);
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // সমিতির হেডার কার্ড
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      branch.name,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      samitiPurposeText(branch.purpose),
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        color: Colors.grey,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.greenSoft,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child:
+                              Icon(iconData, color: AppColors.green, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                branch.name,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                samitiPurposeText(branch.purpose),
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.65),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     if (branch.description.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(
                         branch.description,
-                        style: const TextStyle(
-                          fontSize: 14.5,
-                          color: Colors.grey,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.65),
                         ),
                       ),
                     ],
                     const SizedBox(height: 12),
-                    const Divider(height: 1),
+                    Divider(
+                      height: 1,
+                      color: AppColors.line.withValues(alpha: 0.8),
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -105,16 +143,16 @@ class SamitiDetailScreen extends ConsumerWidget {
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: Colors.green,
+                            color: AppColors.green,
                           ),
                         ),
                         const Spacer(),
                         Text(
-                          '${AppStrings.memberCountLabel}: '
-                          '${branch.memberCount} জন',
-                          style: const TextStyle(
+                          '${AppStrings.memberCountLabel}: ${branch.memberCount} জন',
+                          style: TextStyle(
                             fontSize: 13.5,
-                            color: Colors.grey,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -123,6 +161,8 @@ class SamitiDetailScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // যদি সদস্য না হয় — লক বক্স ও আবেদন বাটন
               if (!canSee) ...[
                 if (membership?.isPending ?? false)
                   const AppCard(
@@ -140,37 +180,45 @@ class SamitiDetailScreen extends ConsumerWidget {
                         Text(
                           'অনুমোদন হলে এই সমিতির ভেতরের হিসাব দেখা যাবে।',
                           style: TextStyle(
-                            fontSize: 14.5,
-                            color: Colors.grey,
+                            fontSize: 14,
+                            color: AppColors.muted,
                           ),
                         ),
                       ],
                     ),
                   )
-                else if (membership?.isRejected ?? false)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Text(
-                        AppStrings.applicationRejected,
-                        style: TextStyle(fontSize: 14.5, color: Colors.grey),
-                      ),
-                      const SizedBox(height: 12),
-                      PrimaryButton(
-                        label: AppStrings.joinSamiti,
-                        onPressed: () =>
-                            context.go('/apply?branchId=${branch.id}'),
-                        icon: Icons.person_add_outlined,
-                      ),
-                    ],
-                  )
                 else
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
-                        AppStrings.membersOnlyNote,
-                        style: TextStyle(fontSize: 14.5, color: Colors.grey),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppColors.greenSoft.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.green.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.lock_outline,
+                              color: AppColors.green,
+                              size: 40,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'সদস্য হলে ভেতরের হিসাব — সদস্য তালিকা, মোট টাকা, জমার খাতা, বকেয়া — দেখা যাবে।',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.75),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 12),
                       PrimaryButton(
@@ -182,188 +230,11 @@ class SamitiDetailScreen extends ConsumerWidget {
                     ],
                   ),
               ] else
-                _MemberDetail(branch: branch, isAdmin: isAdmin),
+                SamitiMemberDetail(branch: branch, isAdmin: isAdmin),
             ],
           ),
         );
       },
-    );
-  }
-}
-
-/// সদস্য বা অ্যাডমিনের জন্য ভেতরের হিসাব — সদস্য তালিকা,
-/// মোট জমা, মোট খরচ, তহবিলের টাকা। এই অংশটা শুধু
-/// সদস্য হলেই বানানো হয়, তাই প্রশ্নও তখনই যায়।
-class _MemberDetail extends ConsumerWidget {
-  final Branch branch;
-  final bool isAdmin;
-
-  const _MemberDetail({required this.branch, required this.isAdmin});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final store = ref.watch(firestoreServiceProvider);
-    final totalsAsync = ref.watch(
-      FutureProvider<HomeTotals>(
-        (ref) => store.fetchHomeTotals(branchId: branch.id),
-      ),
-    );
-    final membersAsync = ref.watch(
-      StreamProvider<List<Member>>(
-        (ref) => store.watchMembers(branchId: branch.id),
-      ),
-    );
-    final totals = totalsAsync.valueOrNull;
-    final members = membersAsync.valueOrNull ?? const <Member>[];
-
-    String value(int? amount, {bool money = true}) {
-      if (amount == null) return '—';
-      return money ? formatTaka(amount) : '$amount';
-    }
-
-    final fund = totals == null ||
-            totals.approvedTotal == null ||
-            totals.expenseTotal == null
-        ? null
-        : totals.approvedTotal! - totals.expenseTotal!;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: StatCard(
-                icon: Icons.account_balance_wallet_outlined,
-                label: 'মোট জমা হয়েছে',
-                value: value(totals?.approvedTotal),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: StatCard(
-                icon: Icons.receipt_long_outlined,
-                label: 'মোট খরচ',
-                value: value(totals?.expenseTotal),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: StatCard(
-                icon: Icons.groups_outlined,
-                label: 'সক্রিয় সদস্য',
-                value: value(totals?.activeMembers, money: false),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: StatCard(
-                icon: Icons.account_balance_wallet_outlined,
-                label: 'এখন তহবিলে আছে',
-                value: fund == null ? '—' : formatTaka(fund),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: PrimaryButton(
-                label: 'জমা দিন',
-                onPressed: () => context.go('/deposit'),
-                icon: Icons.payments_outlined,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: SecondaryButton(
-                label: 'পাসবই',
-                onPressed: () => context.go('/passbook'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Text(
-          'সদস্যরা (${members.length} জন)',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-        const SizedBox(height: 8),
-        if (membersAsync.isLoading)
-          const SkeletonCardList()
-        else if (members.isEmpty)
-          const EmptyState(
-            icon: Icons.groups_outlined,
-            title: 'এখনো কোনো সদস্য নেই',
-          )
-        else
-          ...members.map(
-            (m) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: AppCard(
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 23,
-                      backgroundImage:
-                          m.photoUrl != null && m.photoUrl!.isNotEmpty
-                              ? NetworkImage(m.photoUrl!)
-                              : null,
-                      child: m.photoUrl == null || m.photoUrl!.isEmpty
-                          ? const Icon(Icons.person_outlined, size: 26)
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            m.name,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'ফোন: ${m.phone}',
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        if (isAdmin) ...[
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: () async {
-              await store.recountMemberCount(branch.id);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text(AppStrings.recountDone)),
-                );
-              }
-            },
-            child: const Text(AppStrings.recountMembers),
-          ),
-        ],
-      ],
     );
   }
 }

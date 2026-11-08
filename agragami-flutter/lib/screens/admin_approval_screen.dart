@@ -5,21 +5,11 @@ import '../l10n/app_strings.dart';
 import '../models/branch.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
-import '../theme/app_theme.dart';
-import '../widgets/app_button.dart';
-import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/skeleton_loader.dart';
-import 'passbook_screen.dart';
+import 'approval/pending_applications_tab.dart';
+import 'approval/pending_payments_tab.dart';
 
-/// অনুমোদন কেন্দ্র — অ্যাডমিনের সব বাকি কাজ এক জায়গায়।
-/// নতুন সদস্যের আবেদন আর যাচাই বাকি জমা — দুটো তালিকাই এখানে।
-/// অনুমোদন দিলে আবেদনকারী ওই সমিতির সদস্য হয়, জমার রসিদ নম্বর বসে।
-/// বাতিল করলে কারণ লিখতে হয়।
-/// এই পাতা শুধু অ্যাডমিন দেখতে পারেন — সদস্য বা সদস্য নয়
-/// এমন কেউ এলে কিছু দেখা যায় না।
-/// আবেদন সমিতি ধরে ছাঁকা যায়, যাতে এক সমিতির আবেদন
-/// আরেক সমিতির সাথে না মেশে।
+/// অনুমোদন কেন্দ্র — নতুন সদস্য ও জমা যাচাইয়ের দুটি ট্যাব।
 class AdminApprovalScreen extends ConsumerStatefulWidget {
   const AdminApprovalScreen({super.key});
 
@@ -109,10 +99,6 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
       StreamProvider<List<Branch>>((ref) => store.watchBranches()),
     );
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
-    String branchName(String id) {
-      final found = branches.where((b) => b.id == id).toList();
-      return found.isEmpty ? '—' : found.first.name;
-    }
 
     return DefaultTabController(
       length: 2,
@@ -137,277 +123,22 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
         ),
         body: TabBarView(
           children: [
-            Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _branchFilter,
-                    decoration: const InputDecoration(
-                      labelText: 'কোন সমিতির আবেদন',
-                      prefixIcon: Icon(Icons.groups_outlined),
-                    ),
-                    items: [
-                      const DropdownMenuItem(
-                        value: null,
-                        child: Text('সব সমিতি'),
-                      ),
-                      ...branches.map(
-                        (b) => DropdownMenuItem(
-                          value: b.id,
-                          child: Text(b.name),
-                        ),
-                      ),
-                    ],
-                    onChanged: (v) => setState(() => _branchFilter = v),
-                  ),
-                ),
-                Expanded(
-                  child: applications.when(
-                    loading: () => const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: SkeletonCardList(),
-                    ),
-                    error: (e, _) => const EmptyState(
-                      icon: Icons.error_outline,
-                      title: 'তালিকা আনা যায়নি',
-                    ),
-                    data: (list) {
-                      if (list.isEmpty) {
-                        return const EmptyState(
-                          icon: Icons.person_add_outlined,
-                          title: 'অনুমোদনের অপেক্ষায় কেউ নেই',
-                        );
-                      }
-                      return ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: list.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 12),
-                        itemBuilder: (context, i) {
-                          final a = list[i];
-                          return AppCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  a.name,
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'সমিতি: ${branchName(a.branchId)}',
-                                  style: const TextStyle(
-                                    fontSize: 14.5,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                Text(
-                                  'ফোন: ${a.phone}',
-                                  style: const TextStyle(
-                                    fontSize: 14.5,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                Text(
-                                  'এনআইডি: ${a.nidNumber}',
-                                  style: const TextStyle(
-                                    fontSize: 14.5,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                Text(
-                                  'আবেদন: ${a.requestedAt.day}/${a.requestedAt.month}/${a.requestedAt.year}',
-                                  style: const TextStyle(
-                                    fontSize: 14.5,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: PrimaryButton(
-                                        label: AppStrings.approve,
-                                        onPressed: () => _run(
-                                          context,
-                                          () => store.approveApplication(
-                                            a,
-                                            reviewedBy: reviewer,
-                                          ),
-                                          'সদস্য অনুমোদন হয়েছে',
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: AppColors.danger,
-                                          side: const BorderSide(
-                                            color: AppColors.danger,
-                                          ),
-                                        ),
-                                        onPressed: () async {
-                                          final reason = await _askReason(
-                                            context,
-                                            'আবেদন কেন বাতিল করছেন?',
-                                          );
-                                          if (reason == null ||
-                                              reason.isEmpty) {
-                                            return;
-                                          }
-                                          if (!context.mounted) return;
-                                          await _run(
-                                            context,
-                                            () => store.rejectApplication(
-                                              a.id,
-                                              reason: reason,
-                                              reviewedBy: reviewer,
-                                            ),
-                                            'আবেদন বাতিল হয়েছে',
-                                          );
-                                        },
-                                        child: const Text(AppStrings.reject),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
+            PendingApplicationsTab(
+              applicationsAsync: applications,
+              branches: branches,
+              branchFilter: _branchFilter,
+              onFilterChanged: (v) => setState(() => _branchFilter = v),
+              reviewer: reviewer,
+              store: store,
+              onRun: _run,
+              onAskReason: _askReason,
             ),
-            payments.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(16),
-                child: SkeletonCardList(),
-              ),
-              error: (e, _) => const EmptyState(
-                icon: Icons.error_outline,
-                title: 'তালিকা আনা যায়নি',
-              ),
-              data: (list) {
-                if (list.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.payments_outlined,
-                    title: 'যাচাই বাকি কোনো জমা নেই',
-                  );
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: list.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, i) {
-                    final p = list[i];
-                    return AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${formatTaka(p.amount)} — ${p.methodLabel}',
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          if (p.paymentAccountNumber != null &&
-                              p.paymentAccountNumber!.isNotEmpty)
-                            Text(
-                              'মাধ্যমের নম্বর: ${p.paymentAccountNumber}',
-                              style: const TextStyle(
-                                fontSize: 14.5,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          Text(
-                            '${bengaliMonths[p.forMonth - 1]} ${p.forYear}'
-                            ' • TrxID: ${p.trxId ?? '—'}',
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          if (p.senderMobile != null &&
-                              p.senderMobile!.isNotEmpty)
-                            Text(
-                              'পাঠিয়েছেন: ${p.senderMobile}',
-                              style: const TextStyle(
-                                fontSize: 14.5,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          const Text(
-                            'অবস্থা: ${AppStrings.depositPending}',
-                            style: TextStyle(
-                              fontSize: 14.5,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: PrimaryButton(
-                                  label: AppStrings.approve,
-                                  onPressed: () => _run(
-                                    context,
-                                    () => store.approvePayment(
-                                      p,
-                                      reviewedBy: reviewer,
-                                    ),
-                                    'জমা অনুমোদন হয়েছে, রসিদ নম্বর বসেছে',
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: OutlinedButton(
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.danger,
-                                    side: const BorderSide(
-                                      color: AppColors.danger,
-                                    ),
-                                  ),
-                                  onPressed: () async {
-                                    final reason = await _askReason(
-                                      context,
-                                      'জমা কেন বাতিল করছেন?',
-                                    );
-                                    if (reason == null || reason.isEmpty) {
-                                      return;
-                                    }
-                                    if (!context.mounted) return;
-                                    await _run(
-                                      context,
-                                      () => store.rejectPayment(
-                                        p.id,
-                                        reason: reason,
-                                        reviewedBy: reviewer,
-                                      ),
-                                      'জমা বাতিল হয়েছে',
-                                    );
-                                  },
-                                  child: const Text(AppStrings.reject),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
+            PendingPaymentsTab(
+              paymentsAsync: payments,
+              reviewer: reviewer,
+              store: store,
+              onRun: _run,
+              onAskReason: _askReason,
             ),
           ],
         ),

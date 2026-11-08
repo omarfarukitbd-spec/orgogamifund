@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
+export 'ledger_tile.dart';
 
 /// অ্যাপের সব কার্ড এক রকম দেখাবে — সাদা, গোল কোণা, নরম ছায়া।
-/// প্রিভিউয়ের মতোই: সাদা পটভূমির উপর ছায়া দিয়েই কার্ড আলাদা হয়।
+/// প্রিভিউয়ের মতোই: সাদা পটভূমির উপর বর্ডার দিয়েই কার্ড আলাদা হয়।
 class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -32,6 +34,7 @@ class StatCard extends StatelessWidget {
   final String label;
   final String value;
   final String? note;
+  final bool isGold;
 
   const StatCard({
     super.key,
@@ -39,11 +42,15 @@ class StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     this.note,
+    this.isGold = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final bg = isGold ? AppColors.goldSoft : AppColors.greenSoft;
+    final fg = isGold ? AppColors.goldDark : theme.colorScheme.primary;
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,10 +59,10 @@ class StatCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              color: bg,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: theme.colorScheme.primary, size: 24),
+            child: Icon(icon, color: fg, size: 23),
           ),
           const SizedBox(height: 10),
           Text(
@@ -69,8 +76,9 @@ class StatCard extends StatelessWidget {
           Text(
             value,
             style: theme.textTheme.headlineSmall?.copyWith(
-              fontSize: 28,
+              fontSize: 26,
               fontWeight: FontWeight.w700,
+              height: 1.2,
             ),
           ),
           if (note != null) ...[
@@ -83,6 +91,112 @@ class StatCard extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// কুইক অ্যাকশন কার্ড — যেমন 'আমার পাসবই', 'আইডি কার্ড'।
+class QuickActionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final bool isGold;
+
+  const QuickActionCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+    this.isGold = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bg = isGold ? AppColors.goldSoft : AppColors.greenSoft;
+    final fg = isGold ? AppColors.goldDark : theme.colorScheme.primary;
+
+    return AppCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: fg, size: 23),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 13,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// একক সারির লিংক বাটন — যেমন অনুমোদন কেন্দ্র বা নোটিশ বোর্ড।
+class RowLinkButton extends StatelessWidget {
+  final IconData icon;
+  final Color? iconColor;
+  final String title;
+  final VoidCallback? onTap;
+
+  const RowLinkButton({
+    super.key,
+    required this.icon,
+    this.iconColor,
+    required this.title,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final icColor = iconColor ?? theme.colorScheme.primary;
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon, color: icColor, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontSize: 15.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Icon(
+            Icons.chevron_right_outlined,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+            size: 22,
+          ),
         ],
       ),
     );

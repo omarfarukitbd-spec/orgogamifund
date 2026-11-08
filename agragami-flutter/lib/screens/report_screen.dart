@@ -2,26 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/branch.dart';
-import '../models/member.dart';
 import '../models/membership.dart';
 import '../models/payment.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/report_pdf_service.dart';
-import '../utils/dues.dart';
-import '../widgets/app_button.dart';
-import '../widgets/app_card.dart';
-import '../widgets/empty_state.dart';
+import '../theme/app_theme.dart';
 import '../widgets/not_member_gate.dart';
-import '../widgets/skeleton_loader.dart';
 import 'passbook_screen.dart';
+import 'reports/defaulters_list_view.dart';
+import 'reports/monthly_report_breakdown.dart';
 
-/// মাসিক রিপোর্ট — এক মাসের আয়, ব্যয়, ঋণ আর নিট হিসাব।
-/// নিচে একই পাতায় বকেয়া সদস্যদের তালিকা — ফোন আর
-/// হোয়াটসঅ্যাপে মনে করিয়ে দেওয়ার বোতামসহ।
-/// সদস্য শুধু নিজের সমিতির রিপোর্ট দেখে — অন্য সমিতির
-/// হিসাব বা বকেয়া তালিকার জন্য প্রশ্নই পাঠানো হয় না।
-/// অ্যাডমিন সব সমিতি দেখতে পারে।
+/// মাসিক রিপোর্ট স্ক্রিন — এইচটিএমএল প্রিভিউয়ের মতো রিপোর্ট ও বকেয়া তালিকা।
 class ReportScreen extends ConsumerStatefulWidget {
   const ReportScreen({super.key});
 
@@ -50,12 +42,51 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     return digits;
   }
 
+  Future<Map<String, int>> _loadMonth(
+    FirestoreService store,
+    String? branchId,
+  ) async {
+    final payments = await store.fetchPaymentsForMonth(
+      year: _year,
+      month: _month,
+      branchId: branchId,
+    );
+    final expenses = await store.fetchExpensesForMonth(
+      year: _year,
+      month: _month,
+      branchId: branchId,
+    );
+    final loans = await store.fetchLoans(branchId: branchId);
+    final income = payments
+        .where((p) => p.status == PaymentStatus.approved)
+        .fold(0, (sum, p) => sum + p.amount);
+    final expenseTotal = expenses.fold(0, (sum, e) => sum + e.amount);
+    final loansGiven = loans
+        .where(
+          (l) => l.dateIssued.year == _year && l.dateIssued.month == _month,
+        )
+        .fold(0, (sum, l) => sum + l.amount);
+    final repayments = loans.fold(0, (sum, l) {
+      return sum +
+          l.repayments
+              .where((r) => r.date.year == _year && r.date.month == _month)
+              .fold(0, (s, r) => s + r.amount);
+    });
+    return {
+      'income': income,
+      'expenses': expenseTotal,
+      'loansGiven': loansGiven,
+      'repayments': repayments,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = ref.watch(firestoreServiceProvider);
     final userAsync = ref.watch(currentUserProvider);
     final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
     final membershipsAsync = ref.watch(myMembershipsProvider);
+
     if (membershipsAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -83,7 +114,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     }();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -95,7 +126,10 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   decoration: const InputDecoration(labelText: 'মাস'),
                   items: [
                     for (var m = 1; m <= 12; m++)
-                      DropdownMenuItem(value: m, child: Text(bengaliMonths[m - 1])),
+                      DropdownMenuItem(
+                        value: m,
+                        child: Text(bengaliMonths[m - 1]),
+                      ),
                   ],
                   onChanged: (v) => setState(() => _month = v ?? _month),
                 ),
@@ -133,28 +167,20 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             onChanged: (v) => setState(() => _branchId = v),
           ),
           const SizedBox(height: 16),
-          Container(
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.grey, width: 1)),
-            ),
-            child: Row(
-              children: [
-                _ReportTab(
-                  label: 'মাসের হিসাব',
-                  selected: _tab == 'report',
-                  onTap: () => setState(() => _tab = 'report'),
-                ),
-                _ReportTab(
-                  label: 'বকেয়া সদস্য',
-                  selected: _tab == 'defaulters',
-                  onTap: () => setState(() => _tab = 'defaulters'),
-                ),
-              ],
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _tabButton('মাসের হিসাব', 'report'),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _tabButton('বকেয়া সদস্য', 'defaulters'),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           if (_tab == 'report')
-            _MonthlyReport(
+            MonthlyReportBreakdown(
               store: store,
               branchId: effectiveBranchId,
               branchName: branchName,
@@ -179,14 +205,16 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                     repayments: data['repayments']!,
                   );
                 } catch (_) {
-                  setState(() => _error = 'PDF বানানো যায়নি — আবার চেষ্টা করুন');
+                  setState(
+                    () => _error = 'PDF তৈরি করা যায়নি — আবার চেষ্টা করুন',
+                  );
                 } finally {
                   if (mounted) setState(() => _busy = false);
                 }
               },
             )
           else
-            _DefaulterList(
+            DefaultersListView(
               branchId: effectiveBranchId,
               onCall: (phone) => _launch('tel:$phone'),
               onWhatsApp: (phone) => _launch(
@@ -195,381 +223,40 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: Colors.red)),
+            Text(
+              _error!,
+              style: const TextStyle(color: AppColors.danger, fontSize: 13.5),
+            ),
           ],
         ],
       ),
     );
   }
 
-  Future<Map<String, int>> _loadMonth(
-    FirestoreService store,
-    String? branchId,
-  ) async {
-    final payments = await store.fetchPaymentsForMonth(
-      year: _year,
-      month: _month,
-      branchId: branchId,
-    );
-    final expenses = await store.fetchExpensesForMonth(
-      year: _year,
-      month: _month,
-      branchId: branchId,
-    );
-    final loans = await store.fetchLoans(branchId: branchId);
-    final income = payments
-        .where((p) => p.status == PaymentStatus.approved)
-        .fold(0, (sum, p) => sum + p.amount);
-    final expenseTotal = expenses.fold(0, (sum, e) => sum + e.amount);
-    final loansGiven = loans
-        .where((l) =>
-            l.dateIssued.year == _year && l.dateIssued.month == _month)
-        .fold(0, (sum, l) => sum + l.amount);
-    final repayments = loans.fold(0, (sum, l) {
-      return sum +
-          l.repayments
-              .where((r) => r.date.year == _year && r.date.month == _month)
-              .fold(0, (s, r) => s + r.amount);
-    });
-    return {
-      'income': income,
-      'expenses': expenseTotal,
-      'loansGiven': loansGiven,
-      'repayments': repayments,
-    };
-  }
-}
-
-class _ReportTab extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ReportTab({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? Colors.green : Colors.grey,
-                ),
-              ),
-            ),
-            Container(
-              height: 3,
-              color: selected ? Colors.green : Colors.transparent,
-            ),
-          ],
+  Widget _tabButton(String label, String tabKey) {
+    final active = _tab == tabKey;
+    return InkWell(
+      onTap: () => setState(() => _tab = tabKey),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: active ? AppColors.green : AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: active ? AppColors.green : AppColors.line,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            color: active ? Colors.white : AppColors.ink,
+          ),
         ),
       ),
-    );
-  }
-}
-
-class _MonthlyReport extends StatelessWidget {
-  final FirestoreService store;
-  final String? branchId;
-  final String branchName;
-  final int month;
-  final int year;
-  final bool busy;
-  final Future<void> Function() onPdf;
-
-  const _MonthlyReport({
-    required this.store,
-    required this.branchId,
-    required this.branchName,
-    required this.month,
-    required this.year,
-    required this.busy,
-    required this.onPdf,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, int>>(
-      future: _load(),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const SkeletonCardList();
-        }
-        if (snap.hasError || !snap.hasData) {
-          return const EmptyState(
-            icon: Icons.bar_chart_outlined,
-            title: 'হিসাব আনা যায়নি',
-            message: 'নেট দেখে আবার চেষ্টা করুন।',
-          );
-        }
-        final data = snap.data!;
-        final income = data['income']!;
-        final expenses = data['expenses']!;
-        final loansGiven = data['loansGiven']!;
-        final repayments = data['repayments']!;
-        final net = income - expenses - loansGiven + repayments;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: StatCard(
-                    icon: Icons.arrow_downward_outlined,
-                    label: 'জমা (আয়)',
-                    value: formatTaka(income),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: StatCard(
-                    icon: Icons.arrow_upward_outlined,
-                    label: 'খরচ',
-                    value: formatTaka(expenses),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: StatCard(
-                    icon: Icons.handshake_outlined,
-                    label: 'ঋণ দেওয়া হয়েছে',
-                    value: formatTaka(loansGiven),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: StatCard(
-                    icon: Icons.replay_outlined,
-                    label: 'কিস্তি ফেরত এসেছে',
-                    value: formatTaka(repayments),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            StatCard(
-              icon: Icons.account_balance_wallet_outlined,
-              label: 'মাসের নিট — $branchName',
-              value: formatTaka(net),
-              note: 'আয় − খরচ − ঋণ দেওয়া + কিস্তি ফেরত',
-            ),
-            const SizedBox(height: 16),
-            PrimaryButton(
-              label: busy ? 'আসছে…' : 'PDF হিসেবে নিন',
-              onPressed: busy ? null : onPdf,
-              icon: Icons.picture_as_pdf_outlined,
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<Map<String, int>> _load() async {
-    final payments = await store.fetchPaymentsForMonth(
-      year: year,
-      month: month,
-      branchId: branchId,
-    );
-    final expenses = await store.fetchExpensesForMonth(
-      year: year,
-      month: month,
-      branchId: branchId,
-    );
-    final loans = await store.fetchLoans(branchId: branchId);
-    final income = payments
-        .where((p) => p.status == PaymentStatus.approved)
-        .fold(0, (sum, p) => sum + p.amount);
-    final expenseTotal = expenses.fold(0, (sum, e) => sum + e.amount);
-    final loansGiven = loans
-        .where((l) => l.dateIssued.year == year && l.dateIssued.month == month)
-        .fold(0, (sum, l) => sum + l.amount);
-    final repayments = loans.fold(0, (sum, l) {
-      return sum +
-          l.repayments
-              .where((r) => r.date.year == year && r.date.month == month)
-              .fold(0, (s, r) => s + r.amount);
-    });
-    return {
-      'income': income,
-      'expenses': expenseTotal,
-      'loansGiven': loansGiven,
-      'repayments': repayments,
-    };
-  }
-}
-
-class _DefaulterList extends ConsumerWidget {
-  final String? branchId;
-  final void Function(String phone) onCall;
-  final void Function(String phone) onWhatsApp;
-
-  const _DefaulterList({
-    required this.branchId,
-    required this.onCall,
-    required this.onWhatsApp,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final store = ref.watch(firestoreServiceProvider);
-    final membersAsync = ref.watch(
-      StreamProvider<List<Member>>(
-        (ref) => store.watchMembers(branchId: branchId),
-      ),
-    );
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => store.watchBranches()),
-    );
-    if (membersAsync.isLoading || branchesAsync.isLoading) {
-      return const SkeletonCardList();
-    }
-    if (membersAsync.hasError || branchesAsync.hasError) {
-      return const EmptyState(
-        icon: Icons.error_outline,
-        title: 'তথ্য আনা যায়নি',
-        message: 'নেট দেখে আবার চেষ্টা করুন।',
-      );
-    }
-    final members = (membersAsync.valueOrNull ?? const <Member>[])
-        .where((m) => m.active)
-        .toList();
-    final branches = branchesAsync.valueOrNull ?? const <Branch>[];
-    return FutureBuilder<List<Payment>>(
-      future: store.fetchApprovedPayments(branchId: branchId),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const SkeletonCardList();
-        }
-        if (snap.hasError || !snap.hasData) {
-          return const EmptyState(
-            icon: Icons.error_outline,
-            title: 'তথ্য আনা যায়নি',
-            message: 'নেট দেখে আবার চেষ্টা করুন।',
-          );
-        }
-        final approved = snap.data!;
-        final now = DateTime.now();
-        final defaulters =
-            <({Member member, Branch branch, int dueMonths, int dueAmount})>[];
-        for (final member in members) {
-          final found =
-              branches.where((b) => b.id == member.branchId).toList();
-          if (found.isEmpty) continue;
-          final branch = found.first;
-          if (branch.monthlyDonation <= 0) continue;
-          // যোগদানের পর থেকে এখন পর্যন্ত যত মাস পার হয়েছে,
-          // সমিতির শুরুর তারিখের আগের মাসগুলো বাদ দিয়ে।
-          final start = effectiveStart(member.joinDate, branch.startDate);
-          final expected = monthsBetweenInclusive(start, now);
-          // এই সদস্যের অনুমোদিত মাসিক জমা কত মাসের — এক মাসে
-          // দুইবার জমা দিলেও মাস একবারই গোনা হয়।
-          final paidMonths = approved
-              .where(
-                (p) =>
-                    p.memberId == member.id && p.type == PaymentType.monthly,
-              )
-              .map((p) => '${p.forYear}-${p.forMonth}')
-              .toSet()
-              .length;
-          final dueMonths = expected - paidMonths;
-          if (dueMonths > 0) {
-            defaulters.add(
-              (
-                member: member,
-                branch: branch,
-                dueMonths: dueMonths,
-                dueAmount: dueMonths * branch.monthlyDonation,
-              ),
-            );
-          }
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'এই মাস পর্যন্ত যাদের জমা বাকি আছে — ফোন বা হোয়াটসঅ্যাপে মনে করিয়ে দিন।',
-              style: TextStyle(fontSize: 14.5, color: Colors.grey),
-            ),
-            const SizedBox(height: 12),
-            if (defaulters.isEmpty)
-              const EmptyState(
-                icon: Icons.check_circle_outlined,
-                title: 'এই মাসে কেউ বকেয়া নেই',
-                message: 'সবার জমা সময়মতো এসেছে।',
-              )
-            else
-              ...defaulters.map(
-                (d) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: AppCard(
-                    child: Row(
-                      children: [
-                        const ListIcon(icon: Icons.person_outlined),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                d.member.name,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${d.branch.name} • ${d.dueMonths} মাস বাকি • '
-                                'বকেয়া ${formatTaka(d.dueAmount)}',
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.call_outlined,
-                            color: Colors.green,
-                          ),
-                          tooltip: 'ফোন করুন',
-                          onPressed: () => onCall(d.member.phone),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.chat_outlined,
-                            color: Colors.green,
-                          ),
-                          tooltip: 'হোয়াটসঅ্যাপ',
-                          onPressed: () => onWhatsApp(d.member.phone),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
     );
   }
 }

@@ -2,26 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../l10n/app_strings.dart';
-import '../models/branch.dart';
 import '../models/membership.dart';
+import '../models/payment.dart';
+import '../models/expense.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
-import '../widgets/app_icon.dart';
 import '../widgets/not_member_gate.dart';
+import 'home/home_samiti_section.dart';
 import 'passbook_screen.dart';
 
-/// হোম — লগইন করা সবাই খুলতে পারে, কিন্তু টাকার সংখ্যা
-/// শুধু তারাই দেখে যারা কোনো সমিতির সদস্য বা অ্যাডমিন।
-/// সদস্য নয় এমন ব্যবহারকারী এখানে শুধু সমিতির তালিকা
-/// (নাম, উদ্দেশ্য, সদস্য সংখ্যা) আর আবেদনের পথ দেখে —
-/// কোনো সমিতির টাকা, সদস্যের নাম বা বকেয়া দেখে না।
+/// হোম স্ক্রিন — এইচটিএমএল প্রিভিউয়ের নিখুঁত রূপ।
+/// আসসালামু আলাইকুম গ্রিটিং, দুটি স্ট্যাট কার্ড, দুটি কুইক অ্যাকশন কার্ড,
+/// অনুমোদন ও নোটিশ লিংক, সাম্প্রতিক লেনদেন এবং প্রয়োজনীয় পৃষ্ঠাসমূহ।
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final userAsync = ref.watch(currentUserProvider);
     final user = userAsync.valueOrNull;
     final membershipsAsync = ref.watch(myMembershipsProvider);
@@ -30,179 +31,6 @@ class HomeScreen extends ConsumerWidget {
     final isAdmin = user?.isAdmin ?? false;
     final isMember = myBranchIds.isNotEmpty;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.green,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                const AgragamiLogo(size: 56, radius: 14),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        AppStrings.appName,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        AppStrings.appTagline,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(
-                              fontSize: 14,
-                              color: Colors.white70,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (isAdmin) ...[
-            _GlobalTotals(),
-            const SizedBox(height: 12),
-            AppCard(
-              onTap: () => context.go('/approval'),
-              child: const Row(
-                children: [
-                  ListIcon(icon: Icons.fact_check_outlined),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'অনুমোদন কেন্দ্র — বাকি কাজগুলো এক জায়গায় দেখুন',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Icon(Icons.chevron_right_outlined, color: Colors.grey),
-                ],
-              ),
-            ),
-          ] else if (!isMember) ...[
-            const AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    AppStrings.notMemberAnyTitle,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    AppStrings.notMemberAnyBody,
-                    style: TextStyle(fontSize: 14.5, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            PrimaryButton(
-              label: AppStrings.viewSamitis,
-              onPressed: () => context.go('/samiti'),
-              icon: Icons.groups_outlined,
-            ),
-            const SizedBox(height: 16),
-            _PublicSamitiList(),
-          ] else
-            _MySamitiTotals(branchIds: myBranchIds),
-          const SizedBox(height: 16),
-          Text(
-            'দরকারি পাতা',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 8),
-          const _Link(
-            icon: Icons.groups_outlined,
-            label: 'সমিতিগুলো দেখুন',
-            path: '/samiti',
-          ),
-          if (isAdmin || isMember) ...[
-            const _Link(
-              icon: Icons.receipt_long_outlined,
-              label: 'খরচের হিসাব',
-              path: '/expenses',
-            ),
-            const _Link(
-              icon: Icons.handshake_outlined,
-              label: 'কর্জে হাসানা ঋণ',
-              path: '/loans',
-            ),
-            const _Link(
-              icon: Icons.bar_chart_outlined,
-              label: 'মাসিক রিপোর্ট আর বকেয়া সদস্য',
-              path: '/reports',
-            ),
-            const _Link(
-              icon: Icons.book_outlined,
-              label: 'আমার পাসবই',
-              path: '/passbook',
-            ),
-            const _Link(
-              icon: Icons.badge_outlined,
-              label: 'আমার আইডি কার্ড',
-              path: '/id-card',
-            ),
-          ],
-          const _Link(
-            icon: Icons.campaign_outlined,
-            label: 'নোটিশ বোর্ড',
-            path: '/notices',
-          ),
-          const _Link(
-            icon: Icons.groups_outlined,
-            label: 'কমিটি',
-            path: '/committee',
-          ),
-          if (isAdmin) ...[
-            const _Link(
-              icon: Icons.account_balance_outlined,
-              label: 'পেমেন্ট মাধ্যম — নম্বর যোগ করুন',
-              path: '/payment-methods',
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'আপনি অ্যাডমিন — খরচ লেখা, ঋণ দেওয়া আর নোটিশ দেওয়া ওই পাতাগুলো থেকেই করা যাবে।',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// অ্যাডমিনের জন্য সব সমিতির মোট হিসাব — আগের মতোই।
-class _GlobalTotals extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
     final totalsAsync = ref.watch(
       FutureProvider<HomeTotals>(
         (ref) => FirestoreService().fetchHomeTotals(),
@@ -210,255 +38,254 @@ class _GlobalTotals extends ConsumerWidget {
     );
     final totals = totalsAsync.valueOrNull;
 
-    String value(int? amount, {bool money = true}) {
-      if (amount == null) return '—';
-      return money ? formatTaka(amount) : '$amount';
-    }
+    final fundTotal = totals == null ||
+            totals.approvedTotal == null ||
+            totals.expenseTotal == null
+        ? '৳ —'
+        : formatTaka(totals.approvedTotal! - totals.expenseTotal!);
 
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: StatCard(
-                icon: Icons.account_balance_wallet_outlined,
-                label: 'মোট জমা হয়েছে',
-                value: value(totals?.approvedTotal),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: StatCard(
-                icon: Icons.receipt_long_outlined,
-                label: 'মোট খরচ',
-                value: value(totals?.expenseTotal),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: StatCard(
-                icon: Icons.groups_outlined,
-                label: 'সক্রিয় সদস্য',
-                value: value(totals?.activeMembers, money: false),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: StatCard(
-                icon: Icons.account_balance_wallet_outlined,
-                label: 'এখন তহবিলে আছে',
-                value: totals == null ||
-                        totals.approvedTotal == null ||
-                        totals.expenseTotal == null
-                    ? '—'
-                    : formatTaka(
-                        totals.approvedTotal! - totals.expenseTotal!,
-                      ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
+    final memberCountStr = totals?.activeMembers != null
+        ? '${totals!.activeMembers} জন'
+        : '—';
 
-/// সদস্যের নিজের সমিতিগুলোর হিসাব — এক সমিতির হিসাব
-/// আরেক সমিতির সদস্য এখানে দেখে না।
-class _MySamitiTotals extends ConsumerWidget {
-  final List<String> branchIds;
+    final displayName = (user?.email.isNotEmpty == true)
+        ? user!.email.split('@').first
+        : (isAdmin ? 'অ্যাডমিন' : 'সদস্য');
 
-  const _MySamitiTotals({required this.branchIds});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => FirestoreService().watchBranches()),
-    );
-    final branches = branchesAsync.valueOrNull ?? const <Branch>[];
-    final mine =
-        branches.where((b) => branchIds.contains(b.id)).toList();
-    if (mine.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final b in mine) ...[
-          _OneSamitiTotals(branch: b),
-          const SizedBox(height: 12),
-        ],
-      ],
-    );
-  }
-}
-
-class _OneSamitiTotals extends ConsumerWidget {
-  final Branch branch;
-
-  const _OneSamitiTotals({required this.branch});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final totalsAsync = ref.watch(
-      FutureProvider<HomeTotals>(
-        (ref) => FirestoreService().fetchHomeTotals(branchId: branch.id),
-      ),
-    );
-    final totals = totalsAsync.valueOrNull;
-
-    String value(int? amount, {bool money = true}) {
-      if (amount == null) return '—';
-      return money ? formatTaka(amount) : '$amount';
-    }
-
-    return AppCard(
-      onTap: () => context.go('/samiti/${branch.id}'),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            branch.name,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          // আসসালামু আলাইকুম এবং ট্যাগ রো
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text: 'আসসালামু আলাইকুম, ',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: 15.5,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: displayName,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              PillTag(
+                text: isAdmin ? 'অ্যাডমিন' : (isMember ? 'সদস্য' : 'অতিথি'),
+                backgroundColor:
+                    isAdmin ? AppColors.goldSoft : AppColors.greenSoft,
+                textColor: isAdmin ? AppColors.goldDark : AppColors.green,
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+
+          // ২টি প্রধান স্ট্যাট কার্ড (মোট তহবিল ও মোট সদস্য)
           Row(
             children: [
               Expanded(
                 child: StatCard(
                   icon: Icons.account_balance_wallet_outlined,
-                  label: 'মোট জমা',
-                  value: value(totals?.approvedTotal),
+                  label: 'মোট তহবিল',
+                  value: fundTotal,
+                  note: 'তহবিলের বর্তমান স্থিতি',
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  icon: Icons.receipt_long_outlined,
-                  label: 'মোট খরচ',
-                  value: value(totals?.expenseTotal),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
               Expanded(
                 child: StatCard(
                   icon: Icons.groups_outlined,
-                  label: 'সক্রিয় সদস্য',
-                  value: value(totals?.activeMembers, money: false),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'তহবিলে আছে',
-                  value: totals == null ||
-                          totals.approvedTotal == null ||
-                          totals.expenseTotal == null
-                      ? '—'
-                      : formatTaka(
-                          totals.approvedTotal! - totals.expenseTotal!,
-                        ),
+                  label: 'মোট সদস্য',
+                  value: memberCountStr,
+                  note: 'সক্রিয় নিবন্ধিত সদস্য',
+                  isGold: true,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+
+          // ২টি কুইক অ্যাকশন কার্ড (আমার পাসবই ও আইডি কার্ড)
+          Row(
+            children: [
+              Expanded(
+                child: QuickActionCard(
+                  icon: Icons.book_outlined,
+                  title: 'আমার পাসবই',
+                  subtitle: '১২ মাসের ছক ও লেনদেন',
+                  onTap: () => context.go('/passbook'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: QuickActionCard(
+                  icon: Icons.badge_outlined,
+                  title: 'আইডি কার্ড',
+                  subtitle: 'PNG ডাউনলোড করা যাবে',
+                  isGold: true,
+                  onTap: () => context.go('/id-card'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // অনুমোদন কেন্দ্র (অ্যাডমিনদের জন্য) ও নোটিশ লিংক
+          if (isAdmin) ...[
+            RowLinkButton(
+              icon: Icons.fact_check_outlined,
+              iconColor: AppColors.green,
+              title: 'অনুমোদন কেন্দ্র — বাকি কাজগুলো এক জায়গায় দেখুন',
+              onTap: () => context.go('/approval'),
+            ),
+            const SizedBox(height: 10),
+          ],
+          RowLinkButton(
+            icon: Icons.campaign_outlined,
+            iconColor: AppColors.goldDark,
+            title: 'নোটিশ বোর্ড — সর্বশেষ ঘোষণা দেখুন',
+            onTap: () => context.go('/notices'),
+          ),
+
+          // সাম্প্রতিক লেনদেন সেকশন
+          const SectionTitle('সাম্প্রতিক লেনদেন'),
+          _RecentTransactionsCard(myBranchIds: myBranchIds),
+
+          // সদস্য না হলে আবেদনের ব্যানার
+          if (!isAdmin && !isMember) ...[
+            const SizedBox(height: 16),
+            const AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    AppStrings.notMemberAnyTitle,
+                    style: TextStyle(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    AppStrings.notMemberAnyBody,
+                    style: TextStyle(fontSize: 14, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            PrimaryButton(
+              label: AppStrings.viewSamitis,
+              onPressed: () => context.go('/samiti'),
+              icon: Icons.groups_outlined,
+            ),
+            const SizedBox(height: 16),
+            const PublicSamitiListSection(),
+          ] else if (isMember) ...[
+            const SizedBox(height: 16),
+            MySamitiTotalsSection(branchIds: myBranchIds),
+          ],
+
+          // দরকারি পাতা সেকশন
+          const SizedBox(height: 8),
+          UsefulPagesSection(isAdmin: isAdmin, isMember: isMember),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 }
 
-/// সদস্য নয় এমন ব্যবহারকারীর জন্য সমিতির খোলা তালিকা —
-/// নাম, উদ্দেশ্য আর সদস্য সংখ্যা শুধু।
-class _PublicSamitiList extends ConsumerWidget {
+/// সাম্প্রতিক লেনদেন কার্ড
+class _RecentTransactionsCard extends ConsumerWidget {
+  final List<String> myBranchIds;
+
+  const _RecentTransactionsCard({required this.myBranchIds});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => FirestoreService().watchBranches()),
+    final paymentsAsync = ref.watch(
+      FutureProvider<List<Payment>>(
+        (ref) => FirestoreService().fetchApprovedPayments(),
+      ),
     );
-    final branches = branchesAsync.valueOrNull ?? const <Branch>[];
-    if (branches.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final b in branches)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: AppCard(
-              onTap: () => context.go('/samiti/${b.id}'),
-              child: Row(
-                children: [
-                  const ListIcon(icon: Icons.groups_outlined),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          b.name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${samitiPurposeText(b.purpose)}'
-                          ' • ${AppStrings.memberCountLabel}: ${b.memberCount} জন',
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_outlined, color: Colors.grey),
-                ],
-              ),
-            ),
-          ),
-      ],
+    final expensesAsync = ref.watch(
+      StreamProvider<List<Expense>>(
+        (ref) => FirestoreService().watchExpenses(),
+      ),
     );
-  }
-}
 
-class _Link extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String path;
+    final payments = paymentsAsync.valueOrNull ?? const <Payment>[];
+    final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
 
-  const _Link({required this.icon, required this.label, required this.path});
+    final hasPayments = payments.isNotEmpty;
+    final hasExpenses = expenses.isNotEmpty;
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: AppCard(
-        onTap: () => context.go(path),
-        child: Row(
-          children: [
-            ListIcon(icon: icon),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      child: Column(
+        children: [
+          if (hasPayments) ...[
+            for (int i = 0;
+                i < (payments.length > 2 ? 2 : payments.length);
+                i++)
+              LedgerRowItem(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'মাসিক জমা — ${payments[i].senderMobile ?? "সদস্য"}',
+                subtitle:
+                    '${payments[i].forYear}/${payments[i].forMonth} • ${payments[i].methodLabel}',
+                amount: formatTaka(payments[i].amount),
+                isIncome: true,
+                showDivider: hasExpenses || i < payments.length - 1,
               ),
+          ] else ...[
+            const LedgerRowItem(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'মাসিক জমা — কোনো নতুন তথ্য নেই',
+              subtitle: 'অনুমোদিত জমা এখানে দেখাবে',
+              amount: '৳ —',
+              isIncome: true,
+              showDivider: true,
             ),
-            const Icon(Icons.chevron_right_outlined, color: Colors.grey),
           ],
-        ),
+          if (hasExpenses) ...[
+            for (int i = 0;
+                i < (expenses.length > 2 ? 2 : expenses.length);
+                i++)
+              LedgerRowItem(
+                icon: Icons.receipt_long_outlined,
+                title:
+                    'খরচ — ${expenses[i].description.isNotEmpty ? expenses[i].description : expenses[i].category}',
+                subtitle: expenses[i].category,
+                amount: formatTaka(expenses[i].amount),
+                isIncome: false,
+                isGold: true,
+                showDivider:
+                    i < (expenses.length > 2 ? 2 : expenses.length) - 1,
+              ),
+          ] else ...[
+            const LedgerRowItem(
+              icon: Icons.receipt_long_outlined,
+              title: 'খরচ — কোনো নতুন রেকর্ড নেই',
+              subtitle: 'সমিতির অনুমোদিত খরচ এখানে দেখাবে',
+              amount: '৳ —',
+              isIncome: false,
+              isGold: true,
+              showDivider: false,
+            ),
+          ],
+        ],
       ),
     );
   }

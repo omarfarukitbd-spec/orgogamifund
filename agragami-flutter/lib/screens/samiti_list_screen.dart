@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../l10n/app_strings.dart';
@@ -7,32 +6,27 @@ import '../models/branch.dart';
 import '../models/membership.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
 import '../widgets/skeleton_loader.dart';
+import 'samiti/create_samiti_dialog.dart';
 
-/// সমিতির তালিকা — লগইন করা যে কেউ দেখতে পায়।
-/// এখানে শুধু সবার জন্য খোলা তথ্য থাকে: নাম, উদ্দেশ্য,
-/// মাসিক দান আর অনুমোদিত সদস্যের সংখ্যা।
-/// সদস্য কে কে, সমিতিতে কত টাকা আছে, কে জমা দিলো —
-/// এগুলো এখানে আসে না; ওগুলো শুধু ওই সমিতির সদস্যরাই
-/// বিস্তারিত পাতায় দেখতে পায়।
-///
-/// তালিকা আনার পথটা নাম দিয়ে রাখা হয়েছে, যাতে ভুল হলে
-/// "আবার চেষ্টা করুন" বোতামটা সত্যিই আবার আনতে পারে।
 final branchesProvider = StreamProvider<List<Branch>>(
   (ref) => FirestoreService().watchBranches(),
 );
 
+/// সমিতির তালিকা — এইচটিএমএল প্রিভিউয়ের মতো কার্ড, ব্যানার আইকন,
+/// মাসিক দান ও সদস্য সংখ্যা এবং স্ট্যাটাস চিপ।
 class SamitiListScreen extends ConsumerWidget {
   const SamitiListScreen({super.key});
 
   void _openCreateSamiti(BuildContext context) {
     showDialog<void>(
       context: context,
-      builder: (context) => const _CreateSamitiDialog(),
+      builder: (context) => const CreateSamitiDialog(),
     );
   }
 
@@ -74,8 +68,7 @@ class SamitiListScreen extends ConsumerWidget {
                   ? AppStrings.samitiEmptyAdminBody
                   : AppStrings.samitiEmptyBody,
               actionLabel: isAdmin ? AppStrings.createSamiti : null,
-              onAction:
-                  isAdmin ? () => _openCreateSamiti(context) : null,
+              onAction: isAdmin ? () => _openCreateSamiti(context) : null,
             );
           }
           final memberships =
@@ -86,117 +79,29 @@ class SamitiListScreen extends ConsumerWidget {
             return found.isEmpty ? null : found.first;
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: list.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, i) {
-              final b = list[i];
-              final m = membershipFor(b.id);
-              return AppCard(
-                onTap: () => context.go('/samiti/${b.id}'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            b.name,
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.chevron_right_outlined,
-                          color: Colors.grey,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      samitiPurposeText(b.purpose),
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    if (b.description.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        b.description,
-                        style: const TextStyle(
-                          fontSize: 14.5,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    const Divider(height: 1),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Text(
-                          '${AppStrings.monthlyDonation}: ৳${b.monthlyDonation}',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.green,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${AppStrings.memberCountLabel}: ${b.memberCount} জন',
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (isAdmin)
-                      const _StateChip(
-                        label: 'অ্যাডমিন',
-                        color: Colors.green,
-                      )
-                    else if (m?.isApproved ?? false)
-                      const _StateChip(
-                        label: AppStrings.alreadyMember,
-                        color: Colors.green,
-                      )
-                    else if (m?.isPending ?? false)
-                      const _StateChip(
-                        label: AppStrings.applicationPending,
-                        color: Colors.amber,
-                      )
-                    else if (m?.isRejected ?? false)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(AppStrings.applicationRejected),
-                          const SizedBox(height: 8),
-                          PrimaryButton(
-                            label: AppStrings.joinSamiti,
-                            onPressed: () =>
-                                context.go('/apply?branchId=${b.id}'),
-                            icon: Icons.person_add_outlined,
-                          ),
-                        ],
-                      )
-                    else
-                      PrimaryButton(
-                        label: AppStrings.joinSamiti,
-                        onPressed: () =>
-                            context.go('/apply?branchId=${b.id}'),
-                        icon: Icons.person_add_outlined,
-                      ),
-                  ],
+          return ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            children: [
+              Text(
+                'ঢোকার পর সবাই সমিতির নাম, উদ্দেশ্য, মাসিক দান আর সদস্য সংখ্যা দেখতে পারে — ভেতরের হিসাব শুধু ওই সমিতির সদস্যরাই দেখতে পারে।',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
                 ),
-              );
-            },
+              ),
+              const SizedBox(height: 12),
+              for (final b in list) ...[
+                _SamitiCardItem(
+                  branch: b,
+                  membership: membershipFor(b.id),
+                  isAdmin: isAdmin,
+                ),
+                const SizedBox(height: 12),
+              ],
+            ],
           );
         },
       ),
@@ -204,158 +109,143 @@ class SamitiListScreen extends ConsumerWidget {
   }
 }
 
-class _StateChip extends StatelessWidget {
-  final String label;
-  final Color color;
+class _SamitiCardItem extends StatelessWidget {
+  final Branch branch;
+  final Membership? membership;
+  final bool isAdmin;
 
-  const _StateChip({required this.label, required this.color});
+  const _SamitiCardItem({
+    required this.branch,
+    required this.membership,
+    required this.isAdmin,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-/// নতুন সমিতি খোলার ফরম — শুধু অ্যাডমিন দেখতে পায়।
-/// নাম, উদ্দেশ্য আর মাসিক দান বসালেই সমিতি তৈরি হয়।
-class _CreateSamitiDialog extends StatefulWidget {
-  const _CreateSamitiDialog();
-
-  @override
-  State<_CreateSamitiDialog> createState() => _CreateSamitiDialogState();
-}
-
-class _CreateSamitiDialogState extends State<_CreateSamitiDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _donationController = TextEditingController();
-  SamitiPurpose _purpose = SamitiPurpose.madrasa;
-  bool _saving = false;
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    _donationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    setState(() => _saving = true);
-    try {
-      await FirestoreService().createBranch(
-        name: _nameController.text.trim(),
-        description: _descriptionController.text.trim(),
-        purpose: _purpose,
-        monthlyDonation: int.parse(_donationController.text.trim()),
-        by: AuthService().uidOrEmpty,
-      );
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.samitiCreated)),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.samitiCreateFailed)),
-      );
+  IconData _iconForPurpose(SamitiPurpose purpose) {
+    switch (purpose) {
+      case SamitiPurpose.madrasa:
+        return Icons.menu_book_outlined;
+      case SamitiPurpose.mosqueOrphanage:
+        return Icons.account_balance_outlined;
+      case SamitiPurpose.other:
+        return Icons.groups_outlined;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text(AppStrings.createSamiti),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    final theme = Theme.of(context);
+    final isApproved = membership?.isApproved ?? false;
+    final isPending = membership?.isPending ?? false;
+    final iconData = _iconForPurpose(branch.purpose);
+
+    return AppCard(
+      onTap: () => context.go('/samiti/${branch.id}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.samitiNameLabel,
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.greenSoft,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'নাম লিখুন' : null,
+                child: Icon(iconData, color: AppColors.green, size: 24),
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<SamitiPurpose>(
-                initialValue: _purpose,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.samitiPurposeLabel,
-                ),
-                items: SamitiPurpose.values
-                    .map(
-                      (p) => DropdownMenuItem(
-                        value: p,
-                        child: Text(samitiPurposeText(p)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      branch.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w700,
                       ),
-                    )
-                    .toList(),
-                onChanged: (p) {
-                  if (p != null) setState(() => _purpose = p);
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _donationController,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.monthlyDonation,
-                  suffixText: '৳',
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      samitiPurposeText(branch.purpose),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.65),
+                      ),
+                    ),
+                  ],
                 ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'পরিমাণ লিখুন';
-                  if (int.tryParse(v.trim()) == null) {
-                    return 'শুধু সংখ্যা লিখুন';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.samitiDescriptionLabel,
-                ),
-                maxLines: 2,
               ),
             ],
           ),
-        ),
+          if (branch.description.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              branch.description,
+              style: TextStyle(
+                fontSize: 13.5,
+                color:
+                    theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Divider(
+            height: 1,
+            color: AppColors.line.withValues(alpha: 0.8),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Text(
+                'মাসিক দান: ৳${branch.monthlyDonation}',
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.green,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'সদস্য: ${branch.memberCount} জন',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: theme.colorScheme.onSurface
+                      .withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (isAdmin)
+            const PillTag(
+              text: 'আপনি অ্যাডমিন',
+              backgroundColor: AppColors.goldSoft,
+              textColor: AppColors.goldDark,
+            )
+          else if (isApproved)
+            const PillTag(
+              text: 'আপনি এই সমিতির সদস্য',
+              backgroundColor: AppColors.greenSoft,
+              textColor: AppColors.green,
+            )
+          else if (isPending)
+            const PillTag(
+              text: 'আবেদন প্রক্রিয়াধীন',
+              backgroundColor: AppColors.goldSoft,
+              textColor: AppColors.goldDark,
+            )
+          else
+            PrimaryButton(
+              label: 'সদস্য হতে আবেদন করুন',
+              onPressed: () => context.go('/apply?branchId=${branch.id}'),
+              icon: Icons.person_add_outlined,
+            ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: const Text('বাতিল'),
-        ),
-        ElevatedButton(
-          onPressed: _saving ? null : _save,
-          child: Text(_saving ? 'খোলা হচ্ছে…' : AppStrings.createSamiti),
-        ),
-      ],
     );
   }
 }

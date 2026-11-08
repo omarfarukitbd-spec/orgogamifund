@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../l10n/app_strings.dart';
 import '../models/branch.dart';
 import '../models/member.dart';
@@ -8,19 +9,11 @@ import '../models/payment.dart';
 import '../models/payment_method.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
-import '../widgets/app_button.dart';
-import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
-import '../widgets/payment_method_card.dart';
-import 'passbook_screen.dart';
+import 'deposit/deposit_components.dart';
+import 'deposit/deposit_form_fields.dart';
 
-/// জমা দেওয়ার ফরম — সমিতি, মাস, টাকা আর TrxID।
-/// পেমেন্ট মাধ্যম কোডে লেখা থাকে না — অ্যাডমিন যেগুলো
-/// চালু রেখেছেন, শুধু সেগুলোই দেখায়। কোনো নম্বর এখানে
-/// বানানো হয় না; মাধ্যম যোগ করা না থাকলে পরিষ্কার
-/// করে জানিয়ে দেওয়া হয়।
-/// জমা হলে অবস্থা pending — অ্যাডমিন যাচাই করে অনুমোদন দেবেন,
-/// তবেই পাসবইয়ে জমা হিসেবে উঠবে।
+/// জমা দেওয়ার স্ক্রিন — ৩ ধাপের নির্দেশক, পেমেন্ট মাধ্যম ও নিশ্চিতকরণ।
 class DepositScreen extends ConsumerStatefulWidget {
   const DepositScreen({super.key});
 
@@ -37,6 +30,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
   int _month = DateTime.now().month;
   int _year = DateTime.now().year;
   bool _busy = false;
+  bool _submittedSuccess = false;
   String? _error;
 
   @override
@@ -68,8 +62,6 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     return ok ?? false;
   }
 
-  /// জমা দেওয়া — শুধু নিজের সমিতিতে। সমিতি আর ওই সমিতির
-  /// সদস্যের রেকর্ড — দুটোই আগে থেকে ঠিক করা থাকে।
   Future<void> _submit(
     List<PaymentMethodConfig> methods,
     String branchId,
@@ -109,7 +101,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
         );
         if (used && mounted) {
           final proceed = await _askConfirm(
-            'এই TrxID দিয়ে এই মাধ্যমেই আগেই একটি জমা দেওয়া হয়েছে। '
+            'এই TrxID দিয়ে আগেই একটি জমা দেওয়া হয়েছে। '
             'ভুলে দুইবার জমা দিচ্ছেন কি না দেখে নিন। তবুও পাঠাবেন?',
           );
           if (!proceed) {
@@ -144,10 +136,8 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
       );
       await store.submitPayment(payment);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.depositSent)),
-      );
       setState(() {
+        _submittedSuccess = true;
         _amount.clear();
         _trxId.clear();
         _senderMobile.clear();
@@ -162,19 +152,24 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_submittedSuccess) {
+      return DepositSuccessView(
+        onViewPassbook: () => context.go('/passbook'),
+        onDepositAgain: () => setState(() => _submittedSuccess = false),
+      );
+    }
+
     final userAsync = ref.watch(currentUserProvider);
     final user = userAsync.valueOrNull;
     final isAdmin = user?.isAdmin ?? false;
     final uid = user?.id ?? AuthService().uidOrEmpty;
     final membershipsAsync = ref.watch(myMembershipsProvider);
-    // সদস্যপদ না জানা পর্যন্ত জমার ফরম দেখানো হয় না —
-    // নইলে সদস্য নয় এমন ব্যবহারকারীকে ভুল করে আটকে দেওয়া হতো।
+
     if (membershipsAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     final memberships = membershipsAsync.valueOrNull ?? const <Membership>[];
-    final allowedIds =
-        isAdmin ? null : approvedBranchIds(memberships);
+    final allowedIds = isAdmin ? null : approvedBranchIds(memberships);
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
       return const NotMemberGate();
     }
@@ -187,11 +182,11 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     final branches = allowedIds == null
         ? allBranches
         : allBranches.where((b) => allowedIds.contains(b.id)).toList();
-    // আগে বাছা সমিতি এখন আর অনুমোদিত তালিকায় না থাকলে বাদ যায়।
     final effectiveBranchId =
         _branchId != null && branches.any((b) => b.id == _branchId)
             ? _branchId
             : null;
+
     final myMembersAsync = ref.watch(
       StreamProvider<List<Member>>(
         (ref) => FirestoreService().watchMembersForUser(uid),
@@ -199,8 +194,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     );
     final myMembers = myMembersAsync.valueOrNull ?? const <Member>[];
     String memberIdFor(String branchId) {
-      final found =
-          myMembers.where((m) => m.branchId == branchId).toList();
+      final found = myMembers.where((m) => m.branchId == branchId).toList();
       if (found.isNotEmpty) return found.first.id;
       return user?.linkedMemberId ?? uid;
     }
@@ -215,134 +209,52 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
             ),
           );
     final methods = methodsAsync.valueOrNull ?? const <PaymentMethodConfig>[];
-    final chosen =
-        methods.where((m) => m.id == _methodId).firstOrNull;
     final loadingMethods =
         effectiveBranchId != null && methodsAsync is AsyncLoading;
 
+    int currentStep = 1;
+    if (effectiveBranchId != null && _methodId != null) {
+      currentStep = 3;
+    } else if (effectiveBranchId != null) {
+      currentStep = 2;
+    }
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'প্রথমে সমিতি বেছে নিন, তারপর নিচের মাধ্যমগুলো থেকে '
-            'একটায় টাকা পাঠিয়ে ঘরগুলো পূরণ করুন।',
-            style: TextStyle(fontSize: 14.5, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: effectiveBranchId,
-            decoration: const InputDecoration(
-              labelText: 'কোন সমিতি',
-              prefixIcon: Icon(Icons.groups_outlined),
-            ),
-            items: branches
-                .map((b) => DropdownMenuItem(value: b.id, child: Text(b.name)))
-                .toList(),
-            onChanged: (v) => setState(() {
+          DepositStepsBar(currentStep: currentStep),
+          const SizedBox(height: 14),
+          DepositFormFields(
+            branches: branches,
+            effectiveBranchId: effectiveBranchId,
+            onBranchChanged: (v) => setState(() {
               _branchId = v;
               _methodId = null;
             }),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: _month,
-                  decoration: const InputDecoration(labelText: 'মাস'),
-                  items: [
-                    for (var m = 1; m <= 12; m++)
-                      DropdownMenuItem(value: m, child: Text(bengaliMonths[m - 1])),
-                  ],
-                  onChanged: (v) => setState(() => _month = v ?? _month),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: _year,
-                  decoration: const InputDecoration(labelText: 'বছর'),
-                  items: [
-                    for (var y = DateTime.now().year - 1;
-                        y <= DateTime.now().year;
-                        y++)
-                      DropdownMenuItem(value: y, child: Text('$y')),
-                  ],
-                  onChanged: (v) => setState(() => _year = v ?? _year),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (effectiveBranchId == null)
-            const Text(
-              'সমিতি বাছলে এখানে টাকা পাঠানোর মাধ্যমগুলো দেখাবে।',
-              style: TextStyle(fontSize: 14.5, color: Colors.grey),
-            )
-          else if (loadingMethods)
-            const Center(child: CircularProgressIndicator())
-          else if (methods.isEmpty)
-            const EmptyState(
-              icon: Icons.account_balance_outlined,
-              title: 'এই সমিতির জন্য এখনো কোনো পেমেন্ট মাধ্যম যোগ করা হয়নি',
-            )
-          else
-            ...methods.map(
-              (m) => PaymentMethodCard(
-                method: m,
-                selected: _methodId == m.id,
-                onTap: () => setState(() => _methodId = m.id),
-              ),
-            ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _amount,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: AppStrings.depositAmount,
-              prefixText: '৳ ',
-              prefixIcon: Icon(Icons.payments_outlined),
-            ),
-          ),
-          if (chosen != null &&
-              chosen.type == PaymentMethodType.mobileBanking) ...[
-            const SizedBox(height: 12),
-            TextField(
-              controller: _senderMobile,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'যে নম্বর থেকে পাঠিয়েছেন',
-                prefixIcon: Icon(Icons.phone_outlined),
-              ),
-            ),
-          ],
-          if (chosen != null && chosen.type != PaymentMethodType.cash) ...[
-            const SizedBox(height: 12),
-            TextField(
-              controller: _trxId,
-              decoration: const InputDecoration(
-                labelText: AppStrings.trxId,
-                prefixIcon: Icon(Icons.receipt_outlined),
-              ),
-            ),
-          ],
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: Colors.red)),
-          ],
-          const SizedBox(height: 24),
-          PrimaryButton(
-            label: _busy ? AppStrings.loading : AppStrings.depositSubmit,
-            onPressed: _busy || effectiveBranchId == null
-                ? null
-                : () => _submit(
-                      methods,
-                      effectiveBranchId,
-                      memberIdFor(effectiveBranchId),
-                    ),
-            icon: Icons.send_outlined,
+            methods: methods,
+            loadingMethods: loadingMethods,
+            methodId: _methodId,
+            onMethodSelected: (id) => setState(() => _methodId = id),
+            month: _month,
+            onMonthChanged: (m) => setState(() => _month = m),
+            year: _year,
+            onYearChanged: (y) => setState(() => _year = y),
+            amountController: _amount,
+            senderMobileController: _senderMobile,
+            trxIdController: _trxId,
+            error: _error,
+            busy: _busy,
+            onSubmit: () {
+              if (effectiveBranchId != null) {
+                _submit(
+                  methods,
+                  effectiveBranchId,
+                  memberIdFor(effectiveBranchId),
+                );
+              }
+            },
           ),
         ],
       ),
