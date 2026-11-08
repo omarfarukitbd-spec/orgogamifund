@@ -125,10 +125,10 @@ class SamitiDetailScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               if (!canSee) ...[
                 if (membership?.isPending ?? false)
-                  AppCard(
+                  const AppCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
                           AppStrings.applicationPending,
                           style: TextStyle(

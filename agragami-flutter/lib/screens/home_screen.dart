@@ -101,10 +101,10 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
           ] else if (!isMember) ...[
-            AppCard(
+            const AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: const [
+                children: [
                   Text(
                     AppStrings.notMemberAnyTitle,
                     style: TextStyle(
@@ -139,50 +139,50 @@ class HomeScreen extends ConsumerWidget {
                 ),
           ),
           const SizedBox(height: 8),
-          _Link(
+          const _Link(
             icon: Icons.groups_outlined,
             label: 'সমিতিগুলো দেখুন',
             path: '/samiti',
           ),
           if (isAdmin || isMember) ...[
-            _Link(
+            const _Link(
               icon: Icons.receipt_long_outlined,
               label: 'খরচের হিসাব',
               path: '/expenses',
             ),
-            _Link(
+            const _Link(
               icon: Icons.handshake_outlined,
               label: 'কর্জে হাসানা ঋণ',
               path: '/loans',
             ),
-            _Link(
+            const _Link(
               icon: Icons.bar_chart_outlined,
               label: 'মাসিক রিপোর্ট আর বকেয়া সদস্য',
               path: '/reports',
             ),
-            _Link(
+            const _Link(
               icon: Icons.book_outlined,
               label: 'আমার পাসবই',
               path: '/passbook',
             ),
-            _Link(
+            const _Link(
               icon: Icons.badge_outlined,
               label: 'আমার আইডি কার্ড',
               path: '/id-card',
             ),
           ],
-          _Link(
+          const _Link(
             icon: Icons.campaign_outlined,
             label: 'নোটিশ বোর্ড',
             path: '/notices',
           ),
-          _Link(
+          const _Link(
             icon: Icons.groups_outlined,
             label: 'কমিটি',
             path: '/committee',
           ),
           if (isAdmin) ...[
-            _Link(
+            const _Link(
               icon: Icons.account_balance_outlined,
               label: 'পেমেন্ট মাধ্যম — নম্বর যোগ করুন',
               path: '/payment-methods',

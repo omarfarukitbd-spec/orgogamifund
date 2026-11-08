@@ -64,10 +64,10 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
     );
     final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
     final total = expenses.fold(0, (sum, e) => sum + e.amount);
-    final branchName = (id) {
+    String branchName(String id) {
       final found = allBranches.where((b) => b.id == id).toList();
       return found.isEmpty ? '—' : found.first.name;
-    };
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),

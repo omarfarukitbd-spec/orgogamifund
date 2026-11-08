@@ -106,10 +106,12 @@ class PaymentMethodCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Radio<String>(
-                value: method.id,
+              RadioGroup<String?>(
                 groupValue: selected ? method.id : null,
                 onChanged: (_) => onTap(),
+                child: Radio<String?>(
+                  value: method.id,
+                ),
               ),
             ],
           ),

@@ -137,13 +137,13 @@ class _Sidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
             child: Row(
               children: [
-                const AgragamiLogo(size: 40, radius: 10),
-                const SizedBox(width: 12),
-                const Expanded(
+                AgragamiLogo(size: 40, radius: 10),
+                SizedBox(width: 12),
+                Expanded(
                   child: Text(
                     'অগ্রগামী ফান্ড',
                     style: TextStyle(
