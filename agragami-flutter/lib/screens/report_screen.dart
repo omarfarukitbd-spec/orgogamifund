@@ -95,9 +95,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
       return const NotMemberGate();
     }
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => store.watchBranches()),
-    );
+    final branchesAsync = ref.watch(branchesStreamProvider);
     final allBranches = branchesAsync.valueOrNull ?? const <Branch>[];
     final branches = allowedIds == null
         ? allBranches

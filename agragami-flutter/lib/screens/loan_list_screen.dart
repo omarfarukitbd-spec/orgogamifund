@@ -40,9 +40,7 @@ class _LoanListScreenState extends ConsumerState<LoanListScreen> {
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
       return const NotMemberGate();
     }
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => FirestoreService().watchBranches()),
-    );
+    final branchesAsync = ref.watch(branchesStreamProvider);
     final allBranches = branchesAsync.valueOrNull ?? const <Branch>[];
     final branches = allowedIds == null
         ? allBranches
@@ -53,14 +51,14 @@ class _LoanListScreenState extends ConsumerState<LoanListScreen> {
             ? _branchId
             : (branches.isEmpty ? null : branches.first.id));
     final loansAsync = ref.watch(
-      StreamProvider<List<Loan>>(
-        (ref) => FirestoreService().watchLoans(branchId: effectiveBranchId),
+      StreamProvider.autoDispose<List<Loan>>(
+        (ref) => ref.watch(firestoreServiceProvider).watchLoans(branchId: effectiveBranchId),
       ),
     );
     // সদস্যের নাম শুধু ওই সমিতির সদস্যদের মধ্যেই খোঁজা হয়।
     final membersAsync = ref.watch(
-      StreamProvider<List<Member>>(
-        (ref) => FirestoreService().watchMembers(branchId: effectiveBranchId),
+      StreamProvider.autoDispose<List<Member>>(
+        (ref) => ref.watch(firestoreServiceProvider).watchMembers(branchId: effectiveBranchId),
       ),
     );
     final loans = loansAsync.valueOrNull ?? const <Loan>[];

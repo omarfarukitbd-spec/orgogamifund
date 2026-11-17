@@ -42,9 +42,7 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
       return const NotMemberGate();
     }
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => FirestoreService().watchBranches()),
-    );
+    final branchesAsync = ref.watch(branchesStreamProvider);
     final allBranches = branchesAsync.valueOrNull ?? const <Branch>[];
     final branches = allowedIds == null
         ? allBranches
@@ -58,8 +56,8 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
             ? _branchId
             : (branches.isEmpty ? null : branches.first.id));
     final expensesAsync = ref.watch(
-      StreamProvider<List<Expense>>(
-        (ref) => FirestoreService().watchExpenses(branchId: effectiveBranchId),
+      StreamProvider.autoDispose<List<Expense>>(
+        (ref) => ref.watch(firestoreServiceProvider).watchExpenses(branchId: effectiveBranchId),
       ),
     );
     final expenses = expensesAsync.valueOrNull ?? const <Expense>[];

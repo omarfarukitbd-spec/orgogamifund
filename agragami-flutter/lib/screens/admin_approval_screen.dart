@@ -88,16 +88,12 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
       );
     }
     final applications = ref.watch(
-      StreamProvider(
+      StreamProvider.autoDispose(
         (ref) => store.watchPendingApplications(branchId: _branchFilter),
       ),
     );
-    final payments = ref.watch(
-      StreamProvider((ref) => store.watchPendingPayments()),
-    );
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => store.watchBranches()),
-    );
+    final payments = ref.watch(pendingPaymentsProvider);
+    final branchesAsync = ref.watch(branchesStreamProvider);
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
 
     return DefaultTabController(

@@ -27,14 +27,8 @@ class DefaultersListView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final store = ref.watch(firestoreServiceProvider);
-    final membersAsync = ref.watch(
-      StreamProvider<List<Member>>(
-        (ref) => store.watchMembers(branchId: branchId),
-      ),
-    );
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => store.watchBranches()),
-    );
+    final membersAsync = ref.watch(membersByBranchProvider(branchId ?? ''));
+    final branchesAsync = ref.watch(branchesStreamProvider);
     if (membersAsync.isLoading || branchesAsync.isLoading) {
       return const SkeletonCardList();
     }

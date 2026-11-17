@@ -117,9 +117,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => FirestoreService().watchBranches()),
-    );
+    final branchesAsync = ref.watch(branchesStreamProvider);
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),

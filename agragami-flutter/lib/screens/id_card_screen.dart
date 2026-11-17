@@ -115,9 +115,7 @@ class _IdCardMemberPicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => FirestoreService().watchBranches()),
-    );
+    final branchesAsync = ref.watch(branchesStreamProvider);
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
     String branchName(String id) {
       final found = branches.where((b) => b.id == id).toList();
@@ -212,15 +210,11 @@ class _IdCardBodyState extends ConsumerState<_IdCardBody> {
   @override
   Widget build(BuildContext context) {
     final memberAsync = ref.watch(
-      StreamProvider<Member?>(
-        (ref) => FirestoreService().watchMember(widget.memberId),
+      StreamProvider.autoDispose<Member?>(
+        (ref) => ref.watch(firestoreServiceProvider).watchMember(widget.memberId),
       ),
     );
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>(
-        (ref) => FirestoreService().watchBranches(),
-      ),
-    );
+    final branchesAsync = ref.watch(branchesStreamProvider);
     return memberAsync.when(
       loading: () => const Padding(
         padding: EdgeInsets.all(16),

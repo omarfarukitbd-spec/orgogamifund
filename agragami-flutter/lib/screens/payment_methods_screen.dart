@@ -87,12 +87,8 @@ class PaymentMethodsScreen extends ConsumerWidget {
     final store = ref.watch(firestoreServiceProvider);
     final userAsync = ref.watch(currentUserProvider);
     final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
-    final methods = ref.watch(
-      StreamProvider((ref) => store.watchAllPaymentMethods()),
-    );
-    final branches = ref.watch(
-      StreamProvider<List<Branch>>((ref) => store.watchBranches()),
-    );
+    final methods = ref.watch(paymentMethodsProvider);
+    final branches = ref.watch(branchesStreamProvider);
     final branchList = branches.valueOrNull ?? const <Branch>[];
 
     if (!isAdmin) {

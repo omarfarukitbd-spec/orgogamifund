@@ -35,8 +35,8 @@ class SamitiDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final branchAsync = ref.watch(
-      StreamProvider<Branch?>(
-        (ref) => FirestoreService().watchBranch(branchId),
+      StreamProvider.autoDispose<Branch?>(
+        (ref) => ref.watch(firestoreServiceProvider).watchBranch(branchId),
       ),
     );
     final userAsync = ref.watch(currentUserProvider);

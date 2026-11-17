@@ -107,14 +107,8 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => FirestoreService().watchBranches()),
-    );
-    final membersAsync = ref.watch(
-      StreamProvider<List<Member>>(
-        (ref) => FirestoreService().watchMembers(branchId: _branchId),
-      ),
-    );
+    final branchesAsync = ref.watch(branchesStreamProvider);
+    final membersAsync = ref.watch(membersByBranchProvider(_branchId ?? ''));
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
     final members = membersAsync.valueOrNull ?? const <Member>[];
     return SingleChildScrollView(

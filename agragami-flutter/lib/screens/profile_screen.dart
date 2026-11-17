@@ -26,8 +26,8 @@ class ProfileScreen extends ConsumerWidget {
         final memberAsync = memberId == null
             ? null
             : ref.watch(
-                StreamProvider(
-                  (ref) => FirestoreService().watchMember(memberId),
+                StreamProvider.autoDispose(
+                  (ref) => ref.watch(firestoreServiceProvider).watchMember(memberId),
                 ),
               );
         final member = memberAsync?.valueOrNull;

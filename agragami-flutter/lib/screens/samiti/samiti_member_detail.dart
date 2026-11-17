@@ -27,16 +27,8 @@ class SamitiMemberDetail extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final store = ref.watch(firestoreServiceProvider);
-    final totalsAsync = ref.watch(
-      FutureProvider<HomeTotals>(
-        (ref) => store.fetchHomeTotals(branchId: branch.id),
-      ),
-    );
-    final membersAsync = ref.watch(
-      StreamProvider<List<Member>>(
-        (ref) => store.watchMembers(branchId: branch.id),
-      ),
-    );
+    final totalsAsync = ref.watch(homeTotalsByBranchProvider(branch.id));
+    final membersAsync = ref.watch(membersByBranchProvider(branch.id));
     final totals = totalsAsync.valueOrNull;
     final members = membersAsync.valueOrNull ?? const <Member>[];
 

@@ -39,9 +39,7 @@ final _memberProvider = StreamProvider.family<Member?, String>(
 final _paymentsProvider = StreamProvider.family<List<Payment>, String>(
   (ref, id) => FirestoreService().watchMemberPayments(id),
 );
-final _branchesProvider = StreamProvider<List<Branch>>(
-  (ref) => FirestoreService().watchBranches(),
-);
+final _branchesProvider = branchesStreamProvider;
 
 /// সদস্যের পাসবই — ১২ মাসের ছক, মোট জমা ও বকেয়া, লেনদেনের খাতা।
 class PassbookScreen extends ConsumerStatefulWidget {

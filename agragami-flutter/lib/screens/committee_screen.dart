@@ -24,12 +24,8 @@ class CommitteeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final store = ref.watch(firestoreServiceProvider);
-    final committeeAsync = ref.watch(
-      StreamProvider<List<CommitteeMember>>((ref) => store.watchCommittee()),
-    );
-    final membersAsync = ref.watch(
-      StreamProvider<List<Member>>((ref) => store.watchMembers()),
-    );
+    final committeeAsync = ref.watch(committeeStreamProvider);
+    final membersAsync = ref.watch(membersStreamProvider);
     if (committeeAsync.isLoading || membersAsync.isLoading) {
       return const Padding(
         padding: EdgeInsets.all(16),

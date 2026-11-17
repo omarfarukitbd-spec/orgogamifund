@@ -173,11 +173,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
       return const NotMemberGate();
     }
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>(
-        (ref) => FirestoreService().watchBranches(),
-      ),
-    );
+    final branchesAsync = ref.watch(branchesStreamProvider);
     final allBranches = branchesAsync.valueOrNull ?? const <Branch>[];
     final branches = allowedIds == null
         ? allBranches
@@ -188,8 +184,8 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
             : null;
 
     final myMembersAsync = ref.watch(
-      StreamProvider<List<Member>>(
-        (ref) => FirestoreService().watchMembersForUser(uid),
+      StreamProvider.autoDispose<List<Member>>(
+        (ref) => ref.watch(firestoreServiceProvider).watchMembersForUser(uid),
       ),
     );
     final myMembers = myMembersAsync.valueOrNull ?? const <Member>[];
@@ -202,8 +198,8 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     final methodsAsync = effectiveBranchId == null
         ? const AsyncValue<List<PaymentMethodConfig>>.data([])
         : ref.watch(
-            StreamProvider<List<PaymentMethodConfig>>(
-              (ref) => FirestoreService().watchActivePaymentMethods(
+            StreamProvider.autoDispose<List<PaymentMethodConfig>>(
+              (ref) => ref.watch(firestoreServiceProvider).watchActivePaymentMethods(
                 branchId: effectiveBranchId,
               ),
             ),

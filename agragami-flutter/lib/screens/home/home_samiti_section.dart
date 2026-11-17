@@ -15,9 +15,7 @@ class MySamitiTotalsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => FirestoreService().watchBranches()),
-    );
+    final branchesAsync = ref.watch(branchesStreamProvider);
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
     final mine = branches.where((b) => branchIds.contains(b.id)).toList();
     if (mine.isEmpty) return const SizedBox.shrink();
@@ -41,11 +39,7 @@ class _OneSamitiCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final totalsAsync = ref.watch(
-      FutureProvider<HomeTotals>(
-        (ref) => FirestoreService().fetchHomeTotals(branchId: branch.id),
-      ),
-    );
+    final totalsAsync = ref.watch(homeTotalsByBranchProvider(branch.id));
     final totals = totalsAsync.valueOrNull;
 
     String value(int? amount, {bool money = true}) {
@@ -122,9 +116,7 @@ class PublicSamitiListSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => FirestoreService().watchBranches()),
-    );
+    final branchesAsync = ref.watch(branchesStreamProvider);
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
     if (branches.isEmpty) return const SizedBox.shrink();
 

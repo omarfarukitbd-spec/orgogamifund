@@ -31,11 +31,7 @@ class HomeScreen extends ConsumerWidget {
     final isAdmin = user?.isAdmin ?? false;
     final isMember = myBranchIds.isNotEmpty;
 
-    final totalsAsync = ref.watch(
-      FutureProvider<HomeTotals>(
-        (ref) => FirestoreService().fetchHomeTotals(),
-      ),
-    );
+    final totalsAsync = ref.watch(homeTotalsFutureProvider);
     final totals = totalsAsync.valueOrNull;
 
     final fundTotal = totals == null ||

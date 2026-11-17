@@ -111,14 +111,11 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(currentUserProvider);
-    final branchesAsync = ref.watch(
-      StreamProvider<List<Branch>>((ref) => FirestoreService().watchBranches()),
-    );
+    final branchesAsync = ref.watch(branchesStreamProvider);
+    final userBranchId = userAsync.valueOrNull?.branchId;
     final noticesAsync = ref.watch(
-      StreamProvider<List<Notice>>(
-        (ref) => FirestoreService().watchNotices(
-          branchId: userAsync.valueOrNull?.branchId,
-        ),
+      StreamProvider.autoDispose<List<Notice>>(
+        (ref) => ref.watch(firestoreServiceProvider).watchNotices(branchId: userBranchId),
       ),
     );
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];

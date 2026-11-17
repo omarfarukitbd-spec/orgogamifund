@@ -14,9 +14,7 @@ import '../widgets/not_member_gate.dart';
 import '../widgets/skeleton_loader.dart';
 import 'samiti/create_samiti_dialog.dart';
 
-final branchesProvider = StreamProvider<List<Branch>>(
-  (ref) => FirestoreService().watchBranches(),
-);
+final branchesProvider = branchesStreamProvider;
 
 /// সমিতির তালিকা — এইচটিএমএল প্রিভিউয়ের মতো কার্ড, ব্যানার আইকন,
 /// মাসিক দান ও সদস্য সংখ্যা এবং স্ট্যাটাস চিপ।

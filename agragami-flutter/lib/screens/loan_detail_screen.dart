@@ -25,8 +25,8 @@ class LoanDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final loanAsync = ref.watch(
-      StreamProvider<Loan?>(
-        (ref) => FirestoreService().watchLoan(loanId),
+      StreamProvider.autoDispose<Loan?>(
+        (ref) => ref.watch(firestoreServiceProvider).watchLoan(loanId),
       ),
     );
     final userAsync = ref.watch(currentUserProvider);
