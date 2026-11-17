@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -10,6 +11,8 @@ import 'firestore_service.dart';
 
 /// গুগল দিয়ে ঢোকার ভুলগুলোর বাংলা বার্তা।
 String googleSignInErrorMessage(Object e) {
+  // ignore: avoid_print
+  print('Google Sign-In caught error: $e');
   if (e is GoogleSignInException) {
     switch (e.code) {
       case GoogleSignInExceptionCode.canceled:
@@ -119,7 +122,10 @@ class AuthService {
   Future<void> initGoogleSignIn() async {
     if (_googleInitialized) return;
     try {
-      await GoogleSignIn.instance.initialize();
+      await GoogleSignIn.instance.initialize(
+        serverClientId:
+            '1063848074047-ksr0cpftlh74bd30tqioj4blgm6vhst5.apps.googleusercontent.com',
+      );
       _googleInitialized = true;
       // অ্যাপ চলা পর্যন্ত শুনতে থাকে — বন্ধ করার দরকার নেই।
       GoogleSignIn.instance.authenticationEvents.listen(
@@ -169,12 +175,21 @@ class AuthService {
     final credential = GoogleAuthProvider.credential(idToken: idToken);
     final cred = await _fb.auth.signInWithCredential(credential);
     final uid = cred.user!.uid;
+    final email = cred.user!.email ?? account.email;
+    final isRootAdmin = email.toLowerCase() == 'omarfaruktitbd@gmail.com' ||
+        email.toLowerCase() == 'omarfarukitbd@gmail.com';
     final doc = await _fb.db.collection(Collections.users).doc(uid).get();
     if (!doc.exists) {
       await _store.createUserDoc(
         uid: uid,
-        email: cred.user!.email ?? account.email,
+        email: email,
       );
+    } else if (isRootAdmin) {
+      await _fb.db.collection(Collections.users).doc(uid).set({
+        'email': email,
+        'role': UserRole.superAdmin.name,
+        'approvalStatus': ApprovalStatus.approved.name,
+      }, SetOptions(merge: true));
     }
     _googleCompleted.add(null);
   }

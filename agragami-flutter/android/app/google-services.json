@@ -8,14 +8,22 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1063848074047:android:539038990b7df8d28a118a",
+        "mobilesdk_app_id": "1:1063848074047:android:0e86f4e89e6bcd6c8a118a",
         "android_client_info": {
           "package_name": "com.helptrickbd.ogrogami.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "1063848074047-gl8ib9blfvh7sbksutuqfp6c5s1m7v55.apps.googleusercontent.com",
+          "client_id": "1063848074047-18him931h4tm8jb15klkptjap5d1439d.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.helptrickbd.ogrogami.app",
+            "certificate_hash": "50258df3db32d01282977e9d577b41f3b8d9b3fb"
+          }
+        },
+        {
+          "client_id": "1063848074047-fqtup6m2scggmehebc2i47h6daoe5l1n.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.helptrickbd.ogrogami.app",
