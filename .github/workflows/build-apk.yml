@@ -62,16 +62,16 @@ jobs:
         working-directory: agragami-flutter
         run: flutter pub get
 
-      - name: Build Debug APK
+      - name: Build Release APK
         working-directory: agragami-flutter
-        run: flutter build apk --debug
+        run: flutter build apk --release
 
       - name: Rename APK with Build Details
         run: |
           BUILD_TIME=$(date +'%Y%m%d_%H%M')
           mkdir -p build-output
-          cp agragami-flutter/build/app/outputs/flutter-apk/app-debug.apk build-output/OgrogamiFund-Flutter-build${{ github.run_number }}-${BUILD_TIME}.apk
-          cp agragami-flutter/build/app/outputs/flutter-apk/app-debug.apk build-output/OgrogamiFund-Flutter-latest.apk
+          cp agragami-flutter/build/app/outputs/flutter-apk/app-release.apk build-output/OgrogamiFund-Flutter-build${{ github.run_number }}-${BUILD_TIME}.apk
+          cp agragami-flutter/build/app/outputs/flutter-apk/app-release.apk build-output/OgrogamiFund-Flutter-latest.apk
 
       - name: Upload APK to GitHub Artifacts
         uses: actions/upload-artifact@v4

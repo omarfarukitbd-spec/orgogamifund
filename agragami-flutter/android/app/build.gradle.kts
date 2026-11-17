@@ -18,8 +18,8 @@ android {
     }
 
     defaultConfig {
-        // পুরোনো অ্যাপের প্যাকেজ নাম — Firebase-এর Android অ্যাপের সাথে মিলতে হবে।
-        applicationId = "com.helptrickbd.ogrogamifund"
+        // নতুন ও স্বতন্ত্র প্যাকেজ নাম — আগের যে কোনো প্যাকেজের কনফ্লিক্ট এড়ানোর জন্য
+        applicationId = "com.helptrickbd.ogrogami.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 24
