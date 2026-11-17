@@ -1,3 +1,5 @@
+import '../utils/date_parser.dart';
+
 /// একজন ব্যবহারকারীর একটি সমিতির সদস্যপদ।
 /// Firestore কালেকশন: memberships
 /// ডকুমেন্টের id: `${userId}_${branchId}` — একজনের এক সমিতিতে
@@ -51,12 +53,11 @@ class Membership {
       applicationId: data['applicationId'] as String?,
       memberId: data['memberId'] as String?,
       memberNumber: data['memberNumber'] as String?,
-      appliedAt: DateTime.tryParse((data['appliedAt'] as String?) ?? '') ??
-          DateTime.now(),
+      appliedAt: parseFirestoreDate(data['appliedAt']),
       approvedBy: data['approvedBy'] as String?,
       approvedAt: data['approvedAt'] == null
           ? null
-          : DateTime.tryParse(data['approvedAt'] as String),
+          : parseFirestoreDate(data['approvedAt']),
       rejectReason: data['rejectReason'] as String?,
     );
   }

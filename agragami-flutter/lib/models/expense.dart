@@ -1,3 +1,5 @@
+import '../utils/date_parser.dart';
+
 /// খরচের ধরন — এই পাঁচটার বাইরে আর কিছু লেখা হয় না।
 const List<String> expenseCategories = [
   'মাদ্রাসা উন্নয়ন',
@@ -36,7 +38,7 @@ class Expense {
       branchId: (data['branchId'] as String?) ?? '',
       category: (data['category'] as String?) ?? '',
       amount: (data['amount'] as num?)?.toInt() ?? 0,
-      date: DateTime.tryParse((data['date'] as String?) ?? '') ?? DateTime.now(),
+      date: parseFirestoreDate(data['date']),
       description: (data['description'] as String?) ?? '',
       attachmentUrl: data['attachmentUrl'] as String?,
       recordedBy: (data['recordedBy'] as String?) ?? '',

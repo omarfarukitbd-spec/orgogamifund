@@ -49,8 +49,10 @@ service cloud.firestore {
 
     // ওই সমিতির অনুমোদিত সদস্য কি না।
     function isMemberOf(branchId) {
-      return signedIn()
-        && get(/databases/$(database)/documents/memberships/$(myUid() + '_' + branchId)).data.status == 'approved';
+      return signedIn() && (
+        isMasterAdmin()
+        || get(/databases/$(database)/documents/memberships/$(myUid() + '_' + branchId)).data.status == 'approved'
+      );
     }
 
     // সমিতি — নাম, উদ্দেশ্য, মাসিক দান, সদস্য সংখ্যা:
@@ -92,12 +94,13 @@ service cloud.firestore {
     }
 
     // জমা — ওই সমিতির সদস্য বা অ্যাডমিন পড়তে পারে।
-    // নতুন জমা দিতে পারে শুধু ওই সমিতির সদস্য।
+    // নতুন জমা দিতে পারে শুধু ওই সমিতির সদস্য বা সুপার অ্যাডমিন।
     match /payments/{paymentId} {
       allow read: if isAdmin()
-        || isMemberOf(resource.data.branchId);
+        || isMemberOf(resource.data.branchId)
+        || (signedIn() && resource.data.memberId == myUserDoc().data.linkedMemberId);
       allow create: if signedIn()
-        && isMemberOf(request.resource.data.branchId);
+        && (isAdmin() || isMemberOf(request.resource.data.branchId));
       allow update, delete: if isAdmin();
     }
 

@@ -1,3 +1,5 @@
+import '../utils/date_parser.dart';
+
 /// একটি নোটিশ বা সভার কার্যবিবরণী।
 /// Firestore কালেকশন: notices
 enum NoticeScope { org, branch }
@@ -32,8 +34,7 @@ class Notice {
       scope: data['scope'] == 'branch' ? NoticeScope.branch : NoticeScope.org,
       branchId: data['branchId'] as String?,
       postedBy: (data['postedBy'] as String?) ?? '',
-      postedAt:
-          DateTime.tryParse((data['postedAt'] as String?) ?? '') ?? DateTime.now(),
+      postedAt: parseFirestoreDate(data['postedAt']),
     );
   }
 

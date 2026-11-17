@@ -56,18 +56,60 @@ class MemberRepository {
     });
   }
 
-  /// ব্যবহারকারীর সব সমিতির সদস্যপদ পর্যবেক্ষণ
+  /// ব্যবহারকারীর সব সমিতির সদস্যপদ পর্যবেক্ষণ (অ্যান্ড্রয়েড ও ফ্লাটার ডুয়াল সাপোর্ট)
   Stream<List<Membership>> watchMyMemberships(String userId) {
     if (userId.isEmpty) return const Stream.empty();
     return _db
         .collection(Collections.memberships)
         .where('userId', isEqualTo: userId)
         .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((d) => Membership.fromMap(d.id, d.data()))
-              .toList(),
-        );
+        .asyncMap((snap) async {
+      final explicitMemberships = snap.docs
+          .map((d) => Membership.fromMap(d.id, d.data()))
+          .toList();
+
+      // অ্যান্ড্রয়েড অ্যাপের সাথে সামঞ্জস্য: members কালেকশনে লিঙ্কড থাকা সদস্যপদ রিড ও সিঙ্ক করা
+      try {
+        final memberDocs = await _db
+            .collection(Collections.members)
+            .where('linkedUserId', isEqualTo: userId)
+            .get();
+
+        for (final doc in memberDocs.docs) {
+          final member = Member.fromMap(doc.id, doc.data());
+          if (member.branchId.isEmpty) continue;
+
+          final alreadyExists = explicitMemberships.any(
+            (m) => m.branchId == member.branchId,
+          );
+
+          if (!alreadyExists) {
+            final status = member.active
+                ? MembershipStatus.approved
+                : MembershipStatus.rejected;
+            final synthetic = Membership(
+              id: Membership.docId(userId, member.branchId),
+              userId: userId,
+              branchId: member.branchId,
+              status: status,
+              memberId: member.id,
+              appliedAt: member.joinDate,
+              approvedAt: member.joinDate,
+            );
+            explicitMemberships.add(synthetic);
+
+            // ফায়ারস্টোর সিকিউরিটি রুলসের সাথে সামঞ্জস্যের জন্য ব্যাকগ্রাউন্ডে ডক তৈরি
+            _db
+                .collection(Collections.memberships)
+                .doc(synthetic.id)
+                .set(synthetic.toMap(), SetOptions(merge: true))
+                .catchError((_) {});
+          }
+        }
+      } catch (_) {}
+
+      return explicitMemberships;
+    });
   }
 
   /// একটি নির্দিষ্ট সমিতিতে সদস্যপদ পর্যবেক্ষণ
@@ -79,11 +121,44 @@ class MemberRepository {
         .collection(Collections.memberships)
         .doc(Membership.docId(userId, branchId))
         .snapshots()
-        .map(
-          (doc) => doc.exists && doc.data() != null
-              ? Membership.fromMap(doc.id, doc.data()!)
-              : null,
-        );
+        .asyncMap((doc) async {
+      if (doc.exists && doc.data() != null) {
+        return Membership.fromMap(doc.id, doc.data()!);
+      }
+      try {
+        final memberDocs = await _db
+            .collection(Collections.members)
+            .where('linkedUserId', isEqualTo: userId)
+            .where('branchId', isEqualTo: branchId)
+            .limit(1)
+            .get();
+        if (memberDocs.docs.isNotEmpty) {
+          final member = Member.fromMap(
+            memberDocs.docs.first.id,
+            memberDocs.docs.first.data(),
+          );
+          final status = member.active
+              ? MembershipStatus.approved
+              : MembershipStatus.rejected;
+          final synthetic = Membership(
+            id: Membership.docId(userId, branchId),
+            userId: userId,
+            branchId: branchId,
+            status: status,
+            memberId: member.id,
+            appliedAt: member.joinDate,
+            approvedAt: member.joinDate,
+          );
+          _db
+              .collection(Collections.memberships)
+              .doc(synthetic.id)
+              .set(synthetic.toMap(), SetOptions(merge: true))
+              .catchError((_) {});
+          return synthetic;
+        }
+      } catch (_) {}
+      return null;
+    });
   }
 
   /// সদস্যপদ সরাসরি রিড করা

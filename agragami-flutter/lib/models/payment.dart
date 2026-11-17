@@ -1,3 +1,5 @@
+import '../utils/date_parser.dart';
+
 /// একটি জমা।
 /// Firestore কালেকশন: payments
 /// সদস্য নিজে অ্যাডমিনের দেওয়া মাধ্যম (মোবাইল ব্যাংকিং/ব্যাংক)
@@ -74,29 +76,33 @@ class Payment {
   }
 
   factory Payment.fromMap(String id, Map<String, dynamic> data) {
+    final rawStatus = ((data['status'] ?? data['approvalStatus']) as String?)?.toLowerCase();
+    final status = switch (rawStatus) {
+      'approved' => PaymentStatus.approved,
+      'rejected' => PaymentStatus.rejected,
+      _ => PaymentStatus.pending,
+    };
+
     return Payment(
       id: id,
       memberId: (data['memberId'] as String?) ?? '',
       branchId: (data['branchId'] as String?) ?? '',
       type: PaymentType.values.firstWhere(
-        (t) => t.name == data['type'],
+        (t) => t.name.toLowerCase() == (data['type'] as String?)?.toLowerCase(),
         orElse: () => PaymentType.monthly,
       ),
       amount: (data['amount'] as num?)?.toInt() ?? 0,
       method: _kindFrom(data['method'] as String?),
-      trxId: data['trxId'] as String?,
+      trxId: ((data['trxId'] ?? data['transactionId']) as String?),
       paymentMethodId: data['paymentMethodId'] as String?,
       paymentMethodName: data['paymentMethodName'] as String?,
       paymentAccountNumber: data['paymentAccountNumber'] as String?,
       senderMobile: data['senderMobile'] as String?,
       forMonth: (data['forMonth'] as num?)?.toInt() ?? 1,
       forYear: (data['forYear'] as num?)?.toInt() ?? DateTime.now().year,
-      date: DateTime.tryParse((data['date'] as String?) ?? '') ?? DateTime.now(),
+      date: parseFirestoreDate(data['date']),
       recordedBy: (data['recordedBy'] as String?) ?? '',
-      status: PaymentStatus.values.firstWhere(
-        (s) => s.name == data['status'],
-        orElse: () => PaymentStatus.pending,
-      ),
+      status: status,
       receiptNumber: data['receiptNumber'] as String?,
       rejectReason: data['rejectReason'] as String?,
     );
@@ -110,6 +116,7 @@ class Payment {
       'amount': amount,
       'method': method.name,
       'trxId': trxId,
+      'transactionId': trxId,
       'paymentMethodId': paymentMethodId,
       'paymentMethodName': paymentMethodName,
       'paymentAccountNumber': paymentAccountNumber,
@@ -119,6 +126,7 @@ class Payment {
       'date': date.toIso8601String(),
       'recordedBy': recordedBy,
       'status': status.name,
+      'approvalStatus': status.name.toUpperCase(),
       'receiptNumber': receiptNumber,
       'rejectReason': rejectReason,
     };

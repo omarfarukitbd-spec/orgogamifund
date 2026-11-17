@@ -1,3 +1,5 @@
+import '../utils/date_parser.dart';
+
 /// একজন সদস্য।
 /// Firestore কালেকশন: members
 class Member {
@@ -32,6 +34,9 @@ class Member {
   });
 
   factory Member.fromMap(String id, Map<String, dynamic> data) {
+    final rawStatus = (data['status'] as String?)?.toLowerCase();
+    final isActive = rawStatus == null || (rawStatus != 'left' && rawStatus != 'inactive');
+
     return Member(
       id: id,
       name: (data['name'] as String?) ?? '',
@@ -41,14 +46,13 @@ class Member {
       nidNumber: (data['nid'] as String?) ?? '',
       nidPhotoUrl: data['nidPhotoUrl'] as String?,
       branchId: (data['branchId'] as String?) ?? '',
-      joinDate: DateTime.tryParse((data['joinDate'] as String?) ?? '') ??
-          DateTime.now(),
+      joinDate: parseFirestoreDate(data['joinDate']),
       emergencyContactName:
           (data['emergencyContact'] as Map?)?['name'] as String? ?? '',
       emergencyContactPhone:
           (data['emergencyContact'] as Map?)?['phone'] as String? ?? '',
       linkedUserId: data['linkedUserId'] as String?,
-      active: (data['status'] as String? ?? 'active') == 'active',
+      active: isActive,
     );
   }
 

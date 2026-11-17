@@ -1,3 +1,5 @@
+import '../utils/date_parser.dart';
+
 /// একটি সমিতি / ব্রাঞ্চ।
 /// Firestore কালেকশন: branches
 /// উদ্দেশ্য আলাদা করে রাখা হয়েছে — মাদ্রাসা সহায়তা, মসজিদ ও
@@ -49,6 +51,28 @@ class Branch {
   });
 
   factory Branch.fromMap(String id, Map<String, dynamic> data) {
+    final permissionsMap = data['permissions'] as Map?;
+    final canViewTotalFund = (data['canMembersViewTotalFund'] ??
+            permissionsMap?['canMembersViewTotalFund']) as bool? ??
+        true;
+    final canViewExpenses = (data['canMembersViewExpenses'] ??
+            permissionsMap?['canMembersViewExpenses']) as bool? ??
+        true;
+    final canViewMemberList = (data['canMembersViewMemberList'] ??
+            permissionsMap?['canMembersViewMemberList']) as bool? ??
+        true;
+
+    DateTime? startDate;
+    if (data['startDate'] != null) {
+      startDate = parseFirestoreDate(data['startDate']);
+    } else if (data['establishedYear'] != null) {
+      final yearStr = data['establishedYear'].toString();
+      final yearNum = int.tryParse(yearStr);
+      if (yearNum != null) {
+        startDate = DateTime(yearNum, 1, 1);
+      }
+    }
+
     return Branch(
       id: id,
       name: (data['name'] as String?) ?? '',
@@ -57,15 +81,13 @@ class Branch {
         (p) => p.name == data['purpose'],
         orElse: () => SamitiPurpose.other,
       ),
-      monthlyDonation: (data['monthlyDonation'] as num?)?.toInt() ?? 0,
+      monthlyDonation: ((data['monthlyDonation'] ?? data['monthlyDepositAmount']) as num?)?.toInt() ?? 0,
       treasurerUserId: data['treasurerUserId'] as String?,
       balance: (data['balance'] as num?)?.toInt() ?? 0,
-      startDate: data['startDate'] == null
-          ? null
-          : DateTime.tryParse(data['startDate'] as String),
-      canMembersViewTotalFund: (data['canMembersViewTotalFund'] as bool?) ?? true,
-      canMembersViewExpenses: (data['canMembersViewExpenses'] as bool?) ?? true,
-      canMembersViewMemberList: (data['canMembersViewMemberList'] as bool?) ?? true,
+      startDate: startDate,
+      canMembersViewTotalFund: canViewTotalFund,
+      canMembersViewExpenses: canViewExpenses,
+      canMembersViewMemberList: canViewMemberList,
       memberCount: (data['memberCount'] as num?)?.toInt() ?? 0,
     );
   }

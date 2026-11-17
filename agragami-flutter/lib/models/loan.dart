@@ -1,3 +1,5 @@
+import '../utils/date_parser.dart';
+
 /// কর্জে হাসানা — সুদমুক্ত ঋণ।
 /// Firestore কালেকশন: loans
 /// এখানে সুদের কোনো ফিল্ড নেই — সুদ, ফাইন বা লভ্যাংশের
@@ -45,12 +47,12 @@ class LoanRepayment {
   factory LoanRepayment.fromMap(Map<String, dynamic> data) {
     return LoanRepayment(
       amount: (data['amount'] as num?)?.toInt() ?? 0,
-      date: DateTime.tryParse((data['date'] as String?) ?? '') ?? DateTime.now(),
+      date: parseFirestoreDate(data['date']),
       method: (data['method'] as String?) ?? '',
       paymentMethodId: data['paymentMethodId'] as String?,
       paymentMethodName: data['paymentMethodName'] as String?,
       paymentAccountNumber: data['paymentAccountNumber'] as String?,
-      trxId: data['trxId'] as String?,
+      trxId: (data['trxId'] ?? data['transactionId']) as String?,
       senderMobile: data['senderMobile'] as String?,
     );
   }
@@ -99,18 +101,21 @@ class Loan {
 
   factory Loan.fromMap(String id, Map<String, dynamic> data) {
     final list = (data['repayments'] as List?) ?? [];
+    final rawStatus = (data['status'] as String?)?.toLowerCase();
+    final status = switch (rawStatus) {
+      'repaid' || 'paid_off' || 'paidoff' => LoanStatus.repaid,
+      'overdue' || 'defaulted' => LoanStatus.overdue,
+      _ => LoanStatus.active,
+    };
+
     return Loan(
       id: id,
       memberId: (data['memberId'] as String?) ?? '',
       branchId: (data['branchId'] as String?) ?? '',
       amount: (data['amount'] as num?)?.toInt() ?? 0,
-      dateIssued:
-          DateTime.tryParse((data['dateIssued'] as String?) ?? '') ?? DateTime.now(),
+      dateIssued: parseFirestoreDate(data['dateIssued']),
       reason: (data['reason'] as String?) ?? '',
-      status: LoanStatus.values.firstWhere(
-        (s) => s.name == data['status'],
-        orElse: () => LoanStatus.active,
-      ),
+      status: status,
       repayments: list
           .map((e) => LoanRepayment.fromMap(e as Map<String, dynamic>))
           .toList(),
