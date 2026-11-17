@@ -33,8 +33,8 @@ fun DashboardDrawer(
     onNavigateToBranches: () -> Unit,
     onNavigateToMembers: () -> Unit,
     onNavigateToPayments: () -> Unit,
-    onNavigateToLoans: () -> Unit,
     onNavigateToExpenses: () -> Unit,
+    onNavigateToDefaulters: () -> Unit = {},
     onNavigateToNotices: () -> Unit,
     onNavigateToCommittee: () -> Unit,
     onNavigateToDividends: () -> Unit,
@@ -153,7 +153,7 @@ fun DashboardDrawer(
             DrawerNavItem(Icons.Default.Apartment, if (isBangla) "সমিতিসমূহ ও শাখাসমূহ" else "Somithis & Branches") { onCloseDrawer(); onNavigateToBranches() }
             DrawerNavItem(Icons.Default.Groups, if (isBangla) "সদস্য তালিকা" else "Member Directory") { onCloseDrawer(); onNavigateToMembers() }
             DrawerNavItem(Icons.Default.Receipt, if (isBangla) "চাঁদা ও সঞ্চয় জমা" else "Deposit Collection") { onCloseDrawer(); onNavigateToPayments() }
-            DrawerNavItem(Icons.Default.CreditCard, if (isBangla) "ঋণ ও দাদন সেবা" else "Loans & Advances") { onCloseDrawer(); onNavigateToLoans() }
+            DrawerNavItem(Icons.Default.AssignmentLate, if (isBangla) "বকেয়া চাঁদা রেজিস্টার" else "Dues Register") { onCloseDrawer(); onNavigateToDefaulters() }
             DrawerNavItem(Icons.Default.MoneyOff, if (isBangla) "দৈনন্দিন খরচ রেজিস্টার" else "Expense Register") { onCloseDrawer(); onNavigateToExpenses() }
 
             Divider(modifier = Modifier.padding(vertical = 6.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))

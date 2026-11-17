@@ -1,0 +1,61 @@
+name: agragami_fund
+description: অগ্রগামী ফান্ড — সমিতি পরিচালনার অ্যাপ। Android, iPhone ও কম্পিউটারে চলবে।
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # বাংলা লোকালাইজেশন — MaterialLocalizations-এর জন্য লাগে,
+  # না থাকলে TextField-ওয়ালা স্ক্রিনে লাল ভুল দেখায়
+  flutter_localizations:
+    sdk: flutter
+  # Firebase — আগের ogrogami-fund প্রজেক্টই ব্যবহার হবে
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  firebase_storage: ^12.3.4
+  # গুগল দিয়ে ঢোকা — বেশিরভাগ ব্যবহারকারী এটাই ব্যবহার করবে
+  google_sign_in: ^7.0.0
+  # গুগল দিয়ে ঢোকার ওয়েব বোতাম (GIS বোতাম) — শুধু ওয়েবে ব্যবহার হয়
+  google_sign_in_web: ^1.1.3
+  # নেভিগেশন ও স্টেট
+  go_router: ^14.2.7
+  flutter_riverpod: ^2.6.1
+  # বাংলা ফন্ট — কালপুরুষ (স্থানীয় ফন্ট, assets/fonts/ ফোল্ডারে আছে)
+  # google_fonts প্যাকেজ আর ব্যবহার হয় না, যাতে দুটো ফন্ট মিশে না যায়।
+  # আইডি কার্ড ও রসিদ — ধাপ ২-এ ব্যবহার হচ্ছে
+  pdf: ^3.11.1
+  printing: ^5.13.2
+  # ছবি তোলা ও ফাইল বাছাই — সদস্যের ছবি ও এনআইডির জন্য
+  image_picker: ^1.1.2
+  file_picker: ^8.1.2
+  # সহজ ইউটিলিটি
+  intl: ^0.20.3
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/fonts/
+  # অ্যাপের ফন্ট — কালপুরুষ। Regular অফিসিয়াল v0.258;
+  # Bold-এর অফিসিয়াল সংস্করণ নেই বলে Regular থেকে বানানো
+  # (গ্লিফ একটু মোটা করা হয়েছে)। অ্যাপের সব লেখা আর PDF —
+  # দুই জায়গাতেই এই একটাই ফন্ট ব্যবহার হয়।
+  fonts:
+    - family: Kalpurush
+      fonts:
+        - asset: assets/fonts/Kalpurush-Regular.ttf
+        - asset: assets/fonts/Kalpurush-Bold.ttf
+          weight: 700

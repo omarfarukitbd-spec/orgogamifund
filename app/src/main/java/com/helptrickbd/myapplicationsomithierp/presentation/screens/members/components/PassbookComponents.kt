@@ -112,7 +112,6 @@ fun PassbookHeaderCard(
 fun PassbookSummaryRow(
     totalSavings: Double,
     dues: Double,
-    loans: Double,
     pendingDepositsCount: Int,
     isBangla: Boolean,
     modifier: Modifier = Modifier
@@ -131,12 +130,6 @@ fun PassbookSummaryRow(
             title = if (isBangla) "বকেয়া" else "Dues",
             amount = CurrencyFormatter.formatBDT(dues, toBanglaDigits = isBangla),
             color = MoneyDueAmber,
-            modifier = Modifier.weight(1f)
-        )
-        SummaryMiniCard(
-            title = if (isBangla) "চলতি ঋণ" else "Loans",
-            amount = CurrencyFormatter.formatBDT(loans, toBanglaDigits = isBangla),
-            color = MoneyExpenseRed,
             modifier = Modifier.weight(1f)
         )
         SummaryMiniCard(

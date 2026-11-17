@@ -166,7 +166,7 @@ fun HeroFinancialCard(
                         }
                     }
 
-                    // Outflow (Loans/Expenses)
+                    // Outflow (Expenses)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -187,12 +187,12 @@ fun HeroFinancialCard(
                         }
                         Column {
                             Text(
-                                text = if (isBangla) "চলতি ঋণ ও খরচ" else "Loans & Expenses",
+                                text = if (isBangla) "মোট খরচ ও ব্যয়" else "Total Expenses",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                             )
                             Text(
-                                text = if (isBalanceVisible) CurrencyFormatter.formatBDT(state.activeLoans + state.totalExpenses, toBanglaDigits = isBangla) else "৳ ••••",
+                                text = if (isBalanceVisible) CurrencyFormatter.formatBDT(state.totalExpenses, toBanglaDigits = isBangla) else "৳ ••••",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimary

@@ -28,9 +28,6 @@ object FirestoreDataManager {
     private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
     val expenses: StateFlow<List<Expense>> = _expenses.asStateFlow()
 
-    private val _loans = MutableStateFlow<List<Loan>>(emptyList())
-    val loans: StateFlow<List<Loan>> = _loans.asStateFlow()
-
     private val _memberApplications = MutableStateFlow<List<MemberApplication>>(emptyList())
     val memberApplications: StateFlow<List<MemberApplication>> = _memberApplications.asStateFlow()
 
@@ -64,15 +61,34 @@ object FirestoreDataManager {
         firestore.collection("members").addSnapshotListener { snapshot, _ ->
             if (snapshot != null) {
                 val list = snapshot.documents.mapNotNull { doc ->
+                    val emergencyMap = doc.get("emergencyContact") as? Map<*, *>
                     Member(
                         id = doc.id,
-                        name = doc.getString("name") ?: "",
-                        phone = doc.getString("phone") ?: "",
-                        address = doc.getString("address") ?: "",
-                        photoUrl = doc.getString("photoUrl"),
-                        nid = doc.getString("nid") ?: "",
-                        branchId = doc.getString("branchId") ?: "b-1",
-                        status = if (doc.getString("status") == "left") MemberStatus.LEFT else MemberStatus.ACTIVE
+                        name = doc.getString("name") ?: "", nameEn = doc.getString("nameEn") ?: "",
+                        fatherName = doc.getString("fatherName") ?: "", dateOfBirth = doc.getString("dateOfBirth") ?: "",
+                        occupation = doc.getString("occupation") ?: "", memberType = doc.getString("memberType") ?: "",
+                        phone = doc.getString("phone") ?: "", whatsappNumber = doc.getString("whatsappNumber") ?: "",
+                        village = doc.getString("village") ?: "", upazila = doc.getString("upazila") ?: "",
+                        district = doc.getString("district") ?: "", address = doc.getString("address") ?: "",
+                        photoUrl = doc.getString("photoUrl"), nid = doc.getString("nid") ?: "",
+                        nidPhotoUrl = doc.getString("nidPhotoUrl"),
+                        emergencyContact = EmergencyContact(
+                            name = emergencyMap?.get("name") as? String ?: "",
+                            relation = emergencyMap?.get("relation") as? String ?: "",
+                            phone = emergencyMap?.get("phone") as? String ?: ""
+                        ),
+                        // Per-section custom fields
+                        customFieldsPersonal = doc.get("customFieldsPersonal").toStringMap(),
+                        customFieldsContact = doc.get("customFieldsContact").toStringMap(),
+                        customFieldsDocs = doc.get("customFieldsDocs").toStringMap(),
+                        customFieldsEmergency = doc.get("customFieldsEmergency").toStringMap(),
+                        customFields = doc.get("customFields").toStringMap(),
+                        // Membership
+                        branchId = doc.getString("branchId") ?: "",
+                        joinDate = doc.getLong("joinDate") ?: System.currentTimeMillis(),
+                        status = if (doc.getString("status") == "LEFT") MemberStatus.LEFT
+                        else MemberStatus.ACTIVE,
+                        linkedUserId = doc.getString("linkedUserId")
                     )
                 }
                 _members.value = list
@@ -193,7 +209,6 @@ object FirestoreDataManager {
         val totalBalance = branch?.balance ?: 0.0
         val monthCollection = _payments.value.filter { it.branchId == selId }.sumOf { it.amount }.safeRound()
         val totalExp = _expenses.value.filter { it.branchId == selId }.sumOf { it.amount }.safeRound()
-        val totalLoans = _loans.value.filter { it.branchId == selId && it.status == LoanStatus.ACTIVE }.sumOf { it.outstandingBalance }.safeRound()
 
         _dashboardState.value = _dashboardState.value.copy(
             selectedBranchId = branch?.id ?: selId,
@@ -201,8 +216,9 @@ object FirestoreDataManager {
             totalFundBalance = totalBalance,
             thisMonthCollection = monthCollection,
             totalExpenses = totalExp,
-            activeLoans = totalLoans,
             pendingApplicationsCount = _memberApplications.value.count { it.status == ApprovalStatus.PENDING }
         )
     }
 }
+
+private fun Any?.toStringMap(): Map<String, String> = (this as? Map<*, *>)?.entries?.mapNotNull { (k, v) -> if (k is String && v is String) k to v else null }?.toMap() ?: emptyMap()

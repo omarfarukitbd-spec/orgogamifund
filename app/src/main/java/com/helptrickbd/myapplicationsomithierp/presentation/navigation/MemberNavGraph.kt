@@ -19,6 +19,7 @@ fun NavGraphBuilder.addMemberNavRoutes(
     members: List<Member>,
     branches: List<Branch>,
     payments: List<Payment>,
+    userRole: com.helptrickbd.myapplicationsomithierp.domain.model.UserRole = com.helptrickbd.myapplicationsomithierp.domain.model.UserRole.MEMBER,
     launchCall: (Context, String) -> Unit,
     launchWhatsApp: (Context, String) -> Unit
 ) {
@@ -26,19 +27,28 @@ fun NavGraphBuilder.addMemberNavRoutes(
         MemberListScreen(
             members = members,
             onMemberClick = { memberId -> navController.navigate(Screen.MemberDetail.createRoute(memberId)) },
-            onAddMemberClick = { navController.navigate(Screen.AddMember.route) },
+            onAddMemberClick = { navController.navigate(Screen.AddMember.createRoute()) },
             onCallClick = { phone -> launchCall(context, phone) },
             onWhatsAppClick = { phone -> launchWhatsApp(context, phone) },
             onNavigateBack = { navController.popBackStack() }
         )
     }
 
-    composable(Screen.AddMember.route) {
+    composable(
+        route = Screen.AddMember.route,
+        arguments = listOf(navArgument("memberId") {
+            type = NavType.StringType
+            nullable = true
+            defaultValue = null
+        })
+    ) { backStackEntry ->
+        val memberId = backStackEntry.arguments?.getString("memberId")
+        val existing = members.find { it.id == memberId }
+        val currentBranchId = branches.firstOrNull()?.id ?: ""
         AddEditMemberScreen(
-            onSaveMember = { newMember ->
-                FirestoreWriteManager.addMember(newMember)
-                navController.popBackStack()
-            },
+            existingMember = existing,
+            defaultBranchId = currentBranchId,
+            userRole = userRole,
             onNavigateBack = { navController.popBackStack() }
         )
     }
@@ -53,7 +63,7 @@ fun NavGraphBuilder.addMemberNavRoutes(
             member = member,
             onCallClick = { phone -> launchCall(context, phone) },
             onWhatsAppClick = { phone -> launchWhatsApp(context, phone) },
-            onEditClick = { navController.navigate(Screen.AddMember.route) },
+            onEditClick = { navController.navigate(Screen.AddMember.createRoute(member.id)) },
             onDeleteMember = { id ->
                 FirestoreWriteManager.deleteMember(id) {
                     navController.popBackStack()

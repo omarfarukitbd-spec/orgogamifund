@@ -40,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.helptrickbd.myapplicationsomithierp.core.pdf.ReportPdfGenerator
 import com.helptrickbd.myapplicationsomithierp.domain.model.Expense
-import com.helptrickbd.myapplicationsomithierp.domain.model.Loan
 import com.helptrickbd.myapplicationsomithierp.domain.model.Member
 import com.helptrickbd.myapplicationsomithierp.domain.model.Payment
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.reports.components.ExpenseReportPreview
@@ -54,7 +53,6 @@ fun ReportsScreen(
     members: List<Member> = emptyList(),
     payments: List<Payment> = emptyList(),
     expenses: List<Expense> = emptyList(),
-    loans: List<Loan> = emptyList(),
     onNavigateBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -118,8 +116,7 @@ fun ReportsScreen(
                                 reportTitle = currentReportTitle,
                                 members = members,
                                 payments = payments,
-                                expenses = expenses,
-                                loans = loans
+                                expenses = expenses
                             )
                             ReportPdfGenerator.shareReportPdf(context, pdf)
                         },
@@ -138,8 +135,7 @@ fun ReportsScreen(
                                 reportTitle = currentReportTitle,
                                 members = members,
                                 payments = payments,
-                                expenses = expenses,
-                                loans = loans
+                                expenses = expenses
                             )
                             ReportPdfGenerator.printReport(context, pdf)
                         },
@@ -176,9 +172,9 @@ fun ReportsScreen(
 
             // Report Preview Content
             when (selectedReportIndex) {
-                0 -> SummaryReportPreview(members = members, payments = payments, expenses = expenses, loans = loans, isBangla = isBangla)
+                0 -> SummaryReportPreview(members = members, payments = payments, expenses = expenses, isBangla = isBangla)
                 1 -> ExpenseReportPreview(expenses = expenses, isBangla = isBangla)
-                2 -> LoanReportPreview(loans = loans, isBangla = isBangla)
+                2 -> DefaultersReportPreview(members = members, isBangla = isBangla)
                 3 -> MemberLedgerReportPreview(members = members, isBangla = isBangla)
             }
         }

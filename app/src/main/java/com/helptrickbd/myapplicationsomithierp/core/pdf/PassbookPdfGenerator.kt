@@ -110,26 +110,22 @@ object PassbookPdfGenerator {
         val pendingCount = payments.count { it.approvalStatus == ApprovalStatus.PENDING }
 
         paint.textAlign = Paint.Align.CENTER
-        paint.textSize = 9f
+        paint.textSize = 10f
         paint.color = Color.rgb(100, 116, 139)
-        canvas.drawText("মোট সঞ্চয় জমা", 100f, 210f, paint)
-        canvas.drawText("বর্তমান বকেয়া", 235f, 210f, paint)
-        canvas.drawText("চলতি ঋণ/কর্জ", 370f, 210f, paint)
-        canvas.drawText("অপেক্ষমাণ জমা", 500f, 210f, paint)
+        canvas.drawText("মোট সঞ্চয় জমা", 120f, 210f, paint)
+        canvas.drawText("বর্তমান বকেয়া", 297f, 210f, paint)
+        canvas.drawText("অপেক্ষমাণ জমা", 475f, 210f, paint)
 
-        paint.textSize = 12f
+        paint.textSize = 13f
         paint.isFakeBoldText = true
         paint.color = Color.rgb(22, 101, 52) // Green
-        canvas.drawText(CurrencyFormatter.formatBDT(totalSavings), 100f, 230f, paint)
+        canvas.drawText(CurrencyFormatter.formatBDT(totalSavings), 120f, 230f, paint)
 
         paint.color = Color.rgb(180, 83, 9) // Amber
-        canvas.drawText(CurrencyFormatter.formatBDT(member.outstandingDues), 235f, 230f, paint)
-
-        paint.color = Color.rgb(185, 28, 28) // Red
-        canvas.drawText(CurrencyFormatter.formatBDT(member.activeLoanBalance), 370f, 230f, paint)
+        canvas.drawText(CurrencyFormatter.formatBDT(member.outstandingDues), 297f, 230f, paint)
 
         paint.color = Color.rgb(30, 64, 175) // Blue
-        canvas.drawText("$pendingCount টি", 500f, 230f, paint)
+        canvas.drawText("$pendingCount টি", 475f, 230f, paint)
 
         // 5. Table Header
         var currentY = 275f

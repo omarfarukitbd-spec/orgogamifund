@@ -6,8 +6,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AssignmentLate
-import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -30,7 +30,7 @@ import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyIncomeGreen
 fun FinancialStatsGrid(
     state: DashboardUiState,
     onNavigateToMembers: () -> Unit,
-    onNavigateToLoans: () -> Unit,
+    onNavigateToPayments: () -> Unit = {},
     onNavigateToExpenses: () -> Unit,
     onNavigateToDefaulters: () -> Unit,
     modifier: Modifier = Modifier
@@ -53,12 +53,12 @@ fun FinancialStatsGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             MetricCard(
-                title = if (isBangla) "সক্রিয় ঋণ ও সাহায্য" else "Active Loans & Aid",
-                value = CurrencyFormatter.formatBDT(state.activeLoans, toBanglaDigits = isBangla),
-                subtitle = if (isBangla) "বিনা লাভে ঋণ তহবিল" else "Interest-free fund",
-                icon = Icons.Default.AttachMoney,
+                title = if (isBangla) "চলতি মাসের মোট আদায়" else "This Month Collection",
+                value = CurrencyFormatter.formatBDT(state.thisMonthCollection, toBanglaDigits = isBangla),
+                subtitle = if (isBangla) "সঞ্চয় ও কল্যাণ চাঁদা" else "Savings & welfare",
+                icon = Icons.Default.Paid,
                 tint = MaterialTheme.colorScheme.primary,
-                onClick = onNavigateToLoans,
+                onClick = onNavigateToPayments,
                 modifier = Modifier.weight(1f)
             )
 

@@ -11,7 +11,7 @@
     <string name="nav_members">সদস্যবৃন্দ</string>
     <string name="nav_contributions">চাঁদা/কালেকশন</string>
     <string name="nav_expenses">খরচ হিসাব</string>
-    <string name="nav_loans">ঋণ/দাদন</string>
+    <string name="nav_defaulters">বকেয়া খাতা</string>
     <string name="nav_committee">কমিটি</string>
     <string name="nav_notices">নোটিশ বোর্ড</string>
     <string name="nav_reports">রিপোর্টস</string>
@@ -36,7 +36,6 @@
     <string name="total_fund_balance">মোট ফান্ড ব্যালেন্স</string>
     <string name="monthly_collection">চলতি মাসের কালেকশন</string>
     <string name="total_expenses">মোট সর্বমোট খরচ</string>
-    <string name="active_loans">বিতরণকৃত সক্রিয় ঋণ</string>
     <string name="outstanding_dues">মোট বকেয়া চাঁদা</string>
     <string name="recent_transactions">সাম্প্রতিক লেনদেন</string>
     <string name="quick_actions">কুইক অ্যাকশন</string>
@@ -113,7 +112,7 @@
     <string name="onboarding_next">পরবর্তী</string>
     <string name="onboarding_get_started">শুরু করুন</string>
     <string name="onboarding_title_1">স্মার্ট সমিতি ও তহবিল ব্যবস্থাপনা</string>
-    <string name="onboarding_desc_1">কাগজের হিসাবের দিন শেষ! সদস্যদের চাঁদা, ঋণ ও ব্যয়ের স্বচ্ছ হিসাব রাখুন এক ছাতার নিচে শতভাগ নির্ভুলতার সাথে।</string>
+    <string name="onboarding_desc_1">কাগজের হিসাবের দিন শেষ! সদস্যদের চাঁদা, সঞ্চয় ও ব্যয়ের স্বচ্ছ হিসাব রাখুন এক ছাতার নিচে শতভাগ নির্ভুলতার সাথে।</string>
     <string name="onboarding_title_2">ডিজিটাল মানি রসিদ ও আইডি কার্ড</string>
     <string name="onboarding_desc_2">টাকা জমার সাথে সাথে মানি রসিদ প্রিন্ট করুন এবং প্রতিটি সদস্যের ছবিযুক্ত প্রফেশনাল ২-সাইডেড আইডি কার্ড তৈরি করুন।</string>
     <string name="onboarding_title_3">১০০% অফলাইন সুবিধা ও ক্লাউড সিঙ্ক</string>

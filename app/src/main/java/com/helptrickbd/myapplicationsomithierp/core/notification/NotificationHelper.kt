@@ -36,10 +36,10 @@ object NotificationHelper {
 
             val reminderChannel = NotificationChannel(
                 CHANNEL_ID_REMINDERS,
-                "বকেয়া ও কিস্তি তাগাদা (Reminders)",
+                "বকেয়া চাঁদা তাগাদা (Reminders)",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "মাসিক চাঁদা ও ঋণের কিস্তির প্রাক-স্মারক বার্তা"
+                description = "মাসিক চাঁদা ও সঞ্চয় জমার প্রাক-স্মারক বার্তা"
                 enableVibration(true)
             }
 
@@ -88,7 +88,7 @@ object NotificationHelper {
 
         val channelId = when (type) {
             NotificationType.PAYMENT_RECEIVED -> CHANNEL_ID_PAYMENTS
-            NotificationType.DUE_REMINDER, NotificationType.DEFAULTER_ALERT, NotificationType.LOAN_REMINDER -> CHANNEL_ID_REMINDERS
+            NotificationType.DUE_REMINDER, NotificationType.DEFAULTER_ALERT -> CHANNEL_ID_REMINDERS
             NotificationType.NEW_NOTICE -> CHANNEL_ID_NOTICES
             else -> CHANNEL_ID_GENERAL
         }

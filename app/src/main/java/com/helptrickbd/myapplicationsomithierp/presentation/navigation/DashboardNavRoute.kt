@@ -53,7 +53,6 @@ fun NavGraphBuilder.addDashboardNavRoute(
                 }
             },
             onNavigateToAddExpense = { navController.navigate(Screen.AddExpense.route) },
-            onNavigateToIssueLoan = { navController.navigate(Screen.IssueLoan.route) },
             onNavigateToAddMember = { navController.navigate(Screen.AddMember.route) },
             onNavigateToDefaulters = { navController.navigate(Screen.Defaulters.route) },
             onNavigateToMembers = { navController.navigate(Screen.Members.route) },
@@ -62,12 +61,25 @@ fun NavGraphBuilder.addDashboardNavRoute(
             onNavigateToNotices = { navController.navigate(Screen.Notices.route) },
             onNavigateToDividends = { navController.navigate(Screen.Dividends.route) },
             onNavigateToExpenses = { navController.navigate(Screen.Expenses.route) },
-            onNavigateToLoans = { navController.navigate(Screen.Loans.route) },
             onNavigateToBranches = { navController.navigate(Screen.Branches.route) },
             onNavigateToReports = { navController.navigate(Screen.Reports.route) },
             onNavigateToAdminHub = { navController.navigate(Screen.AdminHub.route) },
             onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-            onNavigateToPassbook = { memberId -> navController.navigate(Screen.MemberPassbook.createRoute(memberId)) }
+            onNavigateToPassbook = { memberId -> navController.navigate(Screen.MemberPassbook.createRoute(memberId)) },
+            onNavigateToCreateSomithi = { navController.navigate(Screen.CreateSomithiFund.route) },
+            onNavigateToEditSomithi = { branchId -> navController.navigate(Screen.EditSomithiFund.createRoute(branchId)) },
+            onAddActivityPhoto = { branchId, photoUrl ->
+                val branch = dashboardUiState.branches.find { it.id == branchId }
+                if (branch != null) {
+                    val updated = branch.activityPhotos + photoUrl
+                    com.helptrickbd.myapplicationsomithierp.core.data.FirestoreWriteManager.updateBranchBranding(
+                        branchId = branchId,
+                        logoUrl = branch.logoUrl,
+                        bannerUrl = branch.bannerUrl,
+                        activityPhotos = updated
+                    )
+                }
+            }
         )
     }
 }

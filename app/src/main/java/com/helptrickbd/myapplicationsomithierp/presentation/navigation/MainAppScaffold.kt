@@ -45,7 +45,7 @@ fun MainAppScaffold(
                 onNavigateToBranches = { closeAndNavigate(Screen.Branches.route) },
                 onNavigateToMembers = { closeAndNavigate(Screen.Members.route) },
                 onNavigateToPayments = { closeAndNavigate(Screen.Contributions.route) },
-                onNavigateToLoans = { closeAndNavigate(Screen.Loans.route) },
+                onNavigateToDefaulters = { closeAndNavigate(Screen.Defaulters.route) },
                 onNavigateToExpenses = { closeAndNavigate(Screen.Expenses.route) },
                 onNavigateToNotices = { closeAndNavigate(Screen.Notices.route) },
                 onNavigateToCommittee = { closeAndNavigate(Screen.Committee.route) },

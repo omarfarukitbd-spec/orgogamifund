@@ -79,7 +79,6 @@ fun AdminFinancialControlCategory(
     onNavigateToPendingDeposits: () -> Unit,
     onNavigateToCollectPayment: () -> Unit,
     onNavigateToAddExpense: () -> Unit,
-    onNavigateToIssueLoan: () -> Unit,
     onNavigateToDividends: () -> Unit,
     onNavigateToDefaulters: () -> Unit
 ) {
@@ -117,14 +116,6 @@ fun AdminFinancialControlCategory(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             AdminActionTile(
-                title = if (isBangla) "কল্যাণ ঋণ ও কর্জে হাসানা প্রদান" else "Issue Welfare Loans (Qard Hasan)",
-                subtitle = if (isBangla) "সদস্যদের সুদবিহীন ঋণ মঞ্জুরি ও কিস্তি সূচি নির্ধারণ" else "Approve interest-free loans and set repayment schedules",
-                icon = Icons.Default.CreditCard,
-                iconColor = Color(0xFFD97706),
-                onClick = onNavigateToIssueLoan
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            AdminActionTile(
                 title = if (isBangla) "বার্ষিক লভ্যাংশ বণ্টন" else "Annual Dividend Distribution",
                 subtitle = if (isBangla) "বাৎসরিক উদ্বৃত্ত সদস্যদের মাঝে সুষমভাবে বণ্টন" else "Distribute annual surplus among members proportionally",
                 icon = Icons.Default.PieChart,
@@ -147,6 +138,7 @@ fun AdminFinancialControlCategory(
 fun AdminSystemControlCategory(
     isBangla: Boolean,
     onNavigateToCreateSomithi: () -> Unit,
+    onNavigateToEditSomithi: (String) -> Unit = {},
     onNavigateToBranches: () -> Unit,
     onNavigateToCommittee: () -> Unit,
     onNavigateToNotices: () -> Unit,
@@ -167,6 +159,14 @@ fun AdminSystemControlCategory(
                 icon = Icons.Default.Apartment,
                 iconColor = Color(0xFF0284C7),
                 onClick = onNavigateToCreateSomithi
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            AdminActionTile(
+                title = if (isBangla) "বিদ্যমান সমিতি সম্পাদনা করুন" else "Edit Existing Somithi Fund",
+                subtitle = if (isBangla) "তৈরি করা সমিতির নাম, চাঁদা, পারমিশন ও শর্তাবলী পরিবর্তন করুন" else "Update name, dues, permissions & terms of an existing fund",
+                icon = Icons.Default.Edit,
+                iconColor = Color(0xFF0D9488),
+                onClick = { onNavigateToEditSomithi("") }
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             AdminActionTile(

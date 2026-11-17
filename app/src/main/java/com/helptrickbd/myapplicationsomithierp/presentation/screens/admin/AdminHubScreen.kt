@@ -69,12 +69,12 @@ fun AdminHubScreen(
     onNavigateToApprovals: () -> Unit = {},
     onNavigateToPendingDeposits: () -> Unit = {},
     onNavigateToCreateSomithi: () -> Unit = {},
+    onNavigateToEditSomithi: (branchId: String) -> Unit = {},
     onNavigateToMembers: () -> Unit = {},
     onNavigateToAddMember: () -> Unit = {},
     onNavigateToEditRequests: () -> Unit = {},
     onNavigateToCollectPayment: () -> Unit = {},
     onNavigateToAddExpense: () -> Unit = {},
-    onNavigateToIssueLoan: () -> Unit = {},
     onNavigateToDividends: () -> Unit = {},
     onNavigateToDefaulters: () -> Unit = {},
     onNavigateToBranches: () -> Unit = {},
@@ -266,7 +266,6 @@ fun AdminHubScreen(
                     onNavigateToPendingDeposits = onNavigateToPendingDeposits,
                     onNavigateToCollectPayment = onNavigateToCollectPayment,
                     onNavigateToAddExpense = onNavigateToAddExpense,
-                    onNavigateToIssueLoan = onNavigateToIssueLoan,
                     onNavigateToDividends = onNavigateToDividends,
                     onNavigateToDefaulters = onNavigateToDefaulters
                 )
@@ -274,6 +273,7 @@ fun AdminHubScreen(
                 AdminSystemControlCategory(
                     isBangla = isBangla,
                     onNavigateToCreateSomithi = onNavigateToCreateSomithi,
+                    onNavigateToEditSomithi = onNavigateToEditSomithi,
                     onNavigateToBranches = onNavigateToBranches,
                     onNavigateToCommittee = onNavigateToCommittee,
                     onNavigateToNotices = onNavigateToNotices,

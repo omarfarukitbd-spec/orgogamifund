@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,8 +29,8 @@ import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyIncomeGreen
 fun DashboardQuickActions(
     onCollectPayment: () -> Unit,
     onAddExpense: () -> Unit,
-    onIssueLoan: () -> Unit,
     onAddMember: () -> Unit,
+    onNavigateToDefaulters: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isBangla = LocalConfiguration.current.locales[0].language == "bn"
@@ -73,18 +74,18 @@ fun DashboardQuickActions(
                 )
 
                 QuickActionButton(
-                    icon = Icons.Default.Add,
-                    label = if (isBangla) "ঋণ ও সাহায্য" else "Issue Loan",
-                    tint = MoneyDueAmber,
-                    onClick = onIssueLoan,
-                    modifier = Modifier.weight(1f)
-                )
-
-                QuickActionButton(
                     icon = Icons.Default.PersonAdd,
                     label = if (isBangla) "নতুন সদস্য" else "Add Member",
                     tint = MaterialTheme.colorScheme.primary,
                     onClick = onAddMember,
+                    modifier = Modifier.weight(1f)
+                )
+
+                QuickActionButton(
+                    icon = Icons.Default.Warning,
+                    label = if (isBangla) "বকেয়া খাতা" else "Defaulters",
+                    tint = MoneyDueAmber,
+                    onClick = onNavigateToDefaulters,
                     modifier = Modifier.weight(1f)
                 )
             }

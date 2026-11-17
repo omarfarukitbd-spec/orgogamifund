@@ -31,8 +31,7 @@ fun MemberExitSettlementDialog(
 ) {
     val safeContributed = safeRound(member.totalContributed)
     val safeDues = safeRound(member.outstandingDues)
-    val safeLoans = safeRound(member.activeLoanBalance)
-    val netSettlement = safeRound((safeContributed - safeDues - safeLoans).coerceAtLeast(0.0))
+    val netSettlement = safeRound((safeContributed - safeDues).coerceAtLeast(0.0))
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -72,13 +71,6 @@ fun MemberExitSettlementDialog(
                 ) {
                     Text(if (isBangla) "কর্তন - বকেয়া চাঁদা:" else "Deduction - Dues:", style = MaterialTheme.typography.bodySmall)
                     Text("- ${CurrencyFormatter.formatBDT(safeDues, toBanglaDigits = isBangla)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MoneyDueAmber)
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(if (isBangla) "কর্তন - অনাদায়ী ঋণ:" else "Deduction - Loans:", style = MaterialTheme.typography.bodySmall)
-                    Text("- ${CurrencyFormatter.formatBDT(safeLoans, toBanglaDigits = isBangla)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MoneyExpenseRed)
                 }
                 HorizontalDivider()
                 Row(

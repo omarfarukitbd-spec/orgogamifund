@@ -1,0 +1,22 @@
+# Flutter
+.dart_tool/
+.build/
+.pub-cache/
+.pub/
+build/
+
+# Firebase config — কখনো রিপোতে তুলবেন না
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
+firebase_options.dart
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

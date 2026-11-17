@@ -18,7 +18,6 @@ object ShomitiDataManager {
     private val initialMembers = emptyList<Member>()
     private val initialPayments = emptyList<Payment>()
     private val initialExpenses = emptyList<Expense>()
-    private val initialLoans = emptyList<Loan>()
     private val initialCommittee = emptyList<CommitteeMember>()
     private val initialNotices = emptyList<Notice>()
     private val initialEditRequests = emptyList<EditRequest>()
@@ -115,28 +114,20 @@ object ShomitiDataManager {
     private fun computeDashboardState(): DashboardUiState {
         val selBranchId = _selectedBranchId.value
         val branchPayments = _payments.value.filter { it.branchId == selBranchId }
-        val branchLoans = _loans.value.filter { it.branchId == selBranchId }
         val branchExpenses = _expenses.value.filter { it.branchId == selBranchId }
         val branchMembers = _members.value.filter { it.branchId == selBranchId && it.status == MemberStatus.ACTIVE }
 
         val totalContributions = safeRound(branchPayments.sumOf { safeRound(it.amount) })
-        val totalLoanRepayments = safeRound(branchLoans.sumOf { safeRound(it.totalRepaid) })
         val totalExpensesAmount = safeRound(branchExpenses.sumOf { safeRound(it.amount) })
-        val totalLoansDisbursed = safeRound(branchLoans.sumOf { safeRound(it.amount) })
         
         val targetBranch = _branches.value.find { it.id == selBranchId }
         val baseSeedFund = targetBranch?.balance ?: 0.0
         val totalFundBalance = safeRound(
-            baseSeedFund + (totalContributions + totalLoanRepayments) - totalExpensesAmount - totalLoansDisbursed
+            baseSeedFund + totalContributions - totalExpensesAmount
         )
 
         val thisMonthCollection = safeRound(
             branchPayments.sumOf { safeRound(it.amount) }
-        )
-
-        val activeLoansBalance = safeRound(
-            branchLoans.filter { it.status == LoanStatus.ACTIVE }
-                .sumOf { safeRound(it.outstandingBalance) }
         )
 
         val totalOutstandingDues = safeRound(
@@ -157,7 +148,6 @@ object ShomitiDataManager {
             totalFundBalance = totalFundBalance,
             thisMonthCollection = thisMonthCollection,
             totalExpenses = totalExpensesAmount,
-            activeLoans = activeLoansBalance,
             totalOutstandingDues = totalOutstandingDues,
             topDefaulterCount = topDefaulterCount,
             pendingApplicationsCount = pendingAppsCount,

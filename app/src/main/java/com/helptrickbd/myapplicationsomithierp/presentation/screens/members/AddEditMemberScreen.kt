@@ -1,98 +1,91 @@
 package com.helptrickbd.myapplicationsomithierp.presentation.screens.members
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import android.net.Uri
+import android.widget.Toast
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AddAPhoto
-import androidx.compose.material.icons.filled.ContactPhone
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material.icons.filled.VerifiedUser
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.helptrickbd.myapplicationsomithierp.R
-import com.helptrickbd.myapplicationsomithierp.domain.model.EmergencyContact
-import com.helptrickbd.myapplicationsomithierp.domain.model.Member
+import com.helptrickbd.myapplicationsomithierp.core.data.FirebaseStorageManager
+import com.helptrickbd.myapplicationsomithierp.core.data.FirestoreWriteManager
+import com.helptrickbd.myapplicationsomithierp.domain.model.*
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.members.components.*
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditMemberScreen(
-    initialMember: Member? = null,
-    branches: List<String> = listOf("Main Branch", "Feni Sadar", "Daganbhuiyan"),
-    onSaveMember: (Member) -> Unit = {},
+    existingMember: Member? = null,
+    defaultBranchId: String = "",
+    userRole: UserRole = UserRole.MEMBER,
     onNavigateBack: () -> Unit = {}
 ) {
-    var name by remember { mutableStateOf(initialMember?.name ?: "") }
-    var phone by remember { mutableStateOf(initialMember?.phone ?: "") }
-    var address by remember { mutableStateOf(initialMember?.address ?: "") }
-    var nid by remember { mutableStateOf(initialMember?.nid ?: "") }
-    var selectedBranch by remember { mutableStateOf(initialMember?.branchId ?: branches.firstOrNull() ?: "") }
-    var emergencyName by remember { mutableStateOf(initialMember?.emergencyContact?.name ?: "") }
-    var emergencyPhone by remember { mutableStateOf(initialMember?.emergencyContact?.phone ?: "") }
+    val context = LocalContext.current
+    val isBangla = LocalConfiguration.current.locales[0].language == "bn"
+    val isEdit = existingMember != null
+    val isAdminOrSuper = userRole == UserRole.SUPER_ADMIN || userRole == UserRole.BRANCH_ADMIN
 
-    val isFormValid = name.isNotBlank() && phone.isNotBlank()
+    // Section 1: Personal
+    var name by remember { mutableStateOf(existingMember?.name ?: "") }
+    var nameEn by remember { mutableStateOf(existingMember?.nameEn ?: "") }
+    var fatherName by remember { mutableStateOf(existingMember?.fatherName ?: "") }
+    var dateOfBirth by remember { mutableStateOf(existingMember?.dateOfBirth ?: "") }
+    var occupation by remember { mutableStateOf(existingMember?.occupation ?: "") }
+    var memberType by remember { mutableStateOf(existingMember?.memberType ?: "") }
+    var customPersonal by remember { mutableStateOf(existingMember?.customFieldsPersonal ?: emptyMap()) }
+
+    // Section 2: Contact
+    var phone by remember { mutableStateOf(existingMember?.phone ?: "") }
+    var whatsapp by remember { mutableStateOf(existingMember?.whatsappNumber ?: "") }
+    var village by remember { mutableStateOf(existingMember?.village ?: "") }
+    var upazila by remember { mutableStateOf(existingMember?.upazila ?: "") }
+    var district by remember { mutableStateOf(existingMember?.district ?: "") }
+    var customContact by remember { mutableStateOf(existingMember?.customFieldsContact ?: emptyMap()) }
+
+    // Section 3: Docs & Photos
+    var nid by remember { mutableStateOf(existingMember?.nid ?: "") }
+    var profilePhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var nidPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var customDocs by remember { mutableStateOf(existingMember?.customFieldsDocs ?: emptyMap()) }
+
+    // Section 4: Emergency
+    var emergencyName by remember { mutableStateOf(existingMember?.emergencyContact?.name ?: "") }
+    var emergencyRelation by remember { mutableStateOf(existingMember?.emergencyContact?.relation ?: "") }
+    var emergencyPhone by remember { mutableStateOf(existingMember?.emergencyContact?.phone ?: "") }
+    var customEmergency by remember { mutableStateOf(existingMember?.customFieldsEmergency ?: emptyMap()) }
+
+    var isSubmitting by remember { mutableStateOf(false) }
+    var submitStep by remember { mutableStateOf("") }
+    val isValid = name.isNotBlank() && phone.isNotBlank()
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = if (initialMember == null) "নতুন সদস্য যোগ করুন" else "সদস্য তথ্য সম্পাদনা",
+                        text = if (isEdit) (if (isBangla) "সদস্য সম্পাদনা" else "Edit Member")
+                        else (if (isBangla) "নতুন সদস্য যোগ করুন" else "Add New Member"),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         }
     ) { innerPadding ->
@@ -100,169 +93,142 @@ fun AddEditMemberScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Photo Picker Section
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        modifier = Modifier
-                            .size(90.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                            .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                            .clickable { /* Trigger Photo Picker */ },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AddAPhoto,
-                            contentDescription = "Upload Photo",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "সদস্যের ছবি যোগ করুন",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            // Input Fields
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("পূর্ণ নাম *") },
-                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
+            MemberFormSection1Personal(
+                isBangla = isBangla, isAdminOrSuper = isAdminOrSuper,
+                name = name, onNameChange = { name = it },
+                nameEn = nameEn, onNameEnChange = { nameEn = it },
+                fatherName = fatherName, onFatherNameChange = { fatherName = it },
+                dateOfBirth = dateOfBirth, onDobChange = { dateOfBirth = it },
+                occupation = occupation, onOccupationChange = { occupation = it },
+                memberType = memberType, onMemberTypeChange = { memberType = it },
+                customFields = customPersonal, onCustomFieldsChange = { customPersonal = it }
             )
 
-            OutlinedTextField(
-                value = phone,
-                onValueChange = { phone = it },
-                label = { Text("মোবাইল নম্বর *") },
-                leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
+            MemberFormSection2Contact(
+                isBangla = isBangla, isAdminOrSuper = isAdminOrSuper,
+                phone = phone, onPhoneChange = { phone = it },
+                whatsapp = whatsapp, onWhatsappChange = { whatsapp = it },
+                village = village, onVillageChange = { village = it },
+                upazila = upazila, onUpazilaChange = { upazila = it },
+                district = district, onDistrictChange = { district = it },
+                customFields = customContact, onCustomFieldsChange = { customContact = it }
             )
 
-            OutlinedTextField(
-                value = address,
-                onValueChange = { address = it },
-                label = { Text("ঠিকানা") },
-                leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
+            MemberFormSection3Photos(
+                isBangla = isBangla, isAdminOrSuper = isAdminOrSuper,
+                nid = nid, onNidChange = { nid = it },
+                profilePhotoUri = profilePhotoUri,
+                onProfilePhotoSelected = { profilePhotoUri = it },
+                nidPhotoUri = nidPhotoUri,
+                onNidPhotoSelected = { nidPhotoUri = it },
+                existingPhotoUrl = existingMember?.photoUrl,
+                existingNidUrl = existingMember?.nidPhotoUrl,
+                customFields = customDocs, onCustomFieldsChange = { customDocs = it }
             )
 
-            OutlinedTextField(
-                value = nid,
-                onValueChange = { nid = it },
-                label = { Text("জাতীয় পরিচয়পত্র নম্বর (NID)") },
-                leadingIcon = { Icon(Icons.Default.VerifiedUser, contentDescription = null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
+            MemberFormSection4Emergency(
+                isBangla = isBangla, isAdminOrSuper = isAdminOrSuper,
+                emergencyName = emergencyName, onNameChange = { emergencyName = it },
+                emergencyRelation = emergencyRelation, onRelationChange = { emergencyRelation = it },
+                emergencyPhone = emergencyPhone, onPhoneChange = { emergencyPhone = it },
+                customFields = customEmergency, onCustomFieldsChange = { customEmergency = it }
             )
 
-            // NID Photo Upload Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { /* Trigger NID Scan Picker */ },
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(imageVector = Icons.Default.UploadFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "NID স্ক্যান/ছবি আপলোড করুন (ঐচ্ছিক)",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            // Emergency Contact Section
-            Text(
-                text = "জরুরি যোগাযোগ (Emergency Contact)",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            OutlinedTextField(
-                value = emergencyName,
-                onValueChange = { emergencyName = it },
-                label = { Text("জরুরি ব্যক্তির নাম") },
-                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value = emergencyPhone,
-                onValueChange = { emergencyPhone = it },
-                label = { Text("জরুরি ব্যক্তির ফোন নম্বর") },
-                leadingIcon = { Icon(Icons.Default.ContactPhone, contentDescription = null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Save Member Button
-            Button(
-                onClick = {
-                    if (isFormValid) {
-                        val member = Member(
-                            id = initialMember?.id ?: "",
-                            name = name.trim(),
-                            phone = phone.trim(),
-                            address = address.trim(),
-                            nid = nid.trim(),
-                            branchId = selectedBranch,
-                            emergencyContact = EmergencyContact(name = emergencyName.trim(), phone = emergencyPhone.trim())
-                        )
-                        onSaveMember(member)
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                enabled = isFormValid
-            ) {
-                Icon(imageVector = Icons.Default.Save, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
+            if (isSubmitting) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 Text(
-                    text = if (initialMember == null) "সদস্য সংরক্ষণ করুন" else "আপডেট সংরক্ষণ করুন",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    text = submitStep,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            Button(
+                onClick = {
+                    if (!isValid || isSubmitting) return@Button
+                    isSubmitting = true
+                    val memberId = existingMember?.id?.takeIf { it.isNotBlank() }
+                        ?: "m-${UUID.randomUUID().toString().take(8)}"
+
+                    fun buildAndSave(finalPhotoUrl: String?, finalNidUrl: String?) {
+                        val member = Member(
+                            id = memberId,
+                            name = name.trim(), nameEn = nameEn.trim(),
+                            fatherName = fatherName.trim(), dateOfBirth = dateOfBirth.trim(),
+                            occupation = occupation.trim(), memberType = memberType.trim(),
+                            phone = phone.trim(), whatsappNumber = whatsapp.trim(),
+                            village = village.trim(), upazila = upazila.trim(),
+                            district = district.trim(),
+                            nid = nid.trim(),
+                            photoUrl = finalPhotoUrl ?: existingMember?.photoUrl,
+                            nidPhotoUrl = finalNidUrl ?: existingMember?.nidPhotoUrl,
+                            emergencyContact = EmergencyContact(
+                                name = emergencyName.trim(),
+                                relation = emergencyRelation.trim(),
+                                phone = emergencyPhone.trim()
+                            ),
+                            customFieldsPersonal = customPersonal,
+                            customFieldsContact = customContact,
+                            customFieldsDocs = customDocs,
+                            customFieldsEmergency = customEmergency,
+                            branchId = existingMember?.branchId ?: defaultBranchId,
+                            joinDate = existingMember?.joinDate ?: System.currentTimeMillis(),
+                            linkedUserId = existingMember?.linkedUserId
+                        )
+                        FirestoreWriteManager.addMember(member) { success ->
+                            isSubmitting = false
+                            Toast.makeText(
+                                context,
+                                if (success) (if (isBangla) "সদস্য সফলভাবে সংরক্ষিত হয়েছে" else "Member saved!")
+                                else (if (isBangla) "সংরক্ষণ ব্যর্থ হয়েছে" else "Save failed"),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            if (success) onNavigateBack()
+                        }
+                    }
+
+                    // Upload profile photo first, then NID, then save
+                    val pUri = profilePhotoUri
+                    val nUri = nidPhotoUri
+                    if (pUri != null) {
+                        submitStep = if (isBangla) "প্রোফাইল ছবি আপলোড হচ্ছে..." else "Uploading profile photo..."
+                        FirebaseStorageManager.uploadMemberPhoto(memberId, pUri) { pUrl ->
+                            if (nUri != null) {
+                                submitStep = if (isBangla) "NID ছবি আপলোড হচ্ছে..." else "Uploading NID photo..."
+                                FirebaseStorageManager.uploadNidPhoto(memberId, nUri) { nUrl ->
+                                    buildAndSave(pUrl, nUrl)
+                                }
+                            } else buildAndSave(pUrl, null)
+                        }
+                    } else if (nUri != null) {
+                        submitStep = if (isBangla) "NID ছবি আপলোড হচ্ছে..." else "Uploading NID photo..."
+                        FirebaseStorageManager.uploadNidPhoto(memberId, nUri) { nUrl ->
+                            buildAndSave(null, nUrl)
+                        }
+                    } else {
+                        submitStep = if (isBangla) "সংরক্ষণ হচ্ছে..." else "Saving..."
+                        buildAndSave(null, null)
+                    }
+                },
+                enabled = isValid && !isSubmitting,
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Text(
+                    text = if (isSubmitting) submitStep.ifBlank { if (isBangla) "অপেক্ষা করুন..." else "Please wait..." }
+                    else if (isEdit) (if (isBangla) "পরিবর্তন সংরক্ষণ করুন" else "Save Changes")
+                    else (if (isBangla) "সদস্য নিবন্ধন করুন" else "Register Member"),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

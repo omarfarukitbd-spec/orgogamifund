@@ -43,7 +43,7 @@ fun MemberRegistrationApplicationScreen(
     // Step 2 State: Shomiti & Nominee
     val defaultBranch = availableBranches.firstOrNull { it.id == initialBranchId }
         ?: availableBranches.firstOrNull()
-        ?: Branch(id = "b-1", name = "অগ্রগামী সঞ্চয় ও ঋণদান সমিতি")
+        ?: Branch(id = "b-1", name = "অগ্রগামী সঞ্চয় ও কল্যাণ সমিতি")
     var selectedBranch by remember(initialBranchId, availableBranches) { mutableStateOf(defaultBranch) }
     var shareCountText by remember { mutableStateOf("1") }
     var monthlyDepositText by remember { mutableStateOf("1000") }
