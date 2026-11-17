@@ -106,7 +106,11 @@ class _MemberApplicationScreenState extends State<MemberApplicationScreen> {
 
   Future<void> _submit() async {
     if (_photoBytes == null || _nidFrontBytes == null) {
-      setState(() => _error = 'নিজের ছবি ও এনআইডির সামনের ছবি দুটোই দিন');
+      const msg = 'নিজের ছবি ও এনআইডির সামনের ছবি দুটোই দিন';
+      setState(() => _error = msg);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(msg)),
+      );
       return;
     }
     setState(() {
@@ -136,7 +140,11 @@ class _MemberApplicationScreenState extends State<MemberApplicationScreen> {
       );
       context.go('/pending');
     } catch (e) {
-      setState(() => _error = e.toString().replaceAll('Exception: ', ''));
+      final err = e.toString().replaceAll('Exception: ', '');
+      setState(() => _error = err);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err)),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -159,6 +167,9 @@ class _MemberApplicationScreenState extends State<MemberApplicationScreen> {
       );
       if (problem != null) {
         setState(() => _error = problem);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(problem)),
+        );
         return;
       }
       setState(() {
@@ -167,7 +178,11 @@ class _MemberApplicationScreenState extends State<MemberApplicationScreen> {
       });
     } else if (_step == 1) {
       if (_photoBytes == null || _nidFrontBytes == null) {
-        setState(() => _error = 'নিজের ছবি আর এনআইডির সামনের ছবি লাগবে');
+        const msg = 'নিজের ছবি আর এনআইডির সামনের ছবি লাগবে';
+        setState(() => _error = msg);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(msg)),
+        );
         return;
       }
       setState(() {
@@ -179,9 +194,41 @@ class _MemberApplicationScreenState extends State<MemberApplicationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('সদস্য হওয়ার আবেদন')),
-      body: SingleChildScrollView(
+    void handleBack() {
+      if (_step > 0) {
+        setState(() {
+          _error = null;
+          _step--;
+        });
+      } else {
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/samiti');
+        }
+      }
+    }
+
+    return PopScope(
+      canPop: _step == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _step > 0) {
+          setState(() {
+            _error = null;
+            _step--;
+          });
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('সদস্য হওয়ার আবেদন'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'ফিরে যান',
+            onPressed: handleBack,
+          ),
+        ),
+        body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -268,6 +315,7 @@ class _MemberApplicationScreenState extends State<MemberApplicationScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

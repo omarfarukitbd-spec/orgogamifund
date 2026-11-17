@@ -67,24 +67,31 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     String branchId,
     String memberId,
   ) async {
+    void showError(String msg) {
+      setState(() => _error = msg);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+    }
+
     final chosen = methods.where((m) => m.id == _methodId).firstOrNull;
     final amount = int.tryParse(_amount.text.trim());
     if (chosen == null) {
-      setState(() => _error = 'কীভাবে টাকা পাঠিয়েছেন, বেছে নিন');
+      showError('কীভাবে টাকা পাঠিয়েছেন, বেছে নিন');
       return;
     }
     if (amount == null || amount <= 0) {
-      setState(() => _error = 'টাকার সঠিক পরিমাণ লিখুন');
+      showError('টাকার সঠিক পরিমাণ লিখুন');
       return;
     }
     final trxId = _trxId.text.trim();
     if (chosen.type != PaymentMethodType.cash && trxId.isEmpty) {
-      setState(() => _error = 'লেনদেন নম্বর (TrxID) লিখুন');
+      showError('লেনদেন নম্বর (TrxID) লিখুন');
       return;
     }
     if (chosen.type == PaymentMethodType.mobileBanking &&
         _senderMobile.text.trim().isEmpty) {
-      setState(() => _error = 'যে নম্বর থেকে টাকা পাঠিয়েছেন, সেটা লিখুন');
+      showError('যে নম্বর থেকে টাকা পাঠিয়েছেন, সেটা লিখুন');
       return;
     }
     setState(() {

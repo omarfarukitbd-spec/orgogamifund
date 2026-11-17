@@ -14,10 +14,14 @@ import '../widgets/skeleton_loader.dart';
 class CommitteeScreen extends ConsumerWidget {
   const CommitteeScreen({super.key});
 
-  Future<void> _call(String phone) async {
+  Future<void> _call(BuildContext context, String phone) async {
     final uri = Uri.parse('tel:$phone');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('কল করা সম্ভব হয়নি')),
+      );
     }
   }
 
@@ -71,7 +75,7 @@ class CommitteeScreen extends ConsumerWidget {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: AppCard(
-                    onTap: phone.isEmpty ? null : () => _call(phone),
+                    onTap: phone.isEmpty ? null : () => _call(context, phone),
                     child: Row(
                       children: [
                         CircleAvatar(

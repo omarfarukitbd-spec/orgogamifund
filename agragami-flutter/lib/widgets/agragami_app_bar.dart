@@ -10,8 +10,16 @@ import 'app_icon.dart';
 class AgragamiAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget>? actions;
+  final bool? showBackButton;
+  final VoidCallback? onBack;
 
-  const AgragamiAppBar({super.key, required this.title, this.actions});
+  const AgragamiAppBar({
+    super.key,
+    required this.title,
+    this.actions,
+    this.showBackButton,
+    this.onBack,
+  });
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -112,27 +120,62 @@ class AgragamiAppBar extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadCount = ref.watch(unreadNotificationCountProvider);
+    String location = '';
+    try {
+      location = GoRouterState.of(context).uri.toString();
+    } catch (_) {}
+    const rootRoutes = {'/home', '/samiti', '/deposit', '/profile'};
+    final isSubRoute = showBackButton ??
+        (location.isNotEmpty && !rootRoutes.contains(location));
+
+    Widget? leadingWidget;
+    if (isSubRoute) {
+      leadingWidget = IconButton(
+        icon: const Icon(Icons.arrow_back),
+        tooltip: 'ফিরে যান',
+        onPressed: onBack ??
+            () {
+              if (context.canPop()) {
+                context.pop();
+              } else if (location.startsWith('/samiti/')) {
+                context.go('/samiti');
+              } else if (location.startsWith('/expenses/add')) {
+                context.go('/expenses');
+              } else if (location.startsWith('/loans/add') ||
+                  (location.startsWith('/loans/') && location != '/loans')) {
+                context.go('/loans');
+              } else {
+                context.go('/home');
+              }
+            },
+      );
+    }
 
     return AppBar(
+      leading: leadingWidget,
       title: Row(
         children: [
-          const AgragamiLogo(size: 36, radius: 9),
-          const SizedBox(width: 10),
+          if (!isSubRoute) ...[
+            const AgragamiLogo(size: 36, radius: 9),
+            const SizedBox(width: 10),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 19,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   AppStrings.halalNote,
-                  style:
-                      const TextStyle(fontSize: 12, color: Colors.white70),
+                  style: const TextStyle(fontSize: 11.5, color: Colors.white70),
                 ),
               ],
             ),

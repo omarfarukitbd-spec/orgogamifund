@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../l10n/app_strings.dart';
 import '../routes/app_router.dart';
@@ -45,46 +46,114 @@ class HomeShell extends StatelessWidget {
     final location = GoRouterState.of(context).uri.toString();
     final isDesktop = MediaQuery.of(context).size.width >= _desktopBreakpoint;
 
-    if (isDesktop) {
-      return Scaffold(
-        appBar: AgragamiAppBar(title: _titleFor(location)),
-        body: Row(
-          children: [
-            _Sidebar(
-              selectedIndex: _indexFor(location),
-              onSelect: (path) => context.go(path),
+    Future<bool> showExitDialog() async {
+      final isBn = AppStrings.isBangla;
+      final shouldExit = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(isBn ? 'অ্যাপ থেকে প্রস্থান' : 'Exit App'),
+          content: Text(
+            isBn
+                ? 'আপনি কি নিশ্চিত যে অগ্রগামী ফান্ড অ্যাপ থেকে প্রস্থান করতে চান?'
+                : 'Are you sure you want to exit Ogrogami Fund?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(isBn ? 'না' : 'Cancel'),
             ),
-            Expanded(child: child),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.danger,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(isBn ? 'হ্যাঁ, প্রস্থান করুন' : 'Yes, Exit'),
+            ),
           ],
         ),
-        bottomNavigationBar: const _Footer(),
+      );
+      return shouldExit ?? false;
+    }
+
+    void handleBack() async {
+      if (context.canPop()) {
+        context.pop();
+      } else if (location.startsWith('/samiti/') && location != '/samiti') {
+        context.go('/samiti');
+      } else if (location.startsWith('/expenses/add')) {
+        context.go('/expenses');
+      } else if (location.startsWith('/loans/add') ||
+          (location.startsWith('/loans/') && location != '/loans')) {
+        context.go('/loans');
+      } else if (location != '/home') {
+        context.go('/home');
+      } else {
+        final exit = await showExitDialog();
+        if (exit) {
+          await SystemNavigator.pop();
+        }
+      }
+    }
+
+    if (isDesktop) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) handleBack();
+        },
+        child: Scaffold(
+          appBar: AgragamiAppBar(
+            title: _titleFor(location),
+            onBack: handleBack,
+          ),
+          body: Row(
+            children: [
+              _Sidebar(
+                selectedIndex: _indexFor(location),
+                onSelect: (path) => context.go(path),
+              ),
+              Expanded(child: child),
+            ],
+          ),
+          bottomNavigationBar: const _Footer(),
+        ),
       );
     }
 
-    return Scaffold(
-      appBar: AgragamiAppBar(title: _titleFor(location)),
-      body: child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _indexFor(location),
-        onTap: (i) => context.go(bottomNavItems[i].path),
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.home_outlined),
-            label: AppStrings.navHome,
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.groups_outlined),
-            label: AppStrings.navSamiti,
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.payments_outlined),
-            label: AppStrings.navDeposit,
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.person_outlined),
-            label: AppStrings.navProfile,
-          ),
-        ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) handleBack();
+      },
+      child: Scaffold(
+        appBar: AgragamiAppBar(
+          title: _titleFor(location),
+          onBack: handleBack,
+        ),
+        body: child,
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _indexFor(location),
+          onTap: (i) => context.go(bottomNavItems[i].path),
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.home_outlined),
+              label: AppStrings.navHome,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.groups_outlined),
+              label: AppStrings.navSamiti,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.payments_outlined),
+              label: AppStrings.navDeposit,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.person_outlined),
+              label: AppStrings.navProfile,
+            ),
+          ],
+        ),
       ),
     );
   }
