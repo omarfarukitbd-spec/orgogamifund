@@ -33,7 +33,7 @@ class VoucherShareService {
     sb.writeln(
         '${isBn ? "জমার মাস" : "Month"}: ${payment.forMonth}/${payment.forYear}');
     sb.writeln('${isBn ? "জমার পরিমাণ" : "Amount"}: ${payment.amount} ${isBn ? "টাকা" : "BDT"}');
-    sb.writeln('${isBn ? "পেমেন্ট মাধ্যম" : "Payment Method"}: ${payment.methodName}');
+    sb.writeln('${isBn ? "পেমেন্ট মাধ্যম" : "Payment Method"}: ${payment.methodLabel}');
     sb.writeln('${isBn ? "লেনদেন আইডি (TrxID)" : "TrxID"}: ${payment.trxId}');
     sb.writeln('${isBn ? "অবস্থা" : "Status"}: ${payment.status.name.toUpperCase()}');
     final dateStr =

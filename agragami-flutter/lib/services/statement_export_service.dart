@@ -47,7 +47,7 @@ class StatementExportService {
       final dateStr =
           '${p.date.year}-${p.date.month.toString().padLeft(2, '0')}-${p.date.day.toString().padLeft(2, '0')}';
       sb.writeln(
-          '$dateStr,"${p.memberId}","${p.receiptNumber ?? ''}","${p.methodName}","${p.trxId}",${p.amount}');
+          '$dateStr,"${p.memberId}","${p.receiptNumber ?? ''}","${p.methodLabel}","${p.trxId}",${p.amount}');
     }
     sb.writeln('${isBn ? "মোট জমা" : "Total Deposits"},,,,,$totalDeposit');
     sb.writeln('');
@@ -63,7 +63,7 @@ class StatementExportService {
       final dateStr =
           '${e.date.year}-${e.date.month.toString().padLeft(2, '0')}-${e.date.day.toString().padLeft(2, '0')}';
       sb.writeln(
-          '$dateStr,"${e.category.name}","${e.description.replaceAll('"', '""')}",${e.amount}');
+          '$dateStr,"${e.category}","${e.description.replaceAll('"', '""')}",${e.amount}');
     }
     sb.writeln('${isBn ? "মোট খরচ" : "Total Expenses"},,,$totalExpense');
     sb.writeln('');
@@ -102,11 +102,11 @@ class StatementExportService {
 
     int totalApproved = 0;
     for (final p in payments) {
-      if (p.isApproved) totalApproved += p.amount;
+      if (p.status == PaymentStatus.approved) totalApproved += p.amount;
       final dateStr =
           '${p.date.year}-${p.date.month.toString().padLeft(2, '0')}-${p.date.day.toString().padLeft(2, '0')}';
       sb.writeln(
-          '$dateStr,"${p.forMonth}/${p.forYear}","${p.receiptNumber ?? ''}","${p.methodName}",${p.amount},"${p.status.name}"');
+          '$dateStr,"${p.forMonth}/${p.forYear}","${p.receiptNumber ?? ''}","${p.methodLabel}",${p.amount},"${p.status.name}"');
     }
     sb.writeln(
         '${isBn ? "মোট অনুমোদিত জমা" : "Total Approved Deposit"},,,,$totalApproved,');
