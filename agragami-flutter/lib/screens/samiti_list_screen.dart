@@ -42,7 +42,7 @@ class SamitiListScreen extends ConsumerWidget {
               foregroundColor: Colors.white,
               onPressed: () => _openCreateSamiti(context),
               icon: const Icon(Icons.add),
-              label: const Text(AppStrings.createSamiti),
+              label: Text(AppStrings.createSamiti),
             )
           : null,
       body: branchesAsync.when(

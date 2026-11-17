@@ -182,11 +182,11 @@ class SamitiMemberDetail extends ConsumerWidget {
               await store.recountMemberCount(branch.id);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text(AppStrings.recountDone)),
+                  SnackBar(content: Text(AppStrings.recountDone)),
                 );
               }
             },
-            child: const Text(AppStrings.recountMembers),
+            child: Text(AppStrings.recountMembers),
           ),
         ],
       ],

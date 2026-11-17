@@ -227,7 +227,7 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
         PrimaryButton(
           label: _busy ? AppStrings.loading : AppStrings.save,

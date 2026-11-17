@@ -99,7 +99,7 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
             ElevatedButton.icon(
               onPressed: () => context.go('/expenses/add'),
               icon: const Icon(Icons.add_outlined),
-              label: const Text(AppStrings.addExpense),
+              label: Text(AppStrings.addExpense),
             ),
           const SizedBox(height: 16),
           if (expensesAsync.isLoading)

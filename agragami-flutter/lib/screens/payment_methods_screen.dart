@@ -101,7 +101,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text(AppStrings.navPaymentMethods),
+        title: Text(AppStrings.navPaymentMethods),
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Theme.of(context).colorScheme.primary,

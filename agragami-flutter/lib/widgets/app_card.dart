@@ -48,8 +48,17 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bg = isGold ? AppColors.goldSoft : AppColors.greenSoft;
-    final fg = isGold ? AppColors.goldDark : theme.colorScheme.primary;
+    final isDark = theme.brightness == Brightness.dark;
+    final bg = isGold
+        ? (isDark
+            ? AppColors.darkGold.withValues(alpha: 0.2)
+            : AppColors.goldSoft)
+        : (isDark
+            ? theme.colorScheme.primary.withValues(alpha: 0.2)
+            : AppColors.greenSoft);
+    final fg = isGold
+        ? (isDark ? AppColors.darkGold : AppColors.goldDark)
+        : theme.colorScheme.primary;
 
     return AppCard(
       child: Column(
@@ -117,8 +126,17 @@ class QuickActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bg = isGold ? AppColors.goldSoft : AppColors.greenSoft;
-    final fg = isGold ? AppColors.goldDark : theme.colorScheme.primary;
+    final isDark = theme.brightness == Brightness.dark;
+    final bg = isGold
+        ? (isDark
+            ? AppColors.darkGold.withValues(alpha: 0.2)
+            : AppColors.goldSoft)
+        : (isDark
+            ? theme.colorScheme.primary.withValues(alpha: 0.2)
+            : AppColors.greenSoft);
+    final fg = isGold
+        ? (isDark ? AppColors.darkGold : AppColors.goldDark)
+        : theme.colorScheme.primary;
 
     return AppCard(
       onTap: onTap,

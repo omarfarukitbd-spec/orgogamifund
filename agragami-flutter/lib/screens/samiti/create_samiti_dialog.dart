@@ -43,13 +43,13 @@ class _CreateSamitiDialogState extends State<CreateSamitiDialog> {
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.samitiCreated)),
+        SnackBar(content: Text(AppStrings.samitiCreated)),
       );
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.samitiCreateFailed)),
+        SnackBar(content: Text(AppStrings.samitiCreateFailed)),
       );
     }
   }
@@ -57,7 +57,7 @@ class _CreateSamitiDialogState extends State<CreateSamitiDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text(AppStrings.createSamiti),
+      title: Text(AppStrings.createSamiti),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,

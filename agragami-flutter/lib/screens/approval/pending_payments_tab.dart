@@ -140,7 +140,7 @@ class PendingPaymentsTab extends StatelessWidget {
                               'জমা বাতিল হয়েছে',
                             );
                           },
-                          child: const Text(AppStrings.reject),
+                          child: Text(AppStrings.reject),
                         ),
                       ),
                     ],

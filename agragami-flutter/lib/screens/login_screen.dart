@@ -185,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => context.go('/apply'),
-                  child: const Text(AppStrings.noAccount),
+                  child: Text(AppStrings.noAccount),
                 ),
                 FutureBuilder<bool?>(
                   future: _hasUsersFuture,
@@ -196,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     }
                     return TextButton(
                       onPressed: () => context.go('/setup'),
-                      child: const Text(AppStrings.firstSetupLink),
+                      child: Text(AppStrings.firstSetupLink),
                     );
                   },
                 ),

@@ -50,7 +50,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),

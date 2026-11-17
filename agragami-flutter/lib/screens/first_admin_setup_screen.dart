@@ -98,7 +98,7 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
       await AppRouter.refreshAuth();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.setupDone)),
+        SnackBar(content: Text(AppStrings.setupDone)),
       );
       context.go('/home');
     } on FirebaseAuthException catch (e) {

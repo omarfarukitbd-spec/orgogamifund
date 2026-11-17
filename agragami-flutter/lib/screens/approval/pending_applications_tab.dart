@@ -171,7 +171,7 @@ class _PendingApplicationsTabState extends State<PendingApplicationsTab> {
                                     'আবেদন বাতিল হয়েছে',
                                   );
                                 },
-                                child: const Text(AppStrings.reject),
+                                child: Text(AppStrings.reject),
                               ),
                             ),
                           ],

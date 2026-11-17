@@ -38,7 +38,7 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(controller.text.trim()),
@@ -101,7 +101,7 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: const Text(AppStrings.navApproval),
+          title: Text(AppStrings.navApproval),
           actions: [
             IconButton(
               tooltip: AppStrings.navPaymentMethods,
