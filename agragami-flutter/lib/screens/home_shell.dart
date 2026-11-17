@@ -67,14 +67,24 @@ class HomeShell extends StatelessWidget {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _indexFor(location),
         onTap: (i) => context.go(bottomNavItems[i].path),
-        items: bottomNavItems
-            .map(
-              (item) => BottomNavigationBarItem(
-                icon: Icon(item.icon),
-                label: item.label,
-              ),
-            )
-            .toList(),
+        items: [
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.home_outlined),
+            label: AppStrings.navHome,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.groups_outlined),
+            label: AppStrings.navSamiti,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.payments_outlined),
+            label: AppStrings.navDeposit,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person_outlined),
+            label: AppStrings.navProfile,
+          ),
+        ],
       ),
     );
   }
@@ -89,47 +99,17 @@ class _Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      ...bottomNavItems,
-      const BottomNavItem(
-        path: '/approval',
-        icon: Icons.fact_check_outlined,
-        label: 'অনুমোদন কেন্দ্র',
-      ),
-      const BottomNavItem(
-        path: '/payment-methods',
-        icon: Icons.account_balance_outlined,
-        label: 'পেমেন্ট মাধ্যম',
-      ),
-      const BottomNavItem(
-        path: '/expenses',
-        icon: Icons.receipt_long_outlined,
-        label: 'খরচ',
-      ),
-      const BottomNavItem(
-        path: '/loans',
-        icon: Icons.handshake_outlined,
-        label: 'ঋণ',
-      ),
-      const BottomNavItem(
-        path: '/reports',
-        icon: Icons.bar_chart_outlined,
-        label: 'রিপোর্ট',
-      ),
-      const BottomNavItem(
-        path: '/notices',
-        icon: Icons.campaign_outlined,
-        label: 'নোটিশ',
-      ),
-      const BottomNavItem(
-        path: '/committee',
-        icon: Icons.groups_outlined,
-        label: 'কমিটি',
-      ),
-      const BottomNavItem(
-        path: '/profile',
-        icon: Icons.settings_outlined,
-        label: 'সেটিংস',
-      ),
+      (path: '/home', icon: Icons.home_outlined, label: AppStrings.navHome),
+      (path: '/samiti', icon: Icons.groups_outlined, label: AppStrings.navSamiti),
+      (path: '/deposit', icon: Icons.payments_outlined, label: AppStrings.navDeposit),
+      (path: '/approval', icon: Icons.fact_check_outlined, label: AppStrings.navApproval),
+      (path: '/payment-methods', icon: Icons.account_balance_outlined, label: AppStrings.navPaymentMethods),
+      (path: '/expenses', icon: Icons.receipt_long_outlined, label: AppStrings.navExpenses),
+      (path: '/loans', icon: Icons.handshake_outlined, label: AppStrings.navLoans),
+      (path: '/reports', icon: Icons.bar_chart_outlined, label: AppStrings.navReports),
+      (path: '/notices', icon: Icons.campaign_outlined, label: AppStrings.navNotices),
+      (path: '/committee', icon: Icons.groups_outlined, label: AppStrings.navCommittee),
+      (path: '/profile', icon: Icons.settings_outlined, label: AppStrings.navProfile),
     ];
     return Container(
       width: 240,
