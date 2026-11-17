@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1063848074047",
+    "firebase_url": "https://ogrogami-fund-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "ogrogami-fund",
+    "storage_bucket": "ogrogami-fund.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1063848074047:android:539038990b7df8d28a118a",
+        "android_client_info": {
+          "package_name": "com.helptrickbd.ogrogamifund"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1063848074047-gl8ib9blfvh7sbksutuqfp6c5s1m7v55.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.helptrickbd.ogrogamifund",
+            "certificate_hash": "a33999745c66bae1d8a1d70d6b84619ac2deafe5"
+          }
+        },
+        {
+          "client_id": "1063848074047-ksr0cpftlh74bd30tqioj4blgm6vhst5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXKSOPoAwbj8ZhxcWRyyAtszeW_e8k8QU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1063848074047-ksr0cpftlh74bd30tqioj4blgm6vhst5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

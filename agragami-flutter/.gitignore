@@ -5,8 +5,7 @@
 .pub/
 build/
 
-# Firebase config — কখনো রিপোতে তুলবেন না
-android/app/google-services.json
+# Firebase config
 ios/Runner/GoogleService-Info.plist
 macos/Runner/GoogleService-Info.plist
 lib/firebase_options.dart

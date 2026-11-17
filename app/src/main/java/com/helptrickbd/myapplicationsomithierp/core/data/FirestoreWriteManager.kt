@@ -49,11 +49,7 @@ object FirestoreWriteManager {
             .addOnSuccessListener {
                 ShomitiDataManager.addMember(member.copy(id = memberId))
                 onComplete?.invoke(true)
-            }
-            .addOnFailureListener { e ->
-                e.printStackTrace()
-                onComplete?.invoke(false)
-            }
+            }.addOnFailureListener { onComplete?.invoke(false) }
     }
 
     fun deleteMember(memberId: String, onComplete: ((Boolean) -> Unit)? = null) {
@@ -62,11 +58,7 @@ object FirestoreWriteManager {
             .addOnSuccessListener {
                 ShomitiDataManager.deleteMember(memberId)
                 onComplete?.invoke(true)
-            }
-            .addOnFailureListener { e ->
-                e.printStackTrace()
-                onComplete?.invoke(false)
-            }
+            }.addOnFailureListener { onComplete?.invoke(false) }
     }
 
     fun recordPayment(payment: Payment, onComplete: ((Boolean) -> Unit)? = null) {
@@ -88,11 +80,7 @@ object FirestoreWriteManager {
             .addOnSuccessListener {
                 ShomitiDataManager.recordPayment(toSave)
                 onComplete?.invoke(true)
-            }
-            .addOnFailureListener { e ->
-                e.printStackTrace()
-                onComplete?.invoke(false)
-            }
+            }.addOnFailureListener { onComplete?.invoke(false) }
     }
 
     fun recordExpense(expense: Expense, onComplete: ((Boolean) -> Unit)? = null) {
@@ -110,11 +98,7 @@ object FirestoreWriteManager {
             .addOnSuccessListener {
                 ShomitiDataManager.recordExpense(toSave)
                 onComplete?.invoke(true)
-            }
-            .addOnFailureListener { e ->
-                e.printStackTrace()
-                onComplete?.invoke(false)
-            }
+            }.addOnFailureListener { onComplete?.invoke(false) }
     }
 
 
@@ -173,10 +157,7 @@ object FirestoreWriteManager {
                     onComplete?.invoke(true)
                 }
             }
-            .addOnFailureListener { e ->
-                e.printStackTrace()
-                onComplete?.invoke(false)
-            }
+            .addOnFailureListener { onComplete?.invoke(false) }
     }
 
     fun rejectMemberApplication(appId: String, reason: String, onComplete: ((Boolean) -> Unit)? = null) {
@@ -185,11 +166,7 @@ object FirestoreWriteManager {
             .addOnSuccessListener {
                 ShomitiDataManager.rejectMemberApplication(appId, reason)
                 onComplete?.invoke(true)
-            }
-            .addOnFailureListener { e ->
-                e.printStackTrace()
-                onComplete?.invoke(false)
-            }
+            }.addOnFailureListener { onComplete?.invoke(false) }
     }
 
     fun submitMemberDeposit(payment: Payment, onComplete: ((Boolean) -> Unit)? = null) {
@@ -211,7 +188,7 @@ object FirestoreWriteManager {
         firestore.collection("payments").document(paymentId)
             .update(mapOf("approvalStatus" to "REJECTED", "rejectionReason" to reason))
             .addOnSuccessListener { onComplete?.invoke(true) }
-            .addOnFailureListener { e -> e.printStackTrace(); onComplete?.invoke(false) }
+            .addOnFailureListener { onComplete?.invoke(false) }
     }
 
     fun createBranch(branch: Branch, onComplete: ((Boolean) -> Unit)? = null) {
@@ -244,10 +221,7 @@ object FirestoreWriteManager {
         firestore.collection("branches").document(branchId)
             .set(branchMap, SetOptions.merge())
             .addOnSuccessListener { onComplete?.invoke(true) }
-            .addOnFailureListener { e ->
-                e.printStackTrace()
-                onComplete?.invoke(false)
-            }
+            .addOnFailureListener { onComplete?.invoke(false) }
     }
 
     fun updateBranchBranding(
@@ -260,6 +234,25 @@ object FirestoreWriteManager {
         val map = mapOf("logoUrl" to logoUrl, "bannerUrl" to bannerUrl, "activityPhotos" to activityPhotos)
         firestore.collection("branches").document(branchId).update(map)
             .addOnSuccessListener { onComplete?.invoke(true) }
+            .addOnFailureListener { onComplete?.invoke(false) }
+    }
+
+    fun disburseLoan(loan: Loan, onComplete: ((Boolean) -> Unit)? = null) {
+        val loanId = if (loan.id.isBlank()) "ln-${UUID.randomUUID().toString().take(8)}" else loan.id
+        val toSave = loan.copy(id = loanId)
+        val loanMap = hashMapOf<String, Any>(
+            "id" to loanId, "memberId" to toSave.memberId, "memberName" to toSave.memberName,
+            "branchId" to toSave.branchId, "amount" to toSave.amount,
+            "dateIssued" to if (toSave.dateIssued == 0L) System.currentTimeMillis() else toSave.dateIssued,
+            "reason" to toSave.reason, "status" to toSave.status.name,
+            "repayments" to emptyList<Map<String, Any>>()
+        )
+        firestore.collection("loans").document(loanId)
+            .set(loanMap, SetOptions.merge())
+            .addOnSuccessListener {
+                ShomitiDataManager.disburseLoan(toSave)
+                onComplete?.invoke(true)
+            }
             .addOnFailureListener { onComplete?.invoke(false) }
     }
 

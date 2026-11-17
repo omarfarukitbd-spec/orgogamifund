@@ -14,4 +14,7 @@ app/build
 *.hprof
 
 *.zip
-agragami-flutter/
+agragami-flutter/agragami-flutter/
+agragami-flutter/.dart_tool/
+agragami-flutter/build/
+agragami-flutter/.flutter-plugins-dependencies
