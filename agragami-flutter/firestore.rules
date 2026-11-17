@@ -36,9 +36,15 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(myUid()));
     }
 
+    function isMasterAdmin() {
+      return signedIn() && (
+        request.auth.token.email in ['omarfaruktitbd@gmail.com', 'omarfarukitbd@gmail.com']
+      );
+    }
+
     function isAdmin() {
       return signedIn()
-        && myUserDoc().data.role in ['superAdmin', 'branchAdmin'];
+        && (isMasterAdmin() || myUserDoc().data.role in ['superAdmin', 'branchAdmin']);
     }
 
     // ওই সমিতির অনুমোদিত সদস্য কি না।

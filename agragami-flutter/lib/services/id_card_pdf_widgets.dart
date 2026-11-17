@@ -1,7 +1,6 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import '../models/branch.dart';
 import '../models/member.dart';
 import '../widgets/member_id_card.dart';
 

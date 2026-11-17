@@ -21,10 +21,14 @@ class MemberRepository {
     required String uid,
     required String email,
   }) async {
+    final isRootAdmin = email.toLowerCase() == 'omarfaruktitbd@gmail.com' ||
+        email.toLowerCase() == 'omarfarukitbd@gmail.com';
     await _db.collection(Collections.users).doc(uid).set({
       'email': email,
-      'role': UserRole.pending.name,
-      'approvalStatus': ApprovalStatus.pending.name,
+      'role': isRootAdmin ? UserRole.superAdmin.name : UserRole.pending.name,
+      'approvalStatus': isRootAdmin
+          ? ApprovalStatus.approved.name
+          : ApprovalStatus.pending.name,
     });
   }
 

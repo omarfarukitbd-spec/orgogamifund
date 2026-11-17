@@ -22,19 +22,26 @@ class AppUser {
   });
 
   factory AppUser.fromMap(String id, Map<String, dynamic> data) {
+    final userEmail = (data['email'] as String?) ?? '';
+    final isRootAdmin = userEmail.toLowerCase() == 'omarfaruktitbd@gmail.com' ||
+        userEmail.toLowerCase() == 'omarfarukitbd@gmail.com';
     return AppUser(
       id: id,
-      email: (data['email'] as String?) ?? '',
-      role: UserRole.values.firstWhere(
-        (r) => r.name == data['role'],
-        orElse: () => UserRole.pending,
-      ),
+      email: userEmail,
+      role: isRootAdmin
+          ? UserRole.superAdmin
+          : UserRole.values.firstWhere(
+              (r) => r.name == data['role'],
+              orElse: () => UserRole.pending,
+            ),
       branchId: data['branchId'] as String?,
       linkedMemberId: data['linkedMemberId'] as String?,
-      approvalStatus: ApprovalStatus.values.firstWhere(
-        (s) => s.name == data['approvalStatus'],
-        orElse: () => ApprovalStatus.pending,
-      ),
+      approvalStatus: isRootAdmin
+          ? ApprovalStatus.approved
+          : ApprovalStatus.values.firstWhere(
+              (s) => s.name == data['approvalStatus'],
+              orElse: () => ApprovalStatus.pending,
+            ),
     );
   }
 
