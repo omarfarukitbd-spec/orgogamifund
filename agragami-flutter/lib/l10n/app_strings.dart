@@ -44,6 +44,7 @@ class AppStrings {
   static String get confirmPassword =>
       _s('পাসওয়ার্ড আবার লিখুন', 'Confirm Password');
   static String get loginButton => _s('ঢুকুন', 'Sign In');
+  static String get logout => _s('লগআউট', 'Sign Out');
   static String get loginWithGoogle =>
       _s('গুগল দিয়ে ঢুকুন', 'Sign in with Google');
   static String get googleCancelled =>

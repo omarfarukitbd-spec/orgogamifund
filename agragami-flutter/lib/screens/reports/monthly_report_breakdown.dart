@@ -16,6 +16,7 @@ class MonthlyReportBreakdown extends StatelessWidget {
   final int year;
   final bool busy;
   final Future<void> Function() onPdf;
+  final Future<void> Function()? onCsv;
 
   const MonthlyReportBreakdown({
     super.key,
@@ -26,6 +27,7 @@ class MonthlyReportBreakdown extends StatelessWidget {
     required this.year,
     required this.busy,
     required this.onPdf,
+    this.onCsv,
   });
 
   @override
@@ -107,6 +109,14 @@ class MonthlyReportBreakdown extends StatelessWidget {
               onPressed: busy ? null : onPdf,
               icon: Icons.picture_as_pdf_outlined,
             ),
+            if (onCsv != null) ...[
+              const SizedBox(height: 10),
+              SecondaryButton(
+                label: busy ? 'আসছে…' : 'CSV / Excel বিবরণী এক্সপোর্ট',
+                onPressed: busy ? null : onCsv,
+                icon: Icons.table_chart_outlined,
+              ),
+            ],
           ],
         );
       },

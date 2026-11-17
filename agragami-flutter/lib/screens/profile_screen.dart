@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../l10n/app_strings.dart';
-import '../main.dart';
 import '../models/member.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/skeleton_loader.dart';
+import 'profile/profile_settings_section.dart';
 
 final memberDetailStreamProvider =
     StreamProvider.autoDispose.family<Member?, String>(
@@ -23,8 +24,6 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final userAsync = ref.watch(currentUserProvider);
-    final currentTheme = ref.watch(themeModeProvider);
-    final currentLocale = ref.watch(localeProvider);
 
     return userAsync.when(
       loading: () => const Padding(
@@ -55,7 +54,8 @@ class ProfileScreen extends ConsumerWidget {
                   children: [
                     CircleAvatar(
                       radius: 32,
-                      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      backgroundColor:
+                          theme.colorScheme.primary.withValues(alpha: 0.1),
                       backgroundImage: member?.photoUrl != null &&
                               member!.photoUrl!.isNotEmpty
                           ? NetworkImage(member.photoUrl!)
@@ -154,99 +154,13 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
-              // ভাষা নির্বাচন কার্ড
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.language_outlined,
-                            size: 20, color: theme.colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          AppStrings.languageTitle,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SegmentedButton<String>(
-                      segments: [
-                        ButtonSegment(
-                          value: 'bn',
-                          label: Text(AppStrings.bangla),
-                        ),
-                        ButtonSegment(
-                          value: 'en',
-                          label: Text(AppStrings.english),
-                        ),
-                      ],
-                      selected: {currentLocale.languageCode},
-                      onSelectionChanged: (selected) {
-                        final code = selected.first;
-                        ref.read(localeProvider.notifier).state =
-                            Locale(code, code == 'bn' ? 'BD' : 'US');
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // থিম মোড নির্বাচন কার্ড
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.palette_outlined,
-                            size: 20, color: theme.colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          AppStrings.themeModeTitle,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SegmentedButton<ThemeMode>(
-                      segments: [
-                        ButtonSegment(
-                          value: ThemeMode.light,
-                          label: Text(AppStrings.themeLight),
-                          icon: const Icon(Icons.light_mode_outlined, size: 16),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.dark,
-                          label: Text(AppStrings.themeDark),
-                          icon: const Icon(Icons.dark_mode_outlined, size: 16),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.system,
-                          label: Text(AppStrings.themeSystem),
-                          icon: const Icon(Icons.brightness_auto_outlined, size: 16),
-                        ),
-                      ],
-                      selected: {currentTheme},
-                      onSelectionChanged: (selected) {
-                        ref.read(themeModeProvider.notifier).state =
-                            selected.first;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+              // ভাষা, থিম এবং বায়োমেট্রিক সেটিংস কম্পোনেন্ট
+              const ProfileSettingsSection(),
+              const SizedBox(height: 20),
 
               // লগআউট বোতাম
               SecondaryButton(
-                label: 'লগআউট',
+                label: AppStrings.logout,
                 onPressed: () => AuthService().signOut(),
               ),
               const SizedBox(height: 12),

@@ -7,6 +7,7 @@ import '../models/payment.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/report_pdf_service.dart';
+import '../services/statement_export_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/not_member_gate.dart';
 import 'passbook_screen.dart';
@@ -38,8 +39,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
   String _waNumber(String phone) {
     final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.startsWith('0')) return '880${digits.substring(1)}';
-    return digits;
+    return digits.startsWith('0') ? '880${digits.substring(1)}' : digits;
   }
 
   Future<Map<String, int>> _loadMonth(
@@ -205,6 +205,44 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                 } catch (_) {
                   setState(
                     () => _error = 'PDF তৈরি করা যায়নি — আবার চেষ্টা করুন',
+                  );
+                } finally {
+                  if (mounted) setState(() => _busy = false);
+                }
+              },
+              onCsv: () async {
+                setState(() {
+                  _busy = true;
+                  _error = null;
+                });
+                try {
+                  final payments = await store.fetchPaymentsForMonth(
+                    year: _year,
+                    month: _month,
+                    branchId: effectiveBranchId,
+                  );
+                  final expenses = await store.fetchExpensesForMonth(
+                    year: _year,
+                    month: _month,
+                    branchId: effectiveBranchId,
+                  );
+                  final loans = await store.fetchLoans(branchId: effectiveBranchId);
+                  final exportService = ref.read(statementExportServiceProvider);
+                  final csv = exportService.generateMonthlyStatementCsv(
+                    year: _year,
+                    month: _month,
+                    branchName: branchName,
+                    payments: payments,
+                    expenses: expenses,
+                    loans: loans,
+                  );
+                  await exportService.exportAndShareCsv(
+                    csvContent: csv,
+                    filename: 'Statement_${_month}_$_year.csv',
+                  );
+                } catch (_) {
+                  setState(
+                    () => _error = 'CSV তৈরি করা যায়নি — আবার চেষ্টা করুন',
                   );
                 } finally {
                   if (mounted) setState(() => _busy = false);

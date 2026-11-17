@@ -37,6 +37,8 @@ dependencies:
   # সহজ ইউটিলিটি
   intl: ^0.20.3
   url_launcher: ^6.3.0
+  share_plus: ^10.1.2
+  local_auth: ^2.2.0
 
 dev_dependencies:
   flutter_test:
