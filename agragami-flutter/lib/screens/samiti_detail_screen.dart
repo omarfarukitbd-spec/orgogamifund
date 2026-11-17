@@ -165,19 +165,19 @@ class SamitiDetailScreen extends ConsumerWidget {
               // যদি সদস্য না হয় — লক বক্স ও আবেদন বাটন
               if (!canSee) ...[
                 if (membership?.isPending ?? false)
-                  const AppCard(
+                  AppCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           AppStrings.applicationPending,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        SizedBox(height: 4),
-                        Text(
+                        const SizedBox(height: 4),
+                        const Text(
                           'অনুমোদন হলে এই সমিতির ভেতরের হিসাব দেখা যাবে।',
                           style: TextStyle(
                             fontSize: 14,

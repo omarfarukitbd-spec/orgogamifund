@@ -161,21 +161,21 @@ class HomeScreen extends ConsumerWidget {
           // সদস্য না হলে আবেদনের ব্যানার
           if (!isAdmin && !isMember) ...[
             const SizedBox(height: 16),
-            const AppCard(
+            AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     AppStrings.notMemberAnyTitle,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  SizedBox(height: 6),
+                  const SizedBox(height: 6),
                   Text(
                     AppStrings.notMemberAnyBody,
-                    style: TextStyle(fontSize: 14, color: AppColors.muted),
+                    style: const TextStyle(fontSize: 14, color: AppColors.muted),
                   ),
                 ],
               ),

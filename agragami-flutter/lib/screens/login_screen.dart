@@ -124,16 +124,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   AppStrings.appTagline,
-                  style: TextStyle(fontSize: 15, color: AppColors.muted),
+                  style: const TextStyle(fontSize: 15, color: AppColors.muted),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   AppStrings.halalNote,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: AppColors.goldDark,
@@ -143,9 +143,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: AppStrings.email,
-                    prefixIcon: Icon(Icons.mail_outlined),
+                    prefixIcon: const Icon(Icons.mail_outlined),
                   ),
                   validator: (v) =>
                       (v == null || !v.contains('@')) ? 'সঠিক ইমেইল দিন' : null,
@@ -154,9 +154,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _password,
                   obscureText: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: AppStrings.password,
-                    prefixIcon: Icon(Icons.lock_outlined),
+                    prefixIcon: const Icon(Icons.lock_outlined),
                   ),
                   validator: (v) =>
                       (v == null || v.length < 6) ? 'পাসওয়ার্ড ৬ অক্ষরের বেশি হতে হবে' : null,

@@ -66,7 +66,7 @@ class _CreateSamitiDialogState extends State<CreateSamitiDialog> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: AppStrings.samitiNameLabel,
                 ),
                 validator: (v) =>
@@ -75,7 +75,7 @@ class _CreateSamitiDialogState extends State<CreateSamitiDialog> {
               const SizedBox(height: 12),
               DropdownButtonFormField<SamitiPurpose>(
                 initialValue: _purpose,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: AppStrings.samitiPurposeLabel,
                 ),
                 items: SamitiPurpose.values
@@ -93,7 +93,7 @@ class _CreateSamitiDialogState extends State<CreateSamitiDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _donationController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: AppStrings.monthlyDonation,
                   suffixText: '৳',
                 ),
@@ -110,7 +110,7 @@ class _CreateSamitiDialogState extends State<CreateSamitiDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: AppStrings.samitiDescriptionLabel,
                 ),
                 maxLines: 2,

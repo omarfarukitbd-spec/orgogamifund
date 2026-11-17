@@ -30,9 +30,9 @@ class AgragamiAppBar extends StatelessWidget implements PreferredSizeWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const Text(
+                Text(
                   AppStrings.halalNote,
-                  style: TextStyle(fontSize: 12, color: Colors.white70),
+                  style: const TextStyle(fontSize: 12, color: Colors.white70),
                 ),
               ],
             ),

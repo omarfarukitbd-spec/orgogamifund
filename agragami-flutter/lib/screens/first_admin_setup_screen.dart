@@ -132,9 +132,9 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 AppStrings.setupSubtitle,
-                style: TextStyle(fontSize: 15, color: AppColors.muted),
+                style: const TextStyle(fontSize: 15, color: AppColors.muted),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -143,36 +143,36 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
               else ...[
                 TextField(
                   controller: _name,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: AppStrings.setupName,
-                    prefixIcon: Icon(Icons.person_outlined),
+                    prefixIcon: const Icon(Icons.person_outlined),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: AppStrings.email,
-                    prefixIcon: Icon(Icons.mail_outlined),
+                    prefixIcon: const Icon(Icons.mail_outlined),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _password,
                   obscureText: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: AppStrings.password,
-                    prefixIcon: Icon(Icons.lock_outlined),
+                    prefixIcon: const Icon(Icons.lock_outlined),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _confirmPassword,
                   obscureText: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: AppStrings.confirmPassword,
-                    prefixIcon: Icon(Icons.lock_outlined),
+                    prefixIcon: const Icon(Icons.lock_outlined),
                   ),
                 ),
                 if (_error != null) ...[

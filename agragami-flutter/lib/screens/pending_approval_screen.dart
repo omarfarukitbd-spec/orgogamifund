@@ -42,9 +42,9 @@ class PendingApprovalScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 AppStrings.pendingBody,
-                style: TextStyle(fontSize: 15.5, color: Colors.grey),
+                style: const TextStyle(fontSize: 15.5, color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),

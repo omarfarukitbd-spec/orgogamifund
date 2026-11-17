@@ -228,9 +228,9 @@ class _LockedBranchTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   AppStrings.lockedBranchNote,
-                  style: TextStyle(fontSize: 13.5, color: AppColors.muted),
+                  style: const TextStyle(fontSize: 13.5, color: AppColors.muted),
                 ),
               ],
             ),

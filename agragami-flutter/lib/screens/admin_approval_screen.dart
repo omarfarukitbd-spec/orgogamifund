@@ -79,7 +79,7 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
     final isAdmin =
         ref.watch(currentUserProvider).valueOrNull?.isAdmin ?? false;
     if (!isAdmin) {
-      return const Scaffold(
+      return Scaffold(
         body: EmptyState(
           icon: Icons.lock_outlined,
           title: AppStrings.adminOnlyPage,

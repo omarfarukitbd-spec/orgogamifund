@@ -4,7 +4,7 @@ import '../l10n/app_strings.dart';
 /// তালিকা খালি থাকলে এটা দেখাবে — ফাঁকা সাদা স্ক্রিন নয়।
 class EmptyState extends StatelessWidget {
   final IconData icon;
-  final String title;
+  final String? title;
   final String? message;
   final String? actionLabel;
   final VoidCallback? onAction;
@@ -12,7 +12,7 @@ class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
     required this.icon,
-    this.title = AppStrings.emptyTitle,
+    this.title,
     this.message,
     this.actionLabel,
     this.onAction,
@@ -42,7 +42,7 @@ class EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              title,
+              title ?? AppStrings.emptyTitle,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
