@@ -30,7 +30,7 @@ object ReportPdfGenerator {
     fun generateReportPdf(
         context: Context,
         reportTitle: String,
-        orgName: String = "সোনার বাংলা সমবায় সমিতি",
+        orgName: String = "অগ্রগামী ফান্ড",
         members: List<Member> = emptyList(),
         payments: List<Payment> = emptyList(),
         expenses: List<Expense> = emptyList(),

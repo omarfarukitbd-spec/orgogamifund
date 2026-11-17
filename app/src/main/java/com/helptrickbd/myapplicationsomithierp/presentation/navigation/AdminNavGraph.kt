@@ -48,6 +48,7 @@ fun NavGraphBuilder.addAdminNavRoutes(
         BranchManagementScreen(
             branches = branches,
             onAddBranch = { newBranch ->
+                FirestoreWriteManager.createBranch(newBranch)
                 ShomitiDataManager.addBranch(newBranch)
             },
             onNavigateBack = { navController.popBackStack() }

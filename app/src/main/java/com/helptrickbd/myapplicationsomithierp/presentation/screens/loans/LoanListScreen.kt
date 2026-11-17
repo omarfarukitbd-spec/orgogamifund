@@ -1,22 +1,21 @@
 package com.helptrickbd.myapplicationsomithierp.presentation.screens.loans
 
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Handshake
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -25,11 +24,9 @@ import com.helptrickbd.myapplicationsomithierp.core.util.CurrencyFormatter
 import com.helptrickbd.myapplicationsomithierp.core.util.safeRound
 import com.helptrickbd.myapplicationsomithierp.domain.model.Loan
 import com.helptrickbd.myapplicationsomithierp.domain.model.LoanStatus
-import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyDueAmber
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.loans.components.LoanCardItem
 import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyExpenseRed
 import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyIncomeGreen
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +37,7 @@ fun LoanListScreen(
     onNavigateBack: () -> Unit = {}
 ) {
     val isBangla = LocalConfiguration.current.locales[0].language == "bn"
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Active, 1: Paid Off
+    var selectedTab by remember { mutableIntStateOf(0) }
     var loanToRepay by remember { mutableStateOf<Loan?>(null) }
     var repaymentAmountText by remember { mutableStateOf("") }
     var selectedMethod by remember { mutableStateOf("Cash") }
@@ -57,7 +54,7 @@ fun LoanListScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = if (isBangla) "ঋণ ও দাদন ব্যবস্থাপনা" else "Loan Management",
+                        text = if (isBangla) "করযে হাসানা (সুদমুক্ত ঋণ)" else "Qard Hasan (Interest-Free)",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -74,7 +71,7 @@ fun LoanListScreen(
             FloatingActionButton(
                 onClick = onIssueLoanClick,
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Row(
@@ -83,7 +80,7 @@ fun LoanListScreen(
                 ) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(if (isBangla) "নতুন ঋণ বিতরণ" else "Issue Loan", fontWeight = FontWeight.Bold)
+                    Text(if (isBangla) "করযে হাসানা প্রদান" else "Disburse Qard Hasan", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -93,7 +90,7 @@ fun LoanListScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Summary Cards Header
+            // Overview Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -104,7 +101,7 @@ fun LoanListScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = if (isBangla) "ঋণ সামগ্রিক স্থিতি" else "Overall Loan Overview",
+                        text = if (isBangla) "করযে হাসানা সামগ্রিক স্থিতি" else "Qard Hasan Overview",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -140,12 +137,12 @@ fun LoanListScreen(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text(if (isBangla) "চলতি ঋণ (${activeLoans.size})" else "Active Loans (${activeLoans.size})", fontWeight = FontWeight.Bold) }
+                    text = { Text(if (isBangla) "চলতি (${activeLoans.size})" else "Active (${activeLoans.size})", fontWeight = FontWeight.Bold) }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text(if (isBangla) "পরিশোধিত ঋণ (${paidLoans.size})" else "Repaid Loans (${paidLoans.size})", fontWeight = FontWeight.Bold) }
+                    text = { Text(if (isBangla) "পরিশোধিত (${paidLoans.size})" else "Repaid (${paidLoans.size})", fontWeight = FontWeight.Bold) }
                 )
             }
 
@@ -153,10 +150,13 @@ fun LoanListScreen(
 
             if (displayedLoans.isEmpty()) {
                 EmptyStateView(
-                    icon = Icons.Default.CreditCard,
-                    title = if (selectedTab == 0) (if (isBangla) "কোনো চলতি ঋণ নেই" else "No Active Loans") else (if (isBangla) "কোনো পরিশোধিত ঋণ নেই" else "No Repaid Loans"),
-                    description = if (selectedTab == 0) (if (isBangla) "সমিতির সদস্যদের মাঝে নতুন ঋণ প্রদান করতে নিচের বাটনে চাপ দিন।" else "Tap the button below to disburse a new loan to members.") else (if (isBangla) "পূর্বে বিতরণকৃত কোনো ঋণ এখনো সম্পূর্ণ পরিশোধ হয়নি।" else "Completed loan repayments will appear here."),
-                    actionButtonText = if (selectedTab == 0) (if (isBangla) "নতুন ঋণ বিতরণ করুন" else "Issue New Loan") else null,
+                    icon = Icons.Default.Handshake,
+                    title = if (selectedTab == 0) (if (isBangla) "কোনো চলতি করযে হাসানা নেই" else "No Active Qard Hasan")
+                    else (if (isBangla) "কোনো পরিশোধিত রেকর্ড নেই" else "No Repaid Records"),
+                    description = if (selectedTab == 0)
+                        (if (isBangla) "জরুরি সহায়তায় নতুন করযে হাসানা দিতে নিচের বাটনে চাপুন।" else "Tap below to disburse new interest-free aid.")
+                    else (if (isBangla) "পরিশোধিত সকল করযে হাসানার হিসাব এখানে দেখা যাবে।" else "Completed repayments will appear here."),
+                    actionButtonText = if (selectedTab == 0) (if (isBangla) "করযে হাসানা প্রদান করুন" else "Disburse Qard Hasan") else null,
                     onActionClick = onIssueLoanClick
                 )
             } else {
@@ -207,7 +207,8 @@ fun LoanListScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (isBangla) "বকেয়া ব্যালেন্স: ${CurrencyFormatter.formatBDT(loan.outstandingBalance, toBanglaDigits = true)}" else "Outstanding Balance: ${CurrencyFormatter.formatBDT(loan.outstandingBalance, toBanglaDigits = false)}",
+                        text = if (isBangla) "বকেয়া দেনা: ${CurrencyFormatter.formatBDT(loan.outstandingBalance, toBanglaDigits = true)}"
+                        else "Remaining: ${CurrencyFormatter.formatBDT(loan.outstandingBalance, toBanglaDigits = false)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MoneyExpenseRed
                     )
@@ -221,7 +222,6 @@ fun LoanListScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // Method Selector
                     Text(if (isBangla) "পরিশোধের মাধ্যম:" else "Payment Method:", style = MaterialTheme.typography.labelSmall)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -262,9 +262,9 @@ fun LoanListScreen(
 }
 
 @Composable
-fun LoanStatColumn(title: String, amount: Double, color: Color, isBangla: Boolean = true) {
+private fun LoanStatColumn(title: String, amount: Double, color: Color, isBangla: Boolean = true) {
     Column {
-        Text(text = title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+        Text(text = title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = CurrencyFormatter.formatBDT(safeRound(amount), toBanglaDigits = isBangla),
@@ -272,158 +272,5 @@ fun LoanStatColumn(title: String, amount: Double, color: Color, isBangla: Boolea
             fontWeight = FontWeight.Bold,
             color = color
         )
-    }
-}
-
-@Composable
-fun LoanCardItem(
-    loan: Loan,
-    isBangla: Boolean = true,
-    onCollectInstallmentClick: () -> Unit
-) {
-    val dateFormat = remember(isBangla) { SimpleDateFormat("dd MMM, yyyy", if (isBangla) Locale("bn", "BD") else Locale.ENGLISH) }
-    val dateStr = dateFormat.format(Date(loan.dateIssued))
-    val progress = if (loan.totalPayable > 0) {
-        (loan.totalRepaid / loan.totalPayable).toFloat().coerceIn(0f, 1f)
-    } else 0f
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (loan.status == LoanStatus.ACTIVE) MaterialTheme.colorScheme.primaryContainer
-                                else MoneyIncomeGreen.copy(alpha = 0.15f)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (loan.status == LoanStatus.ACTIVE) Icons.Default.CreditCard else Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = if (loan.status == LoanStatus.ACTIVE) MaterialTheme.colorScheme.primary else MoneyIncomeGreen,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = loan.memberName,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = if (isBangla) "ইস্যু: $dateStr" else "Issued: $dateStr",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (loan.status == LoanStatus.ACTIVE) MoneyDueAmber.copy(alpha = 0.12f) else MoneyIncomeGreen.copy(alpha = 0.12f)
-                ) {
-                    Text(
-                        text = if (loan.status == LoanStatus.ACTIVE) (if (isBangla) "চলতি" else "Active") else (if (isBangla) "পরিশোধিত" else "Repaid"),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (loan.status == LoanStatus.ACTIVE) Color(0xFFD97706) else MoneyIncomeGreen,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            if (loan.reason.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = if (isBangla) "উদ্দেশ্য: ${loan.reason}" else "Purpose: ${loan.reason}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Progress Bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = if (isBangla) "আদায়: ${CurrencyFormatter.formatBDT(loan.totalRepaid, toBanglaDigits = true)}" else "Collected: ${CurrencyFormatter.formatBDT(loan.totalRepaid, toBanglaDigits = false)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MoneyIncomeGreen,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = if (isBangla) "মোট দেনা: ${CurrencyFormatter.formatBDT(loan.totalPayable, toBanglaDigits = true)}" else "Total Payable: ${CurrencyFormatter.formatBDT(loan.totalPayable, toBanglaDigits = false)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = MoneyIncomeGreen,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = if (isBangla) "অবশিষ্ট বকেয়া" else "Outstanding Balance",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                    Text(
-                        text = CurrencyFormatter.formatBDT(loan.outstandingBalance, toBanglaDigits = isBangla),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (loan.outstandingBalance > 0) MoneyExpenseRed else MoneyIncomeGreen
-                    )
-                }
-
-                if (loan.status == LoanStatus.ACTIVE) {
-                    Button(
-                        onClick = onCollectInstallmentClick,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(imageVector = Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(if (isBangla) "কিস্তি জমা নিন" else "Collect Installment")
-                    }
-                }
-            }
-        }
     }
 }

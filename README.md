@@ -32,7 +32,7 @@ A modern, transparent, and cloud-synced Android cooperative society management p
 ## Setup & Development (সেটআপ ও ডেভেলপমেন্ট)
 1. Clone the repository:
    ```bash
-   git clone https://github.com/omarfarukitbd-spec/orgogamifund.git
+    git clone https://github.com/omarfarukitbd-spec/orgogamifund.git
    ```
 2. Open the project in **Android Studio**.
 3. Ensure `google-services.json` is configured with your Firebase project (`ogrogami-fund`).

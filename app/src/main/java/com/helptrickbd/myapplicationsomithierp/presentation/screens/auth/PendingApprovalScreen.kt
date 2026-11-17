@@ -1,5 +1,7 @@
 package com.helptrickbd.myapplicationsomithierp.presentation.screens.auth
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,15 +27,21 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.helptrickbd.myapplicationsomithierp.R
+import com.helptrickbd.myapplicationsomithierp.presentation.components.ExitConfirmationDialog
 import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyDueAmber
 
 @Composable
@@ -43,6 +51,24 @@ fun PendingApprovalScreen(
     onApplyForMembership: () -> Unit = {},
     onSignOut: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val activity = context as? Activity
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = true) {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        ExitConfirmationDialog(
+            onConfirm = {
+                showExitDialog = false
+                activity?.finish()
+            },
+            onDismiss = { showExitDialog = false }
+        )
+    }
+
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier

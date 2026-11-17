@@ -245,4 +245,41 @@ object FirestoreWriteManager {
             }
         }
     }
+
+    fun repayLoanInstallment(
+        loanId: String,
+        amount: Double,
+        method: String,
+        onComplete: ((Boolean) -> Unit)? = null
+    ) {
+        scope.launch {
+            try {
+                val loanDocRef = firestore.collection("loans").document(loanId)
+                firestore.runTransaction { transaction ->
+                    val snapshot = transaction.get(loanDocRef)
+                    if (snapshot.exists()) {
+                        val principal = snapshot.getDouble("amount") ?: 0.0
+                        val existingRepayments = (snapshot.get("repayments") as? List<*>)?.mapNotNull { it as? Map<*, *> } ?: emptyList()
+                        val newRepayment = mapOf(
+                            "amount" to amount,
+                            "date" to System.currentTimeMillis(),
+                            "method" to method
+                        )
+                        val updatedRepayments = existingRepayments + newRepayment
+                        val totalRepaid = updatedRepayments.sumOf { (it["amount"] as? Number)?.toDouble() ?: 0.0 }
+                        val newStatus = if (totalRepaid >= principal) "paid_off" else "active"
+                        transaction.update(loanDocRef, mapOf(
+                            "repayments" to updatedRepayments,
+                            "status" to newStatus
+                        ))
+                    }
+                }
+                ShomitiDataManager.repayLoanInstallment(loanId, amount, method)
+                onComplete?.invoke(true)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                onComplete?.invoke(false)
+            }
+        }
+    }
 }

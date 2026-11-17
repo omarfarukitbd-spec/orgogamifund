@@ -1,17 +1,12 @@
 package com.helptrickbd.myapplicationsomithierp.core.data
 
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.SetOptions
 import com.helptrickbd.myapplicationsomithierp.core.util.safeRound
 import com.helptrickbd.myapplicationsomithierp.domain.model.*
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.dashboard.DashboardUiState
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 /**
  * Production Firebase Firestore Data Manager for Ogrogami Fund ERP.
@@ -20,7 +15,6 @@ import kotlinx.coroutines.launch
 object FirestoreDataManager {
 
     private val firestore = FirebaseFirestore.getInstance()
-    private val scope = CoroutineScope(Dispatchers.IO)
 
     private val _branches = MutableStateFlow<List<Branch>>(emptyList())
     val branches: StateFlow<List<Branch>> = _branches.asStateFlow()
@@ -59,47 +53,7 @@ object FirestoreDataManager {
         // 1. Branches Sync
         firestore.collection("branches").addSnapshotListener { snapshot, _ ->
             if (snapshot != null && !snapshot.isEmpty) {
-                val list = snapshot.documents.mapNotNull { doc ->
-                    Branch(
-                        id = doc.id,
-                        name = doc.getString("name") ?: "",
-                        code = doc.getString("code") ?: "",
-                        establishedYear = doc.getString("establishedYear") ?: "২০২৩",
-                        description = doc.getString("description") ?: "",
-                        monthlyDepositAmount = doc.getDouble("monthlyDepositAmount") ?: 1000.0,
-                        admissionFee = doc.getDouble("admissionFee") ?: 500.0,
-                        sharePrice = doc.getDouble("sharePrice") ?: 1000.0,
-                        memberCount = doc.getLong("memberCount")?.toInt() ?: 0,
-                        treasurerUserId = doc.getString("treasurerUserId"),
-                        balance = doc.getDouble("balance") ?: 0.0,
-                        bkashNumber = doc.getString("bkashNumber") ?: "01824797072",
-                        nagadNumber = doc.getString("nagadNumber") ?: "01824797072",
-                        bankDetails = (doc.get("bankDetails") as? Map<*, *>)?.let { bMap ->
-                            BankAccountDetails(
-                                bankName = bMap["bankName"] as? String ?: "ইসলামী ব্যাংক বাংলাদেশ পিএলসি",
-                                branchName = bMap["branchName"] as? String ?: "ফেনী শাখা",
-                                accountName = bMap["accountName"] as? String ?: "অগ্রগামী ফান্ড",
-                                accountNumber = bMap["accountNumber"] as? String ?: "20501234567890123",
-                                routingNumber = bMap["routingNumber"] as? String ?: "125261453"
-                            )
-                        } ?: BankAccountDetails(),
-                        permissions = (doc.get("permissions") as? Map<*, *>)?.let { pMap ->
-                            SomithiPermissions(
-                                canMembersViewTotalFund = pMap["canMembersViewTotalFund"] as? Boolean ?: true,
-                                canMembersViewExpenses = pMap["canMembersViewExpenses"] as? Boolean ?: true,
-                                canMembersViewMemberList = pMap["canMembersViewMemberList"] as? Boolean ?: true,
-                                canMembersViewNotices = pMap["canMembersViewNotices"] as? Boolean ?: true
-                            )
-                        } ?: SomithiPermissions(),
-                        termsAndConditions = (doc.get("termsAndConditions") as? List<*>)?.filterIsInstance<String>()
-                            ?: listOf(
-                                "১. প্রতি মাসে নির্ধারিত তারিখের মধ্যে মাসিক সঞ্চয় পরিশোধ করতে হবে।",
-                                "২. সমিতির সাধারণ সিদ্ধান্ত ও পরিচালনা পরিষদের নিয়ম মেনে চলতে হবে।",
-                                "৩. নিয়মিত সঞ্চয় ও শৃঙ্খলার মাধ্যমে ঋণ সুবিধা নিশ্চিত করা হবে।"
-                            )
-                    )
-                }
-                _branches.value = list
+                _branches.value = snapshot.documents.mapNotNull { it.toBranchModel() }
             } else {
                 _branches.value = emptyList()
             }
@@ -129,31 +83,7 @@ object FirestoreDataManager {
         // 3. Payments Sync
         firestore.collection("payments").addSnapshotListener { snapshot, _ ->
             if (snapshot != null) {
-                val list = snapshot.documents.mapNotNull { doc ->
-                    val statusStr = doc.getString("approvalStatus")?.lowercase()
-                    Payment(
-                        id = doc.id,
-                        memberId = doc.getString("memberId") ?: "",
-                        memberName = doc.getString("memberName") ?: "",
-                        branchId = doc.getString("branchId") ?: "b-1",
-                        amount = doc.getDouble("amount") ?: 0.0,
-                        date = doc.getLong("date") ?: System.currentTimeMillis(),
-                        forMonth = doc.getString("forMonth") ?: "জানুয়ারি",
-                        forYear = doc.getLong("forYear")?.toInt() ?: 2026,
-                        method = doc.getString("method") ?: "Cash",
-                        receiptNumber = doc.getString("receiptNumber") ?: "REC-${(doc.getLong("date") ?: System.currentTimeMillis()) % 100000}",
-                        purposeNote = doc.getString("purposeNote") ?: "",
-                        transactionId = doc.getString("transactionId") ?: "",
-                        bankAccountInfo = doc.getString("bankAccountInfo") ?: "",
-                        approvalStatus = when (statusStr) {
-                            "pending" -> ApprovalStatus.PENDING
-                            "rejected" -> ApprovalStatus.REJECTED
-                            else -> ApprovalStatus.APPROVED
-                        },
-                        rejectionReason = doc.getString("rejectionReason") ?: ""
-                    )
-                }
-                _payments.value = list
+                _payments.value = snapshot.documents.mapNotNull { it.toPaymentModel() }
                 recomputeDashboardState()
             }
         }
@@ -185,7 +115,7 @@ object FirestoreDataManager {
                         phone = doc.getString("phone") ?: "",
                         email = doc.getString("email") ?: "",
                         targetShomitiId = doc.getString("targetShomitiId") ?: "b-1",
-                        targetShomitiName = doc.getString("targetShomitiName") ?: "অগ্রগামী সঞ্চয় সমিতি",
+                        targetShomitiName = doc.getString("targetShomitiName") ?: "অগ্রগামী ফান্ড",
                         status = when (doc.getString("status")) {
                             "APPROVED" -> ApprovalStatus.APPROVED
                             "REJECTED" -> ApprovalStatus.REJECTED
@@ -197,9 +127,15 @@ object FirestoreDataManager {
                 recomputeDashboardState()
             }
         }
+
+        // 6. Loans (Qard Hasan) Sync
+        firestore.collection("loans").addSnapshotListener { snapshot, _ ->
+            if (snapshot != null) {
+                _loans.value = snapshot.documents.mapNotNull { it.toLoanModel() }
+                recomputeDashboardState()
+            }
+        }
     }
-
-
 
     fun selectBranch(branchId: String) {
         _selectedBranchId.value = branchId

@@ -55,8 +55,7 @@ data class Branch(
 enum class PaymentType {
     MONTHLY,
     YEARLY,
-    SPECIAL,
-    FINE
+    SPECIAL
 }
 
 enum class PaymentMethod {
@@ -110,6 +109,9 @@ data class LoanRepayment(
     val method: String = "Cash"
 )
 
+/**
+ * 100% Shariah-compliant Qard Hasan (Interest-Free Welfare Loan)
+ */
 data class Loan(
     val id: String = "",
     val memberId: String = "",
@@ -118,8 +120,6 @@ data class Loan(
     val amount: Double = 0.0,
     val dateIssued: Long = System.currentTimeMillis(),
     val reason: String = "",
-    val interestEnabled: Boolean = false,
-    val interestRate: Double = 0.0,
     val status: LoanStatus = LoanStatus.ACTIVE,
     val repayments: List<LoanRepayment> = emptyList()
 ) {
@@ -127,7 +127,7 @@ data class Loan(
         get() = safeRound(repayments.sumOf { safeRound(it.amount) })
 
     val totalPayable: Double
-        get() = safeRound(if (interestEnabled) safeRound(amount + safeRound(amount * interestRate / 100.0)) else safeRound(amount))
+        get() = safeRound(amount)
 
     val outstandingBalance: Double
         get() = safeRound((totalPayable - totalRepaid).coerceAtLeast(0.0))

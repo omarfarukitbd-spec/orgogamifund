@@ -15,11 +15,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "1063848074047-h35hfi9n3210u4i2g6eovuo9jo5ht7vf.apps.googleusercontent.com",
+          "client_id": "1063848074047-gl8ib9blfvh7sbksutuqfp6c5s1m7v55.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.helptrickbd.ogrogamifund",
-            "certificate_hash": "50258df3db32d01282977e9d577b41f3b8d9b3fb"
+            "certificate_hash": "a33999745c66bae1d8a1d70d6b84619ac2deafe5"
           }
         },
         {

@@ -12,3 +12,6 @@ app/build
 .externalNativeBuild
 .cxx
 *.hprof
+
+*.zip
+agragami-flutter/

@@ -32,7 +32,7 @@ object PaymentReceiptPdfGenerator {
     fun generateReceiptPdf(
         context: Context,
         payment: Payment,
-        orgName: String = "সোনার বাংলা সমবায় সমিতি"
+        orgName: String = "অগ্রগামী ফান্ড"
     ): File {
         val pdfDocument = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(RECEIPT_WIDTH, RECEIPT_HEIGHT, 1).create()

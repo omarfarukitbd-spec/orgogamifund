@@ -42,15 +42,14 @@
     <string name="quick_actions">Quick Actions</string>
     <string name="btn_collect_payment">Collect Chada</string>
     <string name="btn_add_expense">Add Expense</string>
-    <string name="btn_issue_loan">Issue Loan</string>
+    <string name="btn_issue_loan">Disburse Qard Hasan</string>
     <string name="btn_add_member">Add Member</string>
 
     <!-- Contributions / Payments -->
     <string name="payment_type">Payment Type</string>
     <string name="payment_type_monthly">Monthly Contribution</string>
     <string name="payment_type_yearly">Yearly Contribution</string>
-    <string name="payment_type_special">Special Contribution</string>
-    <string name="payment_type_fine">Late Penalty (Fine)</string>
+    <string name="payment_type_special">Special Contribution / Donation</string>
     <string name="payment_method">Payment Method</string>
     <string name="method_cash">Cash</string>
     <string name="method_bkash">bKash</string>
@@ -86,14 +85,13 @@
     <string name="member_status_left">Left / Resigned</string>
     <string name="generate_id_card">Generate Membership ID Card</string>
 
-    <!-- Loans -->
-    <string name="loan_amount">Loan Amount</string>
-    <string name="loan_reason">Reason</string>
-    <string name="loan_date_issued">Date Issued</string>
+    <!-- Qard Hasan (Interest-Free Welfare Loan) -->
+    <string name="loan_amount">Qard Hasan Amount</string>
+    <string name="loan_reason">Purpose / Welfare Reason</string>
+    <string name="loan_date_issued">Date Disbursed</string>
     <string name="loan_repaid">Amount Repaid</string>
-    <string name="loan_outstanding">Outstanding Balance</string>
-    <string name="interest_enabled">Enable Interest</string>
-    <string name="interest_rate">Interest Rate (%)</string>
+    <string name="loan_outstanding">Remaining Balance</string>
+    <string name="qard_hasan_banner">100% Interest-Free Islamic Qard Hasan (Emergency Welfare Aid)</string>
 
     <!-- Offline & System -->
     <string name="offline_banner">Offline Mode — Changes will sync automatically when connected</string>

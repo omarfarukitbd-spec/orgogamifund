@@ -42,15 +42,14 @@
     <string name="quick_actions">কুইক অ্যাকশন</string>
     <string name="btn_collect_payment">চাঁদা জমা নিন</string>
     <string name="btn_add_expense">খরচ লিখুন</string>
-    <string name="btn_issue_loan">ঋণ দিন</string>
+    <string name="btn_issue_loan">করযে হাসানা প্রদান</string>
     <string name="btn_add_member">নতুন সদস্য যোগ</string>
 
     <!-- Contributions / Payments -->
     <string name="payment_type">জমার ধরন</string>
-    <string name="payment_type_monthly">মাসিক চাঁদা</string>
-    <string name="payment_type_yearly">বার্ষিক চাঁদা</string>
-    <string name="payment_type_special">বিশেষ অনুদান/জমা</string>
-    <string name="payment_type_fine">বিলম্ব জরিমানা (ফাইন)</string>
+    <string name="payment_type_monthly">মাসিক সঞ্চয় / চাঁদা</string>
+    <string name="payment_type_yearly">বার্ষিক সঞ্চয়</string>
+    <string name="payment_type_special">বিশেষ অনুদান / এহসান</string>
     <string name="payment_method">পেমেন্ট মাধ্যম</string>
     <string name="method_cash">নগদ (Cash)</string>
     <string name="method_bkash">বিকাশ (bKash)</string>
@@ -86,14 +85,13 @@
     <string name="member_status_left">অব্যাহতিপ্রাপ্ত</string>
     <string name="generate_id_card">মেম্বারশিপ আইডি কার্ড প্রিন্ট</string>
 
-    <!-- Loans -->
-    <string name="loan_amount">ঋণের পরিমাণ</string>
-    <string name="loan_reason">ঋণ গ্রহণের কারণ</string>
+    <!-- Qard Hasan (Interest-Free Welfare Loan) -->
+    <string name="loan_amount">করযে হাসানার পরিমাণ</string>
+    <string name="loan_reason">প্রদানের কারণ / মানবিক উদ্দেশ্য</string>
     <string name="loan_date_issued">বিতরণের তারিখ</string>
     <string name="loan_repaid">পরিশোধিত অর্থ</string>
-    <string name="loan_outstanding">বকেয়া ঋণ</string>
-    <string name="interest_enabled">সুদ/মুনাফা প্রযোজ্য</string>
-    <string name="interest_rate">সুদের হার (%)</string>
+    <string name="loan_outstanding">অবশিষ্ট বকেয়া</string>
+    <string name="qard_hasan_banner">১০০% সুদমুক্ত করযে হাসানা (জরুরি মানবিক সাহায্য ও সহজ কিস্তিতে পরিশোধ)</string>
 
     <!-- Offline & System -->
     <string name="offline_banner">অফলাইন মোড — সংযোগ পেলে স্বয়ংক্রিয়ভাবে সিঙ্ক হবে</string>

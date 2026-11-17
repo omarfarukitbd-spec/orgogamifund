@@ -87,7 +87,7 @@ fun NavGraphBuilder.addFinancialNavRoutes(
             loans = loans,
             onIssueLoanClick = { navController.navigate(Screen.IssueLoan.route) },
             onRepayInstallment = { loanId, amount, method ->
-                ShomitiDataManager.repayLoanInstallment(loanId, amount, method)
+                FirestoreWriteManager.repayLoanInstallment(loanId, amount, method)
             },
             onNavigateBack = { navController.popBackStack() }
         )

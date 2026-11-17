@@ -142,13 +142,3 @@ fun ShomitiERPTheme(
         )
     }
 }
-
-// Backward compatibility alias for preview references
-@Composable
-fun MyApplicationSomithiERPTheme(
-    themeMode: AppThemeMode = AppThemeMode.SYSTEM,
-    dynamicColor: Boolean = false,
-    content: @Composable () -> Unit
-) {
-    ShomitiERPTheme(themeMode = themeMode, dynamicColor = dynamicColor, content = content)
-}

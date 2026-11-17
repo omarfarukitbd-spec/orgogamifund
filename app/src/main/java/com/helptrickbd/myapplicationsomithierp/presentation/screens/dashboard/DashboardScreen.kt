@@ -1,15 +1,19 @@
 package com.helptrickbd.myapplicationsomithierp.presentation.screens.dashboard
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.helptrickbd.myapplicationsomithierp.MainActivity
 import com.helptrickbd.myapplicationsomithierp.domain.model.Branch
 import com.helptrickbd.myapplicationsomithierp.domain.model.Payment
 import com.helptrickbd.myapplicationsomithierp.domain.model.ShomitiMembershipStatus
 import com.helptrickbd.myapplicationsomithierp.domain.model.UserRole
+import com.helptrickbd.myapplicationsomithierp.presentation.components.ExitConfirmationDialog
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.dashboard.components.*
 import kotlinx.coroutines.launch
 
@@ -64,6 +68,21 @@ fun DashboardScreen(
     onNavigateToPassbook: (memberId: String) -> Unit = {}
 ) {
     var termsBranchToView by remember { mutableStateOf<Branch?>(null) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    BackHandler {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        ExitConfirmationDialog(
+            onConfirm = {
+                (context as? MainActivity)?.finish()
+            },
+            onDismiss = { showExitDialog = false }
+        )
+    }
 
     val activeBranch = state.branches.find { it.id == state.selectedBranchId }
         ?: state.branches.firstOrNull()

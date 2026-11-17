@@ -112,8 +112,6 @@ class DataBackupManager(private val context: Context) {
             obj.put("amount", l.amount)
             obj.put("dateIssued", l.dateIssued)
             obj.put("reason", l.reason)
-            obj.put("interestEnabled", l.interestEnabled)
-            obj.put("interestRate", l.interestRate)
             obj.put("totalPayable", l.totalPayable)
             obj.put("totalRepaid", l.totalRepaid)
             obj.put("outstandingBalance", l.outstandingBalance)

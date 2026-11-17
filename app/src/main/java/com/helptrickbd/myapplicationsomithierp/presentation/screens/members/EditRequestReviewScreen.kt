@@ -1,44 +1,22 @@
 package com.helptrickbd.myapplicationsomithierp.presentation.screens.members
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.helptrickbd.myapplicationsomithierp.core.ui.EmptyStateView
@@ -57,12 +35,14 @@ fun EditRequestReviewScreen(
     onReject: (requestId: String) -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
+    val isBangla = LocalConfiguration.current.locales[0].language == "bn"
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "তথ্য সংশোধনের আবেদন (${requests.size})",
+                        text = if (isBangla) "তথ্য সংশোধনের আবেদন (${requests.size})" else "Info Edit Requests (${requests.size})",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -84,8 +64,8 @@ fun EditRequestReviewScreen(
             if (requests.isEmpty()) {
                 EmptyStateView(
                     icon = Icons.Default.EditNote,
-                    title = "কোনো পেন্ডিং আবেদন নেই",
-                    description = "সদস্যরা তাদের তথ্য পরিবর্তনের আবেদন পাঠালে এখানে দেখা যাবে।",
+                    title = if (isBangla) "কোনো পেন্ডিং আবেদন নেই" else "No Pending Requests",
+                    description = if (isBangla) "সদস্যরা তাদের তথ্য পরিবর্তনের আবেদন পাঠালে এখানে দেখা যাবে।" else "Member information update requests will appear here.",
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
@@ -97,6 +77,7 @@ fun EditRequestReviewScreen(
                     items(requests) { request ->
                         EditRequestCard(
                             request = request,
+                            isBangla = isBangla,
                             onApprove = { onApprove(request.id) },
                             onReject = { onReject(request.id) }
                         )
@@ -110,6 +91,7 @@ fun EditRequestReviewScreen(
 @Composable
 fun EditRequestCard(
     request: EditRequest,
+    isBangla: Boolean,
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
@@ -131,7 +113,7 @@ fun EditRequestCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "সদস্য আইডি: #${request.memberId.take(8).uppercase()}",
+                    text = if (isBangla) "সদস্য আইডি: #${request.memberId.take(8).uppercase()}" else "Member ID: #${request.memberId.take(8).uppercase()}",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -144,7 +126,7 @@ fun EditRequestCard(
             }
 
             Text(
-                text = "প্রস্তাবিত পরিবর্তনসমূহ:",
+                text = if (isBangla) "প্রস্তাবিত পরিবর্তনসমূহ:" else "Requested Changes:",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -157,10 +139,19 @@ fun EditRequestCard(
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                         .padding(horizontal = 10.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(text = field, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
-                    Text(text = "➔ $newValue", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(text = newValue, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
@@ -179,7 +170,7 @@ fun EditRequestCard(
                 ) {
                     Icon(imageVector = Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("প্রত্যাখ্যান")
+                    Text(if (isBangla) "প্রত্যাখ্যান" else "Reject")
                 }
 
                 Button(
@@ -190,7 +181,7 @@ fun EditRequestCard(
                 ) {
                     Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("অনুমোদন")
+                    Text(if (isBangla) "অনুমোদন" else "Approve")
                 }
             }
         }

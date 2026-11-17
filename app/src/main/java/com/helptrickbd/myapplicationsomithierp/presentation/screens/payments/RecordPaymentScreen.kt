@@ -1,17 +1,12 @@
 package com.helptrickbd.myapplicationsomithierp.presentation.screens.payments
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,28 +15,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Print
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -52,22 +33,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.helptrickbd.myapplicationsomithierp.R
-import com.helptrickbd.myapplicationsomithierp.core.pdf.PaymentReceiptPdfGenerator
-import com.helptrickbd.myapplicationsomithierp.core.util.CurrencyFormatter
 import com.helptrickbd.myapplicationsomithierp.core.util.safeRound
 import com.helptrickbd.myapplicationsomithierp.domain.model.Member
 import com.helptrickbd.myapplicationsomithierp.domain.model.Payment
 import com.helptrickbd.myapplicationsomithierp.domain.model.PaymentType
-import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyDueAmber
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.components.DuplicatePaymentWarningDialog
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.components.MemberSelectorDropdown
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.components.MonthYearSelectorRow
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.components.PaymentAmountPreviewCard
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.components.PaymentMethodSelectorDropdown
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.components.PaymentReceiptSuccessDialog
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.components.PaymentTypeSelectorDropdown
 import com.helptrickbd.myapplicationsomithierp.ui.theme.MoneyIncomeGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,11 +65,7 @@ fun RecordPaymentScreen(
     val isBangla = LocalConfiguration.current.locales[0].language == "bn"
 
     var selectedMember by remember { mutableStateOf<Member?>(members.firstOrNull()) }
-    var memberExpanded by remember { mutableStateOf(false) }
-
     var selectedType by remember { mutableStateOf(PaymentType.MONTHLY) }
-    var typeExpanded by remember { mutableStateOf(false) }
-
     var amountText by remember { mutableStateOf("") }
 
     val months = remember(isBangla) {
@@ -95,22 +73,17 @@ fun RecordPaymentScreen(
         else listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
     }
     var selectedMonth by remember(isBangla) { mutableStateOf(months[1]) }
-    var monthExpanded by remember { mutableStateOf(false) }
-
     var selectedYear by remember { mutableStateOf(2026) }
     var selectedMethod by remember { mutableStateOf(paymentMethods.firstOrNull() ?: "Cash") }
-    var methodExpanded by remember { mutableStateOf(false) }
-
     var purposeNote by remember { mutableStateOf("") }
 
-    // Duplicate Warning State
+    // Duplicate Warning & Success Receipt State
     var showDuplicateWarningDialog by remember { mutableStateOf(false) }
     var duplicatePaymentFound by remember { mutableStateOf<Payment?>(null) }
-
-    // Success Receipt Dialog State
     var savedPaymentForReceipt by remember { mutableStateOf<Payment?>(null) }
 
-    val isFormValid = selectedMember != null && amountText.toDoubleOrNull() != null && amountText.toDoubleOrNull()!! > 0
+    val enteredAmount = amountText.toDoubleOrNull() ?: 0.0
+    val isFormValid = selectedMember != null && enteredAmount > 0.0
 
     Scaffold(
         topBar = {
@@ -139,86 +112,19 @@ fun RecordPaymentScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Select Member Exposed Dropdown
-            ExposedDropdownMenuBox(
-                expanded = memberExpanded,
-                onExpandedChange = { memberExpanded = !memberExpanded }
-            ) {
-                OutlinedTextField(
-                    value = selectedMember?.name ?: if (isBangla) "সদস্য নির্বাচন করুন" else "Select Member",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(if (isBangla) "সদস্য নির্বাচন করুন *" else "Select Member *") },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = memberExpanded) },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
-                )
-
-                ExposedDropdownMenu(
-                    expanded = memberExpanded,
-                    onDismissRequest = { memberExpanded = false }
-                ) {
-                    members.forEach { member ->
-                        DropdownMenuItem(
-                            text = { Text("${member.name} (${member.phone})") },
-                            onClick = {
-                                selectedMember = member
-                                memberExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
+            // 1. Member Selector Dropdown
+            MemberSelectorDropdown(
+                members = members,
+                selectedMember = selectedMember,
+                onMemberSelected = { selectedMember = it },
+                isBangla = isBangla
+            )
 
             // 2. Payment Type Dropdown
-            ExposedDropdownMenuBox(
-                expanded = typeExpanded,
-                onExpandedChange = { typeExpanded = !typeExpanded }
-            ) {
-                OutlinedTextField(
-                    value = when (selectedType) {
-                        PaymentType.MONTHLY -> stringResource(R.string.payment_type_monthly)
-                        PaymentType.YEARLY -> stringResource(R.string.payment_type_yearly)
-                        PaymentType.SPECIAL -> stringResource(R.string.payment_type_special)
-                        PaymentType.FINE -> stringResource(R.string.payment_type_fine)
-                    },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.payment_type)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
-                )
-
-                ExposedDropdownMenu(
-                    expanded = typeExpanded,
-                    onDismissRequest = { typeExpanded = false }
-                ) {
-                    PaymentType.entries.forEach { type ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    when (type) {
-                                        PaymentType.MONTHLY -> stringResource(R.string.payment_type_monthly)
-                                        PaymentType.YEARLY -> stringResource(R.string.payment_type_yearly)
-                                        PaymentType.SPECIAL -> stringResource(R.string.payment_type_special)
-                                        PaymentType.FINE -> stringResource(R.string.payment_type_fine)
-                                    }
-                                )
-                            },
-                            onClick = {
-                                selectedType = type
-                                typeExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
+            PaymentTypeSelectorDropdown(
+                selectedType = selectedType,
+                onTypeSelected = { selectedType = it }
+            )
 
             // 3. Amount Field
             OutlinedTextField(
@@ -239,139 +145,28 @@ fun RecordPaymentScreen(
             )
 
             // Live Amount in Words & South Asian Grouping Preview
-            val enteredAmount = amountText.toDoubleOrNull() ?: 0.0
-            if (enteredAmount > 0.0) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (isBangla) "সংখ্যায় (হাজার, লক্ষ, কোটি):" else "In Numbers:",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = CurrencyFormatter.formatBDT(enteredAmount, showDecimals = true, toBanglaDigits = isBangla),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                        if (isBangla) {
-                            Text(
-                                text = "কথায়: ${CurrencyFormatter.formatInWords(enteredAmount, isBangla = true)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        } else {
-                            Text(
-                                text = "In Words: ${CurrencyFormatter.formatInWords(enteredAmount, isBangla = false)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                }
-            }
+            PaymentAmountPreviewCard(
+                amount = enteredAmount,
+                isBangla = isBangla
+            )
 
             // 4. Month & Year Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ExposedDropdownMenuBox(
-                    expanded = monthExpanded,
-                    onExpandedChange = { monthExpanded = !monthExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = selectedMonth,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.for_month)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.menuAnchor()
-                    )
+            MonthYearSelectorRow(
+                selectedMonth = selectedMonth,
+                onMonthSelected = { selectedMonth = it },
+                selectedYear = selectedYear,
+                onYearChanged = { selectedYear = it },
+                months = months
+            )
 
-                    ExposedDropdownMenu(
-                        expanded = monthExpanded,
-                        onDismissRequest = { monthExpanded = false }
-                    ) {
-                        months.forEach { month ->
-                            DropdownMenuItem(
-                                text = { Text(month) },
-                                onClick = {
-                                    selectedMonth = month
-                                    monthExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+            // 5. Payment Method Dropdown
+            PaymentMethodSelectorDropdown(
+                paymentMethods = paymentMethods,
+                selectedMethod = selectedMethod,
+                onMethodSelected = { selectedMethod = it }
+            )
 
-                OutlinedTextField(
-                    value = selectedYear.toString(),
-                    onValueChange = { selectedYear = it.toIntOrNull() ?: 2026 },
-                    label = { Text(stringResource(R.string.for_year)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // 5. Payment Method
-            ExposedDropdownMenuBox(
-                expanded = methodExpanded,
-                onExpandedChange = { methodExpanded = !methodExpanded }
-            ) {
-                OutlinedTextField(
-                    value = selectedMethod,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.payment_method)) },
-                    leadingIcon = { Icon(Icons.Default.CreditCard, contentDescription = null) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = methodExpanded) },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
-                )
-
-                ExposedDropdownMenu(
-                    expanded = methodExpanded,
-                    onDismissRequest = { methodExpanded = false }
-                ) {
-                    paymentMethods.forEach { method ->
-                        DropdownMenuItem(
-                            text = { Text(method) },
-                            onClick = {
-                                selectedMethod = method
-                                methodExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            // 6. Purpose Note
+            // 6. Purpose Note Field
             OutlinedTextField(
                 value = purposeNote,
                 onValueChange = { purposeNote = it },
@@ -384,7 +179,7 @@ fun RecordPaymentScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Save Payment Button
+            // Confirm Payment Button
             Button(
                 onClick = {
                     if (isFormValid && selectedMember != null) {
@@ -393,14 +188,12 @@ fun RecordPaymentScreen(
                             memberName = selectedMember!!.name,
                             branchId = selectedMember!!.branchId,
                             type = selectedType,
-                            amount = safeRound(amountText.toDoubleOrNull() ?: 0.0),
+                            amount = safeRound(enteredAmount),
                             method = selectedMethod,
                             forMonth = selectedMonth,
                             forYear = selectedYear,
                             purposeNote = purposeNote.trim()
                         )
-
-                        // Trigger Save or Duplicate Check
                         onConfirmSave(payment)
                         savedPaymentForReceipt = payment
                     }
@@ -423,90 +216,47 @@ fun RecordPaymentScreen(
         }
     }
 
-    // Duplicate Payment Soft Warning Dialog (§6.2)
+    // Duplicate Payment Soft Warning Dialog
     if (showDuplicateWarningDialog && duplicatePaymentFound != null) {
-        AlertDialog(
-            onDismissRequest = { showDuplicateWarningDialog = false },
-            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MoneyDueAmber) },
-            title = { Text(text = stringResource(R.string.duplicate_warning_title), fontWeight = FontWeight.Bold) },
-            text = {
-                Text(
-                    text = if (isBangla)
-                        "${selectedMember?.name}-এর জন্য ${selectedMonth}, $selectedYear সালে ইতিমধ্যে ${CurrencyFormatter.formatBDT(duplicatePaymentFound!!.amount, toBanglaDigits = true)} জমা রেকর্ড করা আছে।\n\nআপনি কি নিশ্চিত যে আরেকটি পেমেন্ট জমা করতে চান?"
-                    else
-                        "A deposit of ${CurrencyFormatter.formatBDT(duplicatePaymentFound!!.amount, toBanglaDigits = false)} is already recorded for ${selectedMember?.name} for $selectedMonth $selectedYear.\n\nAre you sure you want to proceed?"
+        DuplicatePaymentWarningDialog(
+            selectedMember = selectedMember,
+            selectedMonth = selectedMonth,
+            selectedYear = selectedYear,
+            duplicatePayment = duplicatePaymentFound!!,
+            isBangla = isBangla,
+            onConfirm = {
+                showDuplicateWarningDialog = false
+                val payment = Payment(
+                    memberId = selectedMember!!.id,
+                    memberName = selectedMember!!.name,
+                    branchId = selectedMember!!.branchId,
+                    type = selectedType,
+                    amount = safeRound(enteredAmount),
+                    method = selectedMethod,
+                    forMonth = selectedMonth,
+                    forYear = selectedYear,
+                    purposeNote = purposeNote.trim()
                 )
+                onConfirmSave(payment)
+                savedPaymentForReceipt = payment
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDuplicateWarningDialog = false
-                        val payment = Payment(
-                            memberId = selectedMember!!.id,
-                            memberName = selectedMember!!.name,
-                            branchId = selectedMember!!.branchId,
-                            type = selectedType,
-                            amount = safeRound(amountText.toDoubleOrNull() ?: 0.0),
-                            method = selectedMethod,
-                            forMonth = selectedMonth,
-                            forYear = selectedYear,
-                            purposeNote = purposeNote.trim()
-                        )
-                        onConfirmSave(payment)
-                        savedPaymentForReceipt = payment
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text(stringResource(R.string.confirm_anyway))
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showDuplicateWarningDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
+            onDismiss = { showDuplicateWarningDialog = false }
         )
     }
 
     // Success PDF Receipt Generation Dialog
     if (savedPaymentForReceipt != null) {
-        AlertDialog(
-            onDismissRequest = {
+        PaymentReceiptSuccessDialog(
+            payment = savedPaymentForReceipt!!,
+            isBangla = isBangla,
+            context = context,
+            onPrint = {
                 savedPaymentForReceipt = null
                 onNavigateBack()
             },
-            icon = { Icon(Icons.Default.Print, contentDescription = null, tint = MoneyIncomeGreen) },
-            title = { Text(if (isBangla) "টাকা জমা সম্পন্ন হয়েছে!" else "Payment Recorded Successfully!", fontWeight = FontWeight.Bold) },
-            text = {
-                Text(
-                    text = if (isBangla)
-                        "সফলভাবে ${CurrencyFormatter.formatBDT(savedPaymentForReceipt!!.amount, toBanglaDigits = true)} জমা রেকর্ড করা হয়েছে। আপনি কি এখনই মানি রিসিট প্রিন্ট বা শেয়ার করতে চান?"
-                    else
-                        "Successfully recorded deposit of ${CurrencyFormatter.formatBDT(savedPaymentForReceipt!!.amount, toBanglaDigits = false)}. Would you like to print or share the money receipt now?"
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val pdfFile = PaymentReceiptPdfGenerator.generateReceiptPdf(context, savedPaymentForReceipt!!)
-                        PaymentReceiptPdfGenerator.printReceipt(context, pdfFile)
-                        savedPaymentForReceipt = null
-                        onNavigateBack()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text(if (isBangla) "রসিদ প্রিন্ট করুন" else "Print Receipt")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = {
-                        savedPaymentForReceipt = null
-                        onNavigateBack()
-                    }
-                ) {
-                    Text(if (isBangla) "পরে করবো" else "Later")
-                }
+            onDismiss = {
+                savedPaymentForReceipt = null
+                onNavigateBack()
             }
         )
     }

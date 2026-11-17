@@ -1,5 +1,6 @@
 package com.helptrickbd.myapplicationsomithierp.presentation.screens.auth
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -49,8 +50,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.helptrickbd.myapplicationsomithierp.MainActivity
 import com.helptrickbd.myapplicationsomithierp.R
 import com.helptrickbd.myapplicationsomithierp.core.security.GoogleSignInHelper
+import com.helptrickbd.myapplicationsomithierp.presentation.components.ExitConfirmationDialog
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.auth.components.AuthBrandingHeader
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.auth.components.GoogleSignInButton
 import kotlinx.coroutines.launch
@@ -69,9 +72,23 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val isBangla = LocalConfiguration.current.locales[0].language == "bn"
+
+    BackHandler {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        ExitConfirmationDialog(
+            onConfirm = {
+                (context as? MainActivity)?.finish()
+            },
+            onDismiss = { showExitDialog = false }
+        )
+    }
 
     val activityResultRegistryOwner = androidx.activity.compose.LocalActivityResultRegistryOwner.current
     val googleSignInLauncher = if (activityResultRegistryOwner != null) {
