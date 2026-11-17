@@ -50,6 +50,7 @@ fun AppNavigation(
     val members by FirestoreDataManager.members.collectAsStateWithLifecycle()
     val payments by FirestoreDataManager.payments.collectAsStateWithLifecycle()
     val expenses by FirestoreDataManager.expenses.collectAsStateWithLifecycle()
+    val loans by FirestoreDataManager.loans.collectAsStateWithLifecycle()
     val branches by FirestoreDataManager.branches.collectAsStateWithLifecycle()
     val committee by ShomitiDataManager.committee.collectAsStateWithLifecycle()
     val notices by ShomitiDataManager.notices.collectAsStateWithLifecycle()
@@ -214,7 +215,7 @@ fun AppNavigation(
                 onNavigateToAdminHub = { navController.navigate(Screen.AdminHub.route) },
                 onNavigateToAuth = { navController.navigate(Screen.Auth.route) },
                 onTriggerBackup = {
-                    val backupFile = backupManager.generateBackupJson(BackupPayload(members = members, payments = payments, notices = notices, committee = committee))
+                    val backupFile = backupManager.generateBackupJson(BackupPayload(members = members, payments = payments, expenses = expenses, loans = loans, notices = notices, committee = committee))
                     backupManager.shareBackupFile(backupFile)
                 },
                 onSignOut = {
@@ -244,7 +245,8 @@ fun AppNavigation(
             notificationRepo = notificationRepo,
             members = members,
             payments = payments,
-            expenses = expenses
+            expenses = expenses,
+            loans = loans
         )
 
         addAdminNavRoutes(
@@ -263,7 +265,8 @@ fun AppNavigation(
             totalFundBalance = dashboardState.totalFundBalance,
             backupManager = backupManager,
             notificationRepo = notificationRepo,
-            launchCall = ::launchCall
+            launchCall = ::launchCall,
+            loans = loans
         )
     }
 }

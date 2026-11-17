@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.helptrickbd.myapplicationsomithierp.MainActivity
@@ -68,6 +69,9 @@ fun DashboardScreen(
     onAddActivityPhoto: (branchId: String, photoUrl: String) -> Unit = { _, _ -> }
 ) {
     val isBangla = LocalConfiguration.current.locales[0].language == "bn"
+    var showSomithiSwitcher by remember { mutableStateOf(false) }
+    var showAddPhotoDialog by remember { mutableStateOf(false) }
+    var newPhotoUrlInput by remember { mutableStateOf("") }
     var termsBranchToView by remember { mutableStateOf<Branch?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current

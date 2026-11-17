@@ -10,6 +10,8 @@ import com.helptrickbd.myapplicationsomithierp.domain.repository.NotificationRep
 import com.helptrickbd.myapplicationsomithierp.domain.model.*
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.expenses.AddExpenseScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.expenses.ExpenseListScreen
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.loans.IssueLoanScreen
+import com.helptrickbd.myapplicationsomithierp.presentation.screens.loans.LoanListScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.DefaulterListScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.PaymentHistoryScreen
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.payments.RecordPaymentScreen
@@ -22,7 +24,8 @@ fun NavGraphBuilder.addFinancialNavRoutes(
     notificationRepo: NotificationRepository,
     members: List<Member>,
     payments: List<Payment>,
-    expenses: List<Expense>
+    expenses: List<Expense>,
+    loans: List<Loan>
 ) {
     composable(Screen.Contributions.route) {
         PaymentHistoryScreen(

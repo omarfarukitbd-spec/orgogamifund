@@ -43,6 +43,7 @@ import com.helptrickbd.myapplicationsomithierp.presentation.screens.notification
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.notifications.components.NotificationFilterBar
 import com.helptrickbd.myapplicationsomithierp.presentation.screens.notifications.components.NotificationItemCard
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationCenterScreen(
     notifications: List<NotificationItem>,
@@ -55,9 +56,7 @@ fun NotificationCenterScreen(
 ) {
     val isBangla = LocalConfiguration.current.locales[0].language == "bn"
     var selectedFilter by remember { mutableStateOf(NotificationFilter.ALL) }
-    var showClearDialog by remember { mutableStateOf(false) }
-
-    val unreadCount = remember(notifications) { notifications.count { !it.isRead } }
+    var showMenu by remember { mutableStateOf(false) }
 
     val filteredList = remember(notifications, selectedFilter) {
         when (selectedFilter) {
@@ -75,15 +74,7 @@ fun NotificationCenterScreen(
         }
     }
 
-    if (showClearDialog) {
-        NotificationClearAllDialog(
-            onConfirm = {
-                showClearDialog = false
-                onClearAll()
-            },
-            onDismiss = { showClearDialog = false }
-        )
-    }
+    val unreadCount = remember(notifications) { notifications.count { !it.isRead } }
 
     Scaffold(
         topBar = {
@@ -176,18 +167,24 @@ fun NotificationCenterScreen(
                 onFilterSelected = { selectedFilter = it }
             )
 
+            // Notification Items or Empty State
             if (filteredList.isEmpty()) {
-                NotificationEmptyState(
-                    selectedFilter = selectedFilter,
-                    onResetFilter = { selectedFilter = NotificationFilter.ALL },
-                    modifier = Modifier.weight(1f)
-                )
-            } else {
-                LazyColumn(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .weight(1f),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    EmptyStateView(
+                        icon = Icons.Filled.NotificationsNone,
+                        title = stringResource(R.string.no_notifications),
+                        description = stringResource(R.string.no_notifications_desc)
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(
@@ -203,61 +200,6 @@ fun NotificationCenterScreen(
                             },
                             onDelete = { onDeleteNotification(item.id) }
                         )
-                    }
-
-                    val todayItems = filteredList.filter { categorizeTimeline(it.timestamp) == TimelinePeriod.TODAY }
-                    val yesterdayItems = filteredList.filter { categorizeTimeline(it.timestamp) == TimelinePeriod.YESTERDAY }
-                    val earlierItems = filteredList.filter { categorizeTimeline(it.timestamp) == TimelinePeriod.EARLIER }
-
-                    if (todayItems.isNotEmpty()) {
-                        item(key = "header_today") {
-                            NotificationTimelineHeader(period = TimelinePeriod.TODAY, count = todayItems.size)
-                        }
-                        items(items = todayItems, key = { it.id }) { item ->
-                            NotificationCard(
-                                item = item,
-                                onClick = {
-                                    onMarkAsRead(item.id)
-                                    onNotificationClick(item)
-                                },
-                                onDelete = { onDeleteNotification(item.id) },
-                                onMarkAsRead = { onMarkAsRead(item.id) }
-                            )
-                        }
-                    }
-
-                    if (yesterdayItems.isNotEmpty()) {
-                        item(key = "header_yesterday") {
-                            NotificationTimelineHeader(period = TimelinePeriod.YESTERDAY, count = yesterdayItems.size)
-                        }
-                        items(items = yesterdayItems, key = { it.id }) { item ->
-                            NotificationCard(
-                                item = item,
-                                onClick = {
-                                    onMarkAsRead(item.id)
-                                    onNotificationClick(item)
-                                },
-                                onDelete = { onDeleteNotification(item.id) },
-                                onMarkAsRead = { onMarkAsRead(item.id) }
-                            )
-                        }
-                    }
-
-                    if (earlierItems.isNotEmpty()) {
-                        item(key = "header_earlier") {
-                            NotificationTimelineHeader(period = TimelinePeriod.EARLIER, count = earlierItems.size)
-                        }
-                        items(items = earlierItems, key = { it.id }) { item ->
-                            NotificationCard(
-                                item = item,
-                                onClick = {
-                                    onMarkAsRead(item.id)
-                                    onNotificationClick(item)
-                                },
-                                onDelete = { onDeleteNotification(item.id) },
-                                onMarkAsRead = { onMarkAsRead(item.id) }
-                            )
-                        }
                     }
                 }
             }

@@ -48,5 +48,6 @@ data class Member(
     val linkedUserId: String? = null,
     // Transient / calculated fields for UI
     val totalContributed: Double = 0.0,
-    val outstandingDues: Double = 0.0
+    val outstandingDues: Double = 0.0,
+    val activeLoanBalance: Double = 0.0
 )

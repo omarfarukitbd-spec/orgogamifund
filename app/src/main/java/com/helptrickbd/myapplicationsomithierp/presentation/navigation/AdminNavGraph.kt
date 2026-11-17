@@ -42,7 +42,8 @@ fun NavGraphBuilder.addAdminNavRoutes(
     totalFundBalance: Double,
     backupManager: DataBackupManager,
     notificationRepo: NotificationRepository,
-    launchCall: (Context, String) -> Unit
+    launchCall: (Context, String) -> Unit,
+    loans: List<Loan> = emptyList()
 ) {
     composable(Screen.Branches.route) {
         BranchManagementScreen(
@@ -60,6 +61,7 @@ fun NavGraphBuilder.addAdminNavRoutes(
             members = members,
             payments = payments,
             expenses = expenses,
+            loans = loans,
             onNavigateBack = { navController.popBackStack() }
         )
     }

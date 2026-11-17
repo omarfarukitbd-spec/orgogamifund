@@ -16,6 +16,8 @@ sealed class Screen(val route: String) {
     data object RecordPayment : Screen("record_payment")
     data object Expenses : Screen("expenses")
     data object AddExpense : Screen("add_expense")
+    data object Loans : Screen("loans")
+    data object IssueLoan : Screen("issue_loan")
     data object Committee : Screen("committee")
     data object Notices : Screen("notices")
     data object Reports : Screen("reports")

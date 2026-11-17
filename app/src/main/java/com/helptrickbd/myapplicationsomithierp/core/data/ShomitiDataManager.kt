@@ -18,6 +18,7 @@ object ShomitiDataManager {
     private val initialMembers = emptyList<Member>()
     private val initialPayments = emptyList<Payment>()
     private val initialExpenses = emptyList<Expense>()
+    private val initialLoans = emptyList<Loan>()
     private val initialCommittee = emptyList<CommitteeMember>()
     private val initialNotices = emptyList<Notice>()
     private val initialEditRequests = emptyList<EditRequest>()

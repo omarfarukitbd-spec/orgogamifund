@@ -28,6 +28,9 @@ object FirestoreDataManager {
     private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
     val expenses: StateFlow<List<Expense>> = _expenses.asStateFlow()
 
+    private val _loans = MutableStateFlow<List<Loan>>(emptyList())
+    val loans: StateFlow<List<Loan>> = _loans.asStateFlow()
+
     private val _memberApplications = MutableStateFlow<List<MemberApplication>>(emptyList())
     val memberApplications: StateFlow<List<MemberApplication>> = _memberApplications.asStateFlow()
 
