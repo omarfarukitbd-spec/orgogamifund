@@ -50,6 +50,14 @@ jobs:
             echo "Copied google-services.json from app/ to agragami-flutter/android/app/"
           fi
 
+      - name: Setup Consistent Debug Keystore
+        run: |
+          mkdir -p ~/.android
+          if [ -f "agragami-flutter/android/app/debug.keystore" ]; then
+            cp agragami-flutter/android/app/debug.keystore ~/.android/debug.keystore
+            echo "Installed local debug.keystore into ~/.android/debug.keystore"
+          fi
+
       - name: Install Flutter Dependencies
         working-directory: agragami-flutter
         run: flutter pub get
