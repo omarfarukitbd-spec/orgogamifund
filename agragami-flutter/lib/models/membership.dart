@@ -42,14 +42,17 @@ class Membership {
       '${userId}_$branchId';
 
   factory Membership.fromMap(String id, Map<String, dynamic> data) {
+    final rawStatus = (data['status'] as String?)?.toLowerCase();
+    final status = switch (rawStatus) {
+      'approved' => MembershipStatus.approved,
+      'rejected' => MembershipStatus.rejected,
+      _ => MembershipStatus.pending,
+    };
     return Membership(
       id: id,
       userId: (data['userId'] as String?) ?? '',
       branchId: (data['branchId'] as String?) ?? '',
-      status: MembershipStatus.values.firstWhere(
-        (s) => s.name == data['status'],
-        orElse: () => MembershipStatus.pending,
-      ),
+      status: status,
       applicationId: data['applicationId'] as String?,
       memberId: data['memberId'] as String?,
       memberNumber: data['memberNumber'] as String?,

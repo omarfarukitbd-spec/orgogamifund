@@ -70,9 +70,7 @@ class FirestoreService {
   // ইউজার ও অ্যাডমিন মেথড
   Future<void> createUserDoc({required String uid, required String email}) =>
       member.createUserDoc(uid: uid, email: email);
-
   Future<bool?> hasAnyUser() => member.hasAnyUser();
-
   Future<void> createFirstAdminDoc({
     required String uid,
     required String name,
@@ -91,6 +89,22 @@ class FirestoreService {
     required String by,
   }) =>
       branch.createBranch(
+        name: name,
+        description: description,
+        purpose: purpose,
+        monthlyDonation: monthlyDonation,
+        by: by,
+      );
+  Future<void> updateBranch({
+    required String branchId,
+    required String name,
+    required String description,
+    required SamitiPurpose purpose,
+    required int monthlyDonation,
+    required String by,
+  }) =>
+      branch.updateBranch(
+        branchId: branchId,
         name: name,
         description: description,
         purpose: purpose,
@@ -210,9 +224,7 @@ class FirestoreService {
       loan.fetchLoans(branchId: branchId);
 
   // নোটিশ, কমিটি ও আবেদন মেথড
-  Stream<List<MemberApplication>> watchPendingApplications({
-    String? branchId,
-  }) =>
+  Stream<List<MemberApplication>> watchPendingApplications({String? branchId}) =>
       governance.watchPendingApplications(branchId: branchId);
   Future<String> submitMemberApplication({
     required MemberApplication application,
@@ -236,11 +248,7 @@ class FirestoreService {
     required String reason,
     required String reviewedBy,
   }) =>
-      governance.rejectApplication(
-        applicationId,
-        reason: reason,
-        reviewedBy: reviewedBy,
-      );
+      governance.rejectApplication(applicationId, reason: reason, reviewedBy: reviewedBy);
   Stream<List<Notice>> watchNotices({String? branchId}) =>
       governance.watchNotices(branchId: branchId);
   Future<String> submitNotice({
@@ -254,36 +262,29 @@ class FirestoreService {
   // সামগ্রিক হিসাব মেথড
   Future<HomeTotals> fetchHomeTotals({String? branchId}) async {
     try {
-      var paymentsQuery = _db
-          .collection(Collections.payments)
-          .where('status', isEqualTo: PaymentStatus.approved.name);
-      Query<Map<String, dynamic>> expensesQuery =
-          _db.collection(Collections.expenses);
-      var membersQuery = _db
-          .collection(Collections.members)
-          .where('status', isEqualTo: 'active');
-      if (branchId != null) {
-        paymentsQuery = paymentsQuery.where('branchId', isEqualTo: branchId);
-        expensesQuery = expensesQuery.where('branchId', isEqualTo: branchId);
-        membersQuery = membersQuery.where('branchId', isEqualTo: branchId);
-      }
-      final results = await Future.wait([
-        paymentsQuery.get(),
-        expensesQuery.get(),
-        membersQuery.get(),
+      var pQ = _db.collection(Collections.payments).where('branchId', isEqualTo: branchId);
+      var eQ = _db.collection(Collections.expenses).where('branchId', isEqualTo: branchId);
+      var mQ = _db.collection(Collections.members).where('branchId', isEqualTo: branchId);
+      final r = await Future.wait([
+        (branchId != null ? pQ : _db.collection(Collections.payments)).get(),
+        (branchId != null ? eQ : _db.collection(Collections.expenses)).get(),
+        (branchId != null ? mQ : _db.collection(Collections.members)).get(),
       ]);
-      final approvedTotal = results[0].docs.fold<int>(
-        0,
-        (total, d) => total + ((d.data()['amount'] as num?)?.toInt() ?? 0),
+      final approvedTotal = r[0].docs.fold<int>(0, (sum, d) {
+        final s = (d.data()['status'] as String?)?.toLowerCase();
+        return s == 'approved' ? sum + ((d.data()['amount'] as num?)?.toInt() ?? 0) : sum;
+      });
+      final expenseTotal = r[1].docs.fold<int>(
+        0, (sum, d) => sum + ((d.data()['amount'] as num?)?.toInt() ?? 0),
       );
-      final expenseTotal = results[1].docs.fold<int>(
-        0,
-        (total, d) => total + ((d.data()['amount'] as num?)?.toInt() ?? 0),
-      );
+      final activeCount = r[2].docs.where((d) {
+        final s = (d.data()['status'] as String?)?.toLowerCase();
+        return s == null || (s != 'left' && s != 'inactive');
+      }).length;
       return HomeTotals(
         approvedTotal: approvedTotal,
         expenseTotal: expenseTotal,
-        activeMembers: results[2].docs.length,
+        activeMembers: activeCount,
       );
     } catch (_) {
       return const HomeTotals();

@@ -67,6 +67,30 @@ class BranchRepository {
     return ref.id;
   }
 
+  /// সমিতির তথ্য আপডেট বা সম্পাদন করা
+  Future<void> updateBranch({
+    required String branchId,
+    required String name,
+    required String description,
+    required SamitiPurpose purpose,
+    required int monthlyDonation,
+    required String by,
+  }) async {
+    if (branchId.isEmpty) return;
+    await _db.collection(Collections.branches).doc(branchId).update({
+      'name': name,
+      'description': description,
+      'purpose': purpose.name,
+      'monthlyDonation': monthlyDonation,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await _audit.logAudit(
+      action: 'update_branch',
+      by: by,
+      detail: 'সমিতি আপডেট: $name ($branchId)',
+    );
+  }
+
   /// সমিতির সদস্য সংখ্যা রি-কাউন্ট করে আপডেট করা
   Future<void> recountMemberCount(String branchId) async {
     if (branchId.isEmpty) return;

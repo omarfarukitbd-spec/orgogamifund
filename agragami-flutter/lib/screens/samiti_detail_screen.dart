@@ -12,6 +12,7 @@ import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
 import '../widgets/skeleton_loader.dart';
+import 'samiti/edit_samiti_dialog.dart';
 import 'samiti/samiti_member_detail.dart';
 
 /// একটি সমিতির বিস্তারিত পাতা — এইচটিএমএল প্রিভিউয়ের মতো হেডার কার্ড,
@@ -60,13 +61,15 @@ class SamitiDetailScreen extends ConsumerWidget {
             message: 'তালিকা থেকে আবার খুলে দেখুন।',
           );
         }
-        final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+        final user = userAsync.valueOrNull;
+        final isAdmin = user?.isAdmin ?? false;
         final memberships =
             membershipsAsync.valueOrNull ?? const <Membership>[];
         final found =
             memberships.where((m) => m.branchId == branch.id).toList();
         final membership = found.isEmpty ? null : found.first;
-        final canSee = isAdmin || (membership?.isApproved ?? false);
+        final isUserBranch = user?.branchId == branch.id;
+        final canSee = isAdmin || isUserBranch || (membership?.isApproved ?? false);
         final theme = Theme.of(context);
         final iconData = _iconForPurpose(branch.purpose);
 
@@ -117,6 +120,19 @@ class SamitiDetailScreen extends ConsumerWidget {
                             ],
                           ),
                         ),
+                        if (isAdmin)
+                          IconButton(
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              color: AppColors.green,
+                              size: 22,
+                            ),
+                            tooltip: 'সমিতি সম্পাদন',
+                            onPressed: () => showDialog(
+                              context: context,
+                              builder: (_) => EditSamitiDialog(branch: branch),
+                            ),
+                          ),
                       ],
                     ),
                     if (branch.description.isNotEmpty) ...[

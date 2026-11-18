@@ -25,23 +25,36 @@ class AppUser {
     final userEmail = (data['email'] as String?) ?? '';
     final isRootAdmin = userEmail.toLowerCase() == 'omarfaruktitbd@gmail.com' ||
         userEmail.toLowerCase() == 'omarfarukitbd@gmail.com';
+
+    final rawRole = ((data['role'] as String?) ?? '').toLowerCase().replaceAll('_', '');
+    final UserRole role;
+    if (isRootAdmin || rawRole == 'superadmin') {
+      role = UserRole.superAdmin;
+    } else if (rawRole == 'branchadmin') {
+      role = UserRole.branchAdmin;
+    } else if (rawRole == 'member') {
+      role = UserRole.member;
+    } else {
+      role = UserRole.pending;
+    }
+
+    final rawStatus = ((data['approvalStatus'] as String?) ?? '').toLowerCase().replaceAll('_', '');
+    final ApprovalStatus approvalStatus;
+    if (isRootAdmin || rawStatus == 'approved') {
+      approvalStatus = ApprovalStatus.approved;
+    } else if (rawStatus == 'rejected') {
+      approvalStatus = ApprovalStatus.rejected;
+    } else {
+      approvalStatus = ApprovalStatus.pending;
+    }
+
     return AppUser(
       id: id,
       email: userEmail,
-      role: isRootAdmin
-          ? UserRole.superAdmin
-          : UserRole.values.firstWhere(
-              (r) => r.name == data['role'],
-              orElse: () => UserRole.pending,
-            ),
+      role: role,
       branchId: data['branchId'] as String?,
       linkedMemberId: data['linkedMemberId'] as String?,
-      approvalStatus: isRootAdmin
-          ? ApprovalStatus.approved
-          : ApprovalStatus.values.firstWhere(
-              (s) => s.name == data['approvalStatus'],
-              orElse: () => ApprovalStatus.pending,
-            ),
+      approvalStatus: approvalStatus,
     );
   }
 

@@ -73,9 +73,36 @@ class AuthService {
   Stream<AppUser?> watchCurrentUser() {
     return _fb.auth.authStateChanges().asyncMap((user) async {
       if (user == null) return null;
-      final doc = await _fb.db.collection(Collections.users).doc(user.uid).get();
-      if (!doc.exists || doc.data() == null) return null;
-      return AppUser.fromMap(user.uid, doc.data()!);
+      try {
+        final doc = await _fb.db.collection(Collections.users).doc(user.uid).get();
+        if (doc.exists && doc.data() != null) {
+          return AppUser.fromMap(user.uid, doc.data()!);
+        }
+        final email = user.email ?? '';
+        final isRoot = email.toLowerCase() == 'omarfaruktitbd@gmail.com' ||
+            email.toLowerCase() == 'omarfarukitbd@gmail.com';
+        final newUser = AppUser(
+          id: user.uid,
+          email: email,
+          role: isRoot ? UserRole.superAdmin : UserRole.pending,
+          approvalStatus: isRoot ? ApprovalStatus.approved : ApprovalStatus.pending,
+        );
+        await _fb.db
+            .collection(Collections.users)
+            .doc(user.uid)
+            .set(newUser.toMap(), SetOptions(merge: true));
+        return newUser;
+      } catch (_) {
+        final email = user.email ?? '';
+        final isRoot = email.toLowerCase() == 'omarfaruktitbd@gmail.com' ||
+            email.toLowerCase() == 'omarfarukitbd@gmail.com';
+        return AppUser(
+          id: user.uid,
+          email: email,
+          role: isRoot ? UserRole.superAdmin : UserRole.pending,
+          approvalStatus: isRoot ? ApprovalStatus.approved : ApprovalStatus.pending,
+        );
+      }
     });
   }
 

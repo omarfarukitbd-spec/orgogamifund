@@ -77,10 +77,11 @@ class Branch {
       id: id,
       name: (data['name'] as String?) ?? '',
       description: (data['description'] as String?) ?? '',
-      purpose: SamitiPurpose.values.firstWhere(
-        (p) => p.name == data['purpose'],
-        orElse: () => SamitiPurpose.other,
-      ),
+      purpose: switch (((data['purpose'] as String?) ?? '').toLowerCase().replaceAll('_', '')) {
+        'madrasa' => SamitiPurpose.madrasa,
+        'mosqueorphanage' => SamitiPurpose.mosqueOrphanage,
+        _ => SamitiPurpose.other,
+      },
       monthlyDonation: ((data['monthlyDonation'] ?? data['monthlyDepositAmount']) as num?)?.toInt() ?? 0,
       treasurerUserId: data['treasurerUserId'] as String?,
       balance: (data['balance'] as num?)?.toInt() ?? 0,
