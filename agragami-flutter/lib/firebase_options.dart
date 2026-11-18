@@ -42,7 +42,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBXKSOPoAwbj8ZhxcWRyyAtszeW_e8k8QU',
-    appId: '1:1063848074047:android:539038990b7df8d28a118a',
+    appId: '1:1063848074047:android:0e86f4e89e6bcd6c8a118a',
     messagingSenderId: '1063848074047',
     projectId: 'ogrogami-fund',
     storageBucket: 'ogrogami-fund.firebasestorage.app',
@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyBXKSOPoAwbj8ZhxcWRyyAtszeW_e8k8QU',
-    appId: '1:1063848074047:android:539038990b7df8d28a118a',
+    appId: '1:1063848074047:android:0e86f4e89e6bcd6c8a118a',
     messagingSenderId: '1063848074047',
     projectId: 'ogrogami-fund',
     authDomain: 'ogrogami-fund.firebaseapp.com',

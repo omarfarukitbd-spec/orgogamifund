@@ -207,13 +207,16 @@ class MemberRepository {
 
   /// সদস্য তালিকা দেখা (সমিতি অনুযায়ী ফিল্টারসহ)
   Stream<List<Member>> watchMembers({String? branchId}) {
-    var query = _db.collection(Collections.members).orderBy('name');
+    Query<Map<String, dynamic>> query = _db.collection(Collections.members);
     if (branchId != null) {
       query = query.where('branchId', isEqualTo: branchId);
     }
     return query.snapshots().map(
-          (snap) =>
-              snap.docs.map((d) => Member.fromMap(d.id, d.data())).toList(),
+          (snap) {
+            final list = snap.docs.map((d) => Member.fromMap(d.id, d.data())).toList();
+            list.sort((a, b) => a.name.compareTo(b.name));
+            return list;
+          },
         );
   }
 

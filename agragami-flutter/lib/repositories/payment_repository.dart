@@ -24,16 +24,19 @@ class PaymentRepository {
 
   /// অপেক্ষমাণ জমার লাইভ স্ট্রিম
   Stream<List<Payment>> watchPendingPayments({String? branchId}) {
-    var query = _db
-        .collection(Collections.payments)
-        .where('status', isEqualTo: PaymentStatus.pending.name)
-        .orderBy('date', descending: true);
+    Query<Map<String, dynamic>> query = _db.collection(Collections.payments);
     if (branchId != null) {
       query = query.where('branchId', isEqualTo: branchId);
     }
     return query.snapshots().map(
-          (snap) =>
-              snap.docs.map((d) => Payment.fromMap(d.id, d.data())).toList(),
+          (snap) {
+            final list = snap.docs
+                .map((d) => Payment.fromMap(d.id, d.data()))
+                .where((p) => p.status == PaymentStatus.pending)
+                .toList();
+            list.sort((a, b) => b.date.compareTo(a.date));
+            return list;
+          },
         );
   }
 
