@@ -117,7 +117,7 @@ class _EditSamitiDialogState extends State<EditSamitiDialog> {
               TextFormField(
                 controller: _donationController,
                 decoration: InputDecoration(
-                  labelText: AppStrings.monthlyDonationLabel,
+                  labelText: AppStrings.monthlyDonation,
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -136,7 +136,7 @@ class _EditSamitiDialogState extends State<EditSamitiDialog> {
               TextFormField(
                 controller: _descriptionController,
                 decoration: InputDecoration(
-                  labelText: AppStrings.descriptionLabel,
+                  labelText: AppStrings.samitiDescriptionLabel,
                 ),
                 maxLines: 3,
               ),
