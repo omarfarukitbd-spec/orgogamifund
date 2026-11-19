@@ -47,7 +47,20 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   Widget build(BuildContext context) {
     final store = ref.watch(firestoreServiceProvider);
     final userAsync = ref.watch(currentUserProvider);
-    final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+    final user = userAsync.valueOrNull;
+    final isAdmin = user?.isAdmin ?? false;
+    final isSuperAdmin = user?.isSuperAdmin ?? false;
+    // Phase 5 (F5): শাখা অ্যাডমিন শুধু নিজের সমিতির
+    // রিপোর্ট দেখে — "সব সমিতি" তার জন্য নেই।
+    final isBranchAdmin = isAdmin && !isSuperAdmin;
+    if (isBranchAdmin &&
+        (user!.branchId == null || user.branchId!.isEmpty)) {
+      return const EmptyState(
+        icon: Icons.groups_outlined,
+        title: 'আপনার সমিতি ঠিক করা নেই',
+        message: 'সুপার অ্যাডমিনের সাথে যোগাযোগ করুন।',
+      );
+    }
     final membershipsAsync = ref.watch(myMembershipsProvider);
 
     if (membershipsAsync.isLoading) {
@@ -65,7 +78,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       );
     }
     final memberships = membershipsAsync.valueOrNull ?? const <Membership>[];
-    final allowedIds = isAdmin ? null : approvedBranchIds(memberships);
+    final allowedIds = isSuperAdmin
+        ? null
+        : isBranchAdmin
+            ? <String>[user!.branchId!]
+            : approvedBranchIds(memberships);
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
       return const NotMemberGate();
     }
@@ -74,11 +91,13 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     final branches = allowedIds == null
         ? allBranches
         : allBranches.where((b) => allowedIds.contains(b.id)).toList();
-    final effectiveBranchId = isAdmin
+    final effectiveBranchId = isSuperAdmin
         ? _branchId
-        : (_branchId != null && branches.any((b) => b.id == _branchId)
-            ? _branchId
-            : (branches.isEmpty ? null : branches.first.id));
+        : isBranchAdmin
+            ? user!.branchId
+            : (_branchId != null && branches.any((b) => b.id == _branchId)
+                ? _branchId
+                : (branches.isEmpty ? null : branches.first.id));
     final branchName = () {
       final found =
           allBranches.where((b) => b.id == effectiveBranchId).toList();
@@ -123,21 +142,38 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: effectiveBranchId,
-            decoration: const InputDecoration(
-              labelText: 'কোন সমিতি',
-              prefixIcon: Icon(Icons.groups_outlined),
-            ),
-            items: [
-              if (isAdmin)
-                const DropdownMenuItem(value: null, child: Text('সব সমিতি')),
-              ...branches.map(
-                (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
+          if (isBranchAdmin)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.groups_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'সমিতি: $branchName',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
               ),
-            ],
-            onChanged: (v) => setState(() => _branchId = v),
-          ),
+            )
+          else
+            DropdownButtonFormField<String>(
+              initialValue: effectiveBranchId,
+              decoration: const InputDecoration(
+                labelText: 'কোন সমিতি',
+                prefixIcon: Icon(Icons.groups_outlined),
+              ),
+              items: [
+                if (isSuperAdmin)
+                  const DropdownMenuItem(value: null, child: Text('সব সমিতি')),
+                ...branches.map(
+                  (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
+                ),
+              ],
+              onChanged: (v) => setState(() => _branchId = v),
+            ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -180,9 +216,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                     repayments: totals.repayments,
                   );
                 } catch (_) {
-                  setState(
-                    () => _error = 'PDF তৈরি করা যায়নি — আবার চেষ্টা করুন',
-                  );
+                  // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+                  if (mounted) {
+                    setState(
+                      () => _error = 'PDF তৈরি করা যায়নি — আবার চেষ্টা করুন',
+                    );
+                  }
                 } finally {
                   if (mounted) setState(() => _busy = false);
                 }
@@ -218,9 +257,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                     filename: 'Statement_${_month}_$_year.csv',
                   );
                 } catch (_) {
-                  setState(
-                    () => _error = 'CSV তৈরি করা যায়নি — আবার চেষ্টা করুন',
-                  );
+                  // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+                  if (mounted) {
+                    setState(
+                      () => _error = 'CSV তৈরি করা যায়নি — আবার চেষ্টা করুন',
+                    );
+                  }
                 } finally {
                   if (mounted) setState(() => _busy = false);
                 }

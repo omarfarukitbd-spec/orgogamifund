@@ -63,42 +63,50 @@ class PaymentMethodCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
+                    // F30: নাম না থাকলে "• " ঝুলে থাকে না —
+                    // নগদ মাধ্যমে ধারকের নাম থাকে না।
                     Text(
-                      '${method.typeLabel} • ${method.accountHolderName}',
+                      method.accountHolderName.isEmpty
+                          ? method.typeLabel
+                          : '${method.typeLabel} • ${method.accountHolderName}',
                       style: TextStyle(
                         fontSize: 13.5,
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'নম্বর: ${method.accountNumber}',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
+                    // F30: নম্বর না থাকলে (নগদ মাধ্যম) নম্বরের
+                    // সারি আর খালি কপি বোতাম দেখানো হয় না।
+                    if (method.accountNumber.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'নম্বর: ${method.accountNumber}',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
-                        IconButton(
-                          tooltip: 'নম্বর কপি করুন',
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () {
-                            Clipboard.setData(
-                              ClipboardData(text: method.accountNumber),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('নম্বর কপি হয়েছে'),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.copy_outlined, size: 20),
-                        ),
-                      ],
-                    ),
+                          IconButton(
+                            tooltip: 'নম্বর কপি করুন',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () {
+                              Clipboard.setData(
+                                ClipboardData(text: method.accountNumber),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('নম্বর কপি হয়েছে'),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.copy_outlined, size: 20),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (method.instructions != null &&
                         method.instructions!.isNotEmpty)
                       Text(

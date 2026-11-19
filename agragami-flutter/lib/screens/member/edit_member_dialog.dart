@@ -39,7 +39,10 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
   late final TextEditingController _nid;
   late final TextEditingController _emergencyName;
   late final TextEditingController _emergencyPhone;
-  late DateTime _joinDate;
+  // Phase 5 (F21): ভর্তির তারিখ জানা না থাকলে null থাকে —
+  // 1970 sentinel (তারিখ জানা নেই) কখনো "আজকের তারিখ"
+  // বানানো হয় না, আর না বদলালে Firestore-এ লেখাও হয় না।
+  DateTime? _joinDate;
   late bool _active;
   Uint8List? _photoBytes;
   bool _busy = false;
@@ -55,7 +58,7 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
     _nid = TextEditingController(text: m.nidNumber);
     _emergencyName = TextEditingController(text: m.emergencyContactName);
     _emergencyPhone = TextEditingController(text: m.emergencyContactPhone);
-    _joinDate = m.joinDate.year < 2000 ? DateTime.now() : m.joinDate;
+    _joinDate = m.joinDate.year < 2000 ? null : m.joinDate;
     _active = m.active;
   }
 
@@ -80,14 +83,18 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
       if (picked == null) return;
       final bytes = await picked.readAsBytes();
       if (bytes.lengthInBytes > _maxPhotoBytes) {
+        if (!mounted) return;
         setState(() => _error = 'ছবিটি ৫ MB-এর বেশি — ছোট ছবি বেছে নিন');
         return;
       }
+      if (!mounted) return;
       setState(() {
         _photoBytes = bytes;
         _error = null;
       });
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,
@@ -100,7 +107,9 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
   Future<void> _pickJoinDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _joinDate,
+      // তারিখ জানা না থাকলে আজকের তারিখ থেকে বাছা শুরু হয় —
+      // বাছলেই তবে সেটা লেখা হয়, না বাছলে "তারিখ নেই"-ই থাকে।
+      initialDate: _joinDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
     );
@@ -108,6 +117,7 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
   }
 
   Future<void> _save({required bool withPhoto}) async {
+    final joinDate = _joinDate;
     final data = <String, dynamic>{
       'name': _name.text.trim(),
       'phone': toAsciiDigits(_phone.text.trim()),
@@ -117,7 +127,9 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
         'name': _emergencyName.text.trim(),
         'phone': toAsciiDigits(_emergencyPhone.text.trim()),
       },
-      'joinDate': Timestamp.fromDate(_joinDate),
+      // F21: তারিখ জানা না থাকলে ক্ষেত্রটা লেখা হয় না —
+      // পুরোনো 1970 sentinel যেমন আছে তেমনই থাকে।
+      if (joinDate != null) 'joinDate': Timestamp.fromDate(joinDate),
       'status': _active ? 'active' : 'left',
     };
     await ref.read(firestoreServiceProvider).updateMember(
@@ -188,6 +200,8 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
         ),
       );
       if (saveWithout != true) {
+        // F14: ডায়ালগের পর setState-এর আগে mounted দেখা হয়।
+        if (!mounted) return;
         setState(() => _error = 'ছবি আপলোড হয়নি — আবার চেষ্টা করুন');
         return;
       }
@@ -200,6 +214,8 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
           const SnackBar(content: Text('সদস্যের তথ্য বদলানো হয়েছে')),
         );
       } catch (e) {
+        // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+        if (!mounted) return;
         setState(
           () => _error = firebaseErrorMessage(
             e,
@@ -208,6 +224,8 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
         );
       }
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,
@@ -325,7 +343,10 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  '${_joinDate.day}/${_joinDate.month}/${_joinDate.year}',
+                  // F21: তারিখ জানা না থাকলে "তারিখ নেই" দেখায়।
+                  _joinDate == null
+                      ? 'তারিখ নেই'
+                      : '${_joinDate!.day}/${_joinDate!.month}/${_joinDate!.year}',
                   style:
                       const TextStyle(fontSize: 13.5, color: AppColors.muted),
                 ),

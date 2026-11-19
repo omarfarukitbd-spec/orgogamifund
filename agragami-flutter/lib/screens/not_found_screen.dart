@@ -39,7 +39,7 @@ class NotFoundScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: () => context.go('/home'),
+                  onPressed: () => context.goNamed('home'),
                   child: Text(AppStrings.backHome),
                 ),
               ],

@@ -60,6 +60,8 @@ class SamitiDetailScreen extends ConsumerWidget {
         }
         final user = userAsync.valueOrNull;
         final isAdmin = user?.isAdmin ?? false;
+        // F6: সমিতি বদলানো শুধু সুপার অ্যাডমিনের কাজ।
+        final isSuperAdmin = user?.isSuperAdmin ?? false;
         final memberships =
             membershipsAsync.valueOrNull ?? const <Membership>[];
         final found =
@@ -119,7 +121,7 @@ class SamitiDetailScreen extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        if (isAdmin)
+                        if (isSuperAdmin)
                           IconButton(
                             icon: const Icon(
                               Icons.edit_outlined,
@@ -193,7 +195,10 @@ class SamitiDetailScreen extends ConsumerWidget {
                 ),
               ),
               // ব্যাংক তথ্য — জমা দেওয়ার আগে সদস্য দেখে নেয়।
-              if (branch.bankDetails != null) ...[
+              // Phase 5 (F10): ব্যাংক/বিকাশ/নগদ নম্বর শুধু
+              // ওই সমিতির সদস্য আর অ্যাডমিন দেখে — বাইরের
+              // কেউ সমিতির পাতা খুললেও নম্বর দেখে না।
+              if (branch.bankDetails != null && canSee) ...[
                 const SizedBox(height: 16),
                 AppCard(
                   child: Column(
@@ -333,14 +338,20 @@ class SamitiDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       PrimaryButton(
                         label: AppStrings.joinSamiti,
-                        onPressed: () =>
-                            context.go('/apply?branchId=${branch.id}'),
+                        onPressed: () => context.goNamed(
+                          'apply',
+                          queryParameters: {'branchId': branch.id},
+                        ),
                         icon: Icons.person_add_outlined,
                       ),
                     ],
                   ),
               ] else
-                SamitiMemberDetail(branch: branch, isAdmin: isAdmin),
+                SamitiMemberDetail(
+                  branch: branch,
+                  isAdmin: isAdmin,
+                  isSuperAdmin: isSuperAdmin,
+                ),
             ],
           ),
         );

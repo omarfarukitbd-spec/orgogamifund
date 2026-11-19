@@ -59,14 +59,17 @@ class NotMemberGate extends StatelessWidget {
           PrimaryButton(
             label: AppStrings.joinSamiti,
             onPressed: () => hasBranch
-                ? context.go('/apply?branchId=$branchId')
-                : context.go('/samiti'),
+                ? context.goNamed(
+                    'apply',
+                    queryParameters: {'branchId': branchId!},
+                  )
+                : context.goNamed('samiti'),
             icon: Icons.person_add_outlined,
           ),
           const SizedBox(height: 12),
           SecondaryButton(
             label: AppStrings.viewSamitis,
-            onPressed: () => context.go('/samiti'),
+            onPressed: () => context.goNamed('samiti'),
           ),
         ],
       ),

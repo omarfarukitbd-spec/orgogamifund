@@ -11,7 +11,15 @@ import '../passbook_screen.dart';
 class MySamitiTotalsSection extends ConsumerWidget {
   final List<String> branchIds;
 
-  const MySamitiTotalsSection({super.key, required this.branchIds});
+  /// অ্যাডমিন হলে true — অ্যাডমিন মোট হিসাব সবসময় দেখে,
+  /// canMembersViewTotalFund শুধু সদস্যদের জন্য (F11)।
+  final bool isAdmin;
+
+  const MySamitiTotalsSection({
+    super.key,
+    required this.branchIds,
+    this.isAdmin = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -45,7 +53,7 @@ class MySamitiTotalsSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final b in mine) ...[
-          _OneSamitiCard(branch: b),
+          _OneSamitiCard(branch: b, isAdmin: isAdmin),
           const SizedBox(height: 12),
         ],
       ],
@@ -55,12 +63,18 @@ class MySamitiTotalsSection extends ConsumerWidget {
 
 class _OneSamitiCard extends ConsumerWidget {
   final Branch branch;
+  final bool isAdmin;
 
-  const _OneSamitiCard({required this.branch});
+  const _OneSamitiCard({required this.branch, required this.isAdmin});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final totalsAsync = ref.watch(homeTotalsByBranchProvider(branch.id));
+    // F11: সমিতির অ্যাডমিন মোট হিসাব সদস্যদের জন্য বন্ধ
+    // রাখতে পারে — তখন কার্ডে শুধু নাম দেখা যায়।
+    final totalsHidden = !isAdmin && !branch.canMembersViewTotalFund;
+    final totalsAsync = totalsHidden
+        ? const AsyncValue<HomeTotals>.data(HomeTotals())
+        : ref.watch(homeTotalsByBranchProvider(branch.id));
     final totals = totalsAsync.valueOrNull;
 
     String value(int? amount, {bool money = true}) {
@@ -73,7 +87,10 @@ class _OneSamitiCard extends ConsumerWidget {
         totals == null ? '—' : formatTaka(totals.fund);
 
     return AppCard(
-      onTap: () => context.go('/samiti/${branch.id}'),
+      onTap: () => context.goNamed(
+        'samitiDetail',
+        pathParameters: {'id': branch.id},
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -82,7 +99,12 @@ class _OneSamitiCard extends ConsumerWidget {
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          if (totalsAsync.hasError) ...[
+          if (totalsHidden) ...[
+            const Text(
+              'এই সমিতির মোট হিসাব সদস্যদের জন্য বন্ধ আছে।',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ] else if (totalsAsync.hasError) ...[
             Row(
               children: [
                 const Icon(Icons.error_outline, color: Colors.red),
@@ -167,7 +189,10 @@ class PublicSamitiListSection extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: AppCard(
-              onTap: () => context.go('/samiti/${b.id}'),
+              onTap: () => context.goNamed(
+                'samitiDetail',
+                pathParameters: {'id': b.id},
+              ),
               child: Row(
                 children: [
                   const ListIcon(icon: Icons.groups_outlined),
@@ -235,58 +260,58 @@ class UsefulPagesSection extends StatelessWidget {
         RowLinkButton(
           icon: Icons.groups_outlined,
           title: 'সমিতিগুলো দেখুন',
-          onTap: () => context.go('/samiti'),
+          onTap: () => context.goNamed('samiti'),
         ),
         const SizedBox(height: 8),
         if (isAdmin || isMember) ...[
           RowLinkButton(
             icon: Icons.receipt_long_outlined,
             title: 'খরচের হিসাব',
-            onTap: () => context.go('/expenses'),
+            onTap: () => context.goNamed('expenses'),
           ),
           const SizedBox(height: 8),
           RowLinkButton(
             icon: Icons.handshake_outlined,
             title: 'কর্জে হাসানা ঋণ',
-            onTap: () => context.go('/loans'),
+            onTap: () => context.goNamed('loans'),
           ),
           const SizedBox(height: 8),
           RowLinkButton(
             icon: Icons.bar_chart_outlined,
             title: 'মাসিক রিপোর্ট ও বকেয়া সদস্য',
-            onTap: () => context.go('/reports'),
+            onTap: () => context.goNamed('reports'),
           ),
           const SizedBox(height: 8),
           RowLinkButton(
             icon: Icons.book_outlined,
             title: 'আমার পাসবই',
-            onTap: () => context.go('/passbook'),
+            onTap: () => context.goNamed('passbook'),
           ),
           const SizedBox(height: 8),
           RowLinkButton(
             icon: Icons.badge_outlined,
             title: 'আমার আইডি কার্ড',
-            onTap: () => context.go('/id-card'),
+            onTap: () => context.goNamed('idCard'),
           ),
           const SizedBox(height: 8),
         ],
         RowLinkButton(
           icon: Icons.campaign_outlined,
           title: 'নোটিশ বোর্ড',
-          onTap: () => context.go('/notices'),
+          onTap: () => context.goNamed('notices'),
         ),
         const SizedBox(height: 8),
         RowLinkButton(
           icon: Icons.groups_outlined,
           title: 'কমিটি',
-          onTap: () => context.go('/committee'),
+          onTap: () => context.goNamed('committee'),
         ),
         if (isAdmin) ...[
           const SizedBox(height: 8),
           RowLinkButton(
             icon: Icons.account_balance_outlined,
             title: 'পেমেন্ট মাধ্যম — নম্বর যোগ করুন',
-            onTap: () => context.go('/payment-methods'),
+            onTap: () => context.goNamed('paymentMethods'),
           ),
         ],
       ],

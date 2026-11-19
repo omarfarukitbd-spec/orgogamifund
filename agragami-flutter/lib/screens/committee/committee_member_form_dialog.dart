@@ -55,9 +55,9 @@ class _CommitteeMemberFormDialogState
     if (e != null) {
       _branchId = e.branchId;
       _memberId = e.memberId;
-      _designation = committeeDesignations.contains(e.designation)
-          ? e.designation
-          : committeeDesignations.last;
+      // F21: আসল পদটাই থাকে — তালিকায় না থাকা পদ
+      // "সদস্য"-এ বদলে যায় না।
+      _designation = e.designation;
       _termStart = e.termStart;
       _termEnd = e.termEnd;
     }
@@ -120,6 +120,8 @@ class _CommitteeMemberFormDialogState
         ),
       );
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,
@@ -168,7 +170,7 @@ class _CommitteeMemberFormDialogState
   Widget build(BuildContext context) {
     final membersAsync = _branchId == null
         ? const AsyncValue<List<Member>>.data([])
-        : ref.watch(membersByBranchProvider(_branchId!));
+        : ref.watch(activeMembersByBranchProvider(_branchId!));
     final members = membersAsync.valueOrNull ?? const <Member>[];
     final memberIds = members.map((m) => m.id).toSet();
     final effectiveMemberId =
@@ -223,7 +225,13 @@ class _CommitteeMemberFormDialogState
             DropdownButtonFormField<String>(
               initialValue: _designation,
               decoration: const InputDecoration(labelText: 'পদ'),
-              items: committeeDesignations
+              // F21: আসল পদ তালিকায় না থাকলে সেটাও
+              // আইটেম হিসেবে থাকে — না বাছলে আসলটাই লেখা হয়।
+              items: [
+                ...committeeDesignations,
+                if (!committeeDesignations.contains(_designation))
+                  _designation,
+              ]
                   .map((d) => DropdownMenuItem(value: d, child: Text(d)))
                   .toList(),
               onChanged: (v) {

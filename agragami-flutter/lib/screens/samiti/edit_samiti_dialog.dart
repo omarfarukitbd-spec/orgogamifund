@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/branch.dart';
+import '../../models/member.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
-import '../../theme/app_theme.dart';
 import '../../utils/bn_digits.dart';
 import '../../utils/firebase_errors.dart';
 import '../../utils/validators.dart';
@@ -13,7 +13,7 @@ import '../../utils/validators.dart';
 /// লাইভ স্কিমার সব আর্থিক ক্ষেত্র বদলানো যায় (B8): মাসিক জমা,
 /// ভর্তি ফি, জমার শেষ দিন, বিলম্ব জরিমানা, ঐচ্ছিক জমা,
 /// কোষাধ্যক্ষ, ব্যাংক তথ্য, শর্তাবলি। সদস্যদের দেখার অনুমতি
-/// (permissions) এখনো কনসোল থেকে বদলাতে হয় — নিচে লেখা আছে।
+/// (permissions) এখান থেকেই বদলানো যায় (F11)।
 class EditSamitiDialog extends ConsumerStatefulWidget {
   final Branch branch;
 
@@ -32,7 +32,10 @@ class _EditSamitiDialogState extends ConsumerState<EditSamitiDialog> {
   late final TextEditingController _dueDayController;
   late final TextEditingController _lateFineController;
   late final TextEditingController _minOptionalController;
-  late final TextEditingController _treasurerController;
+  // F36: কোষাধ্যক্ষ আর কাঁচা UID লিখে বসানো যায় না — সমিতির
+  // সদস্যদের তালিকা থেকে বাছা হয়। বর্তমান UID তালিকায় না
+  // থাকলে সেটাও আইটেম হিসেবে থাকে, যাতে না বদলালে মুছে না যায়।
+  String? _treasurerUserId;
   late final TextEditingController _bankNameController;
   late final TextEditingController _bankBranchController;
   late final TextEditingController _accountNumberController;
@@ -43,6 +46,10 @@ class _EditSamitiDialogState extends ConsumerState<EditSamitiDialog> {
   late final TextEditingController _termsController;
   late SamitiPurpose _purpose;
   late bool _optionalEnabled;
+  // F11: সদস্যদের দেখার অনুমতি — এখন ডায়ালগ থেকেই বদলানো যায়।
+  late bool _canMembersViewTotalFund;
+  late bool _canMembersViewExpenses;
+  late bool _canMembersViewMemberList;
   bool _saving = false;
 
   @override
@@ -59,7 +66,10 @@ class _EditSamitiDialogState extends ConsumerState<EditSamitiDialog> {
     _lateFineController = TextEditingController(text: '${b.lateFineAmount}');
     _minOptionalController =
         TextEditingController(text: '${b.minOptionalDeposit}');
-    _treasurerController = TextEditingController(text: b.treasurerUserId ?? '');
+    _treasurerUserId = b.treasurerUserId;
+    _canMembersViewTotalFund = b.canMembersViewTotalFund;
+    _canMembersViewExpenses = b.canMembersViewExpenses;
+    _canMembersViewMemberList = b.canMembersViewMemberList;
     _bankNameController = TextEditingController(text: bank?.bankName ?? '');
     _bankBranchController = TextEditingController(text: bank?.branchName ?? '');
     _accountNumberController =
@@ -84,7 +94,6 @@ class _EditSamitiDialogState extends ConsumerState<EditSamitiDialog> {
     _dueDayController.dispose();
     _lateFineController.dispose();
     _minOptionalController.dispose();
-    _treasurerController.dispose();
     _bankNameController.dispose();
     _bankBranchController.dispose();
     _accountNumberController.dispose();
@@ -119,7 +128,10 @@ class _EditSamitiDialogState extends ConsumerState<EditSamitiDialog> {
         lateFineAmount: parseAmount(_lateFineController.text) ?? 0,
         minOptionalDeposit: parseAmount(_minOptionalController.text) ?? 0,
         optionalDepositEnabled: _optionalEnabled,
-        treasurerUserId: _opt(_treasurerController.text),
+        treasurerUserId: _treasurerUserId,
+        canMembersViewTotalFund: _canMembersViewTotalFund,
+        canMembersViewExpenses: _canMembersViewExpenses,
+        canMembersViewMemberList: _canMembersViewMemberList,
         bankDetails: BankDetails(
           bankName: _opt(_bankNameController.text),
           branchName: _opt(_bankBranchController.text),
@@ -184,6 +196,16 @@ class _EditSamitiDialogState extends ConsumerState<EditSamitiDialog> {
   @override
   Widget build(BuildContext context) {
     final isBn = AppStrings.isBangla;
+    // F36: কোষাধ্যক্ষ বাছার তালিকা — এই সমিতির সক্রিয়
+    // সদস্যদের মধ্যে যাদের লগইন অ্যাকাউন্ট আছে।
+    final membersAsync =
+        ref.watch(activeMembersByBranchProvider(widget.branch.id));
+    final members = membersAsync.valueOrNull ?? const <Member>[];
+    final treasurerCandidates =
+        members.where((m) => m.linkedUserId != null).toList();
+    final treasurerKnown = _treasurerUserId == null ||
+        treasurerCandidates
+            .any((m) => m.linkedUserId == _treasurerUserId);
     return AlertDialog(
       title: Text(isBn ? 'সমিতি সম্পাদনা' : 'Edit Samiti'),
       content: SingleChildScrollView(
@@ -283,11 +305,31 @@ class _EditSamitiDialogState extends ConsumerState<EditSamitiDialog> {
                 ],
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _treasurerController,
+              DropdownButtonFormField<String?>(
+                initialValue: _treasurerUserId,
                 decoration: const InputDecoration(
-                  labelText: 'কোষাধ্যক্ষের ইউজার আইডি (ঐচ্ছিক)',
+                  labelText: 'কোষাধ্যক্ষ (ঐচ্ছিক)',
                 ),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('কেউ না'),
+                  ),
+                  ...treasurerCandidates.map(
+                    (m) => DropdownMenuItem<String?>(
+                      value: m.linkedUserId,
+                      child: Text('${m.name} (সদস্য নং ${m.displayNumber})'),
+                    ),
+                  ),
+                  // বর্তমান UID তালিকায় না থাকলে সেটাও থাকে —
+                  // না বদলালে মুছে যায় না।
+                  if (!treasurerKnown)
+                    DropdownMenuItem<String?>(
+                      value: _treasurerUserId,
+                      child: Text('বর্তমান: $_treasurerUserId'),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _treasurerUserId = v),
               ),
               _sectionTitle('ব্যাংক তথ্য (ঐচ্ছিক)'),
               TextFormField(
@@ -302,6 +344,9 @@ class _EditSamitiDialogState extends ConsumerState<EditSamitiDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _accountNumberController,
+                keyboardType: TextInputType.number,
+                // F37: বাংলা অঙ্কে লিখলেও ASCII-তে জমা হয়।
+                inputFormatters: const [BnDigitsInputFormatter()],
                 decoration: const InputDecoration(labelText: 'অ্যাকাউন্ট নম্বর'),
               ),
               const SizedBox(height: 12),
@@ -312,6 +357,9 @@ class _EditSamitiDialogState extends ConsumerState<EditSamitiDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _routingController,
+                keyboardType: TextInputType.number,
+                // F37: রাউটিং নম্বরও সংখ্যা — একই স্বাভাবিককরণ।
+                inputFormatters: const [BnDigitsInputFormatter()],
                 decoration:
                     const InputDecoration(labelText: 'রাউটিং নম্বর (ঐচ্ছিক)'),
               ),
@@ -348,10 +396,35 @@ class _EditSamitiDialogState extends ConsumerState<EditSamitiDialog> {
                 ),
                 maxLines: 5,
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'সদস্যরা কী দেখতে পাবে — এই অনুমতিগুলো এখনো Firebase Console থেকে বদলাতে হয়।',
-                style: TextStyle(fontSize: 13, color: AppColors.muted),
+              _sectionTitle('সদস্যরা কী দেখতে পাবে'),
+              SwitchListTile(
+                title: const Text(
+                  'সদস্যরা মোট তহবিল দেখতে পারবে',
+                  style: TextStyle(fontSize: 14),
+                ),
+                value: _canMembersViewTotalFund,
+                onChanged: (v) =>
+                    setState(() => _canMembersViewTotalFund = v),
+                contentPadding: EdgeInsets.zero,
+              ),
+              SwitchListTile(
+                title: const Text(
+                  'সদস্যরা খরচের তালিকা দেখতে পারবে',
+                  style: TextStyle(fontSize: 14),
+                ),
+                value: _canMembersViewExpenses,
+                onChanged: (v) => setState(() => _canMembersViewExpenses = v),
+                contentPadding: EdgeInsets.zero,
+              ),
+              SwitchListTile(
+                title: const Text(
+                  'সদস্যরা সদস্য তালিকা দেখতে পারবে',
+                  style: TextStyle(fontSize: 14),
+                ),
+                value: _canMembersViewMemberList,
+                onChanged: (v) =>
+                    setState(() => _canMembersViewMemberList = v),
+                contentPadding: EdgeInsets.zero,
               ),
             ],
           ),

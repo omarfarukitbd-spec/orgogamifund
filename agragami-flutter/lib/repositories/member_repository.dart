@@ -45,6 +45,29 @@ class MemberRepository {
     });
   }
 
+  /// Phase 5 (F9): Auth অ্যাকাউন্ট আছে কিন্তু users ডকুমেন্ট
+  /// নেই — এমন "অনাথ" অ্যাকাউন্টের প্রোফাইল আবার তৈরি করা।
+  /// ট্রানজ্যাকশনে পড়ে-তারপর-লেখা হয়, তাই ডকুমেন্ট থাকলে
+  /// কিছু করা হয় না (আগের রোল/অনুমোদন মুছে যাবে না)।
+  /// rules অনুযায়ী নতুন ডকুমেন্ট pending-ই হয় — অনুমোদন
+  /// অ্যাডমিন দেবে। ডকুমেন্ট বানানো হলে true ফেরে।
+  Future<bool> restoreMissingProfile({
+    required String uid,
+    required String email,
+  }) async {
+    final ref = _db.collection(Collections.users).doc(uid);
+    return _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (snap.exists) return false;
+      tx.set(ref, {
+        'email': email,
+        'role': UserRole.pending.name,
+        'approvalStatus': ApprovalStatus.pending.name,
+      });
+      return true;
+    });
+  }
+
   /// সিস্টেমে কোনো ইউজার আছে কি না যাচাই
   Future<bool?> hasAnyUser() async {
     try {
@@ -244,6 +267,30 @@ class MemberRepository {
         );
   }
 
+  /// সক্রিয় সদস্যের তালিকা (F3) — rules সদস্যদের শুধু
+  /// status == 'active' ডকুমেন্ট পড়তে দেয়, তাই সদস্য-মুখী
+  /// তালিকায় (সদস্য তালিকা, বকেয়া, ঋণ) এই প্রশ্নই ব্যবহার
+  /// করা হয়। নইলে একজন নিষ্ক্রিয় সদস্য থাকলেই পুরো প্রশ্ন
+  /// permission-denied খায় (rules ফিল্টার নয়)। অ্যাডমিনের
+  /// তালিকায় [watchMembers] থাকে — সেখানে নিষ্ক্রিয় সদস্যও
+  /// দেখা দরকার। (branchId, status) কম্পোজিট ইনডেক্স আগেই আছে।
+  Stream<List<Member>> watchActiveMembers({String? branchId}) {
+    Query<Map<String, dynamic>> query = _db
+        .collection(Collections.members)
+        .where('status', isEqualTo: 'active')
+        .limit(500);
+    if (branchId != null) {
+      query = query.where('branchId', isEqualTo: branchId);
+    }
+    return query.snapshots().map(
+          (snap) {
+            final list = snap.docs.map((d) => Member.fromMap(d.id, d.data())).toList();
+            list.sort((a, b) => a.name.compareTo(b.name));
+            return list;
+          },
+        );
+  }
+
   /// কয়েকজন সদস্যের রেকর্ড একবারে আনা (কমিটি স্ক্রিনে
   /// নাম-ফোন দেখানোর জন্য)। যে ডকুমেন্ট পড়ার অনুমতি নেই
   /// (অন্য সমিতির সদস্য) সেটা চুপচাপ বাদ যায় — পুরো
@@ -300,11 +347,57 @@ class MemberRepository {
         .collection(Collections.members)
         .doc(memberId)
         .update(updates);
+    // Phase 5 (F35): সদস্য নিষ্ক্রিয়/সক্রিয় করলে তার
+    // সদস্যপদও একইভাবে বদলায় — নইলে নিষ্ক্রিয় সদস্য অ্যাপে
+    // ঢুকে সমিতির তথ্য দেখতে থাকে (পড়ার অনুমতি সদস্যপদ
+    // দিয়ে ঠিক হয়)।
+    final newStatus = updates['status'] as String?;
+    if (newStatus == 'left' || newStatus == 'active') {
+      await _syncMembershipStatus(memberId, newStatus == 'active');
+    }
     await _audit.logAudit(
       action: 'member_updated',
       by: by,
       detail: 'সদস্যের তথ্য বদলানো হয়েছে ($memberId)',
     );
+  }
+
+  /// সদস্যের সক্রিয়/নিষ্ক্রিয় অবস্থা তার সদস্যপদেও লেখা হয়।
+  /// নিষ্ক্রিয় হলে সদস্যপদ 'rejected' হয় — 'left' নামে কোনো
+  /// অবস্থা memberships-এ নেই, আর না-চেনা অবস্থা fromMap-এ
+  /// pending হয়ে যেত (আরো খারাপ)। 'rejected' হলে পড়ার
+  /// অনুমতি বন্ধ হয়, আর M1 পথে সে আবার আবেদন করতে পারে।
+  /// সদস্যপদ না থাকলে (পুরোনো সদস্য) কিছু করা হয় না।
+  Future<void> _syncMembershipStatus(String memberId, bool active) async {
+    try {
+      final doc =
+          await _db.collection(Collections.members).doc(memberId).get();
+      final data = doc.data();
+      if (data == null) return;
+      final linkedUserId = data['linkedUserId'] as String?;
+      final branchId = data['branchId'] as String?;
+      if (linkedUserId == null ||
+          linkedUserId.isEmpty ||
+          branchId == null ||
+          branchId.isEmpty) {
+        return;
+      }
+      final ref = _db
+          .collection(Collections.memberships)
+          .doc(Membership.docId(linkedUserId, branchId));
+      final existing = await ref.get();
+      if (!existing.exists) return;
+      await ref.update({
+        'status': active
+            ? MembershipStatus.approved.name
+            : MembershipStatus.rejected.name,
+        if (active) 'rejectReason': FieldValue.delete(),
+        if (!active) 'rejectReason': 'সদস্যপদ নিষ্ক্রিয় করা হয়েছে',
+      });
+    } catch (_) {
+      // সদস্যপদ লেখা না গেলে সদস্য রেকর্ডের বদলটাই আসল —
+      // সেটা আগেই হয়ে গেছে।
+    }
   }
 
   /// নিজের প্রোফাইলের নাম বদলানো (M5) — নিজের users ডকুমেন্টে

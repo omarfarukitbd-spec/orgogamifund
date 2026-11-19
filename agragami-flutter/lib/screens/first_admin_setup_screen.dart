@@ -46,7 +46,7 @@ class _FirstAdminSetupScreenState
     // B1 fail-closed: ফরম খুলবে শুধু প্রমাণিতভাবে কেউ না থাকলে।
     // কেউ আছে বা যাচাই করা যায়নি — দুই ক্ষেত্রেই লগইনে ফেরত।
     if (hasUsers != false) {
-      context.go('/login?notice=setup-blocked');
+      context.goNamed('login', queryParameters: {'notice': 'setup-blocked'});
       return;
     }
     setState(() => _checking = false);
@@ -91,7 +91,7 @@ class _FirstAdminSetupScreenState
         if (!mounted) return;
         // m13: এরর সেট করে নেভিগেট নয় — বার্তাটা লগইন
         // স্ক্রিনে পাঠানো হয়, যাতে দেখা যায়।
-        context.go('/login?notice=setup-blocked');
+        context.goNamed('login', queryParameters: {'notice': 'setup-blocked'});
         return;
       }
       await ref.read(authServiceProvider).createFirstAdmin(
@@ -104,10 +104,20 @@ class _FirstAdminSetupScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppStrings.setupDone)),
       );
-      context.go('/home');
+      context.goNamed('home');
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       setState(() => _error = bengaliAuthErrorMessage(e));
+    } on FirebaseException catch (e) {
+      // F17: সৎ বার্তা — অ্যাপ থেকে superAdmin বানানো rules
+      // দিয়ে বন্ধ (ইচ্ছাকৃত)। এটাকে "নেটের সমস্যা" বলা
+      // ঠিক নয়: প্রথম অ্যাডমিন Console থেকে বানাতে হয়।
+      if (!mounted) return;
+      setState(
+        () => _error = e.code == 'permission-denied'
+            ? 'প্রথম অ্যাডমিন Firebase Console থেকে বানাতে হয় — অ্যাপ থেকে বানানো যায় না'
+            : 'অ্যাডমিন অ্যাকাউন্ট বানানো যায়নি — নেট দেখে আবার চেষ্টা করুন',
+      );
     } catch (_) {
       if (!mounted) return;
       setState(

@@ -16,7 +16,7 @@ import 'samiti/create_samiti_dialog.dart';
 final branchesProvider = branchesStreamProvider;
 
 /// সমিতির তালিকা — এইচটিএমএল প্রিভিউয়ের মতো কার্ড, ব্যানার আইকন,
-/// মাসিক দান ও সদস্য সংখ্যা এবং স্ট্যাটাস চিপ।
+/// মাসিক জমা ও সদস্য সংখ্যা এবং স্ট্যাটাস চিপ।
 class SamitiListScreen extends ConsumerWidget {
   const SamitiListScreen({super.key});
 
@@ -33,9 +33,12 @@ class SamitiListScreen extends ConsumerWidget {
     final userAsync = ref.watch(currentUserProvider);
     final membershipsAsync = ref.watch(myMembershipsProvider);
     final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+    // F6: সমিতি বানানো শুধু সুপার অ্যাডমিনের কাজ (rules:
+    // branches create শুধু সুপার অ্যাডমিন)।
+    final isSuperAdmin = userAsync.valueOrNull?.isSuperAdmin ?? false;
 
     return Scaffold(
-      floatingActionButton: isAdmin
+      floatingActionButton: isSuperAdmin
           ? FloatingActionButton.extended(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
@@ -64,8 +67,8 @@ class SamitiListScreen extends ConsumerWidget {
               message: isAdmin
                   ? AppStrings.samitiEmptyAdminBody
                   : AppStrings.samitiEmptyBody,
-              actionLabel: isAdmin ? AppStrings.createSamiti : null,
-              onAction: isAdmin ? () => _openCreateSamiti(context) : null,
+              actionLabel: isSuperAdmin ? AppStrings.createSamiti : null,
+              onAction: isSuperAdmin ? () => _openCreateSamiti(context) : null,
             );
           }
           final memberships =
@@ -80,7 +83,7 @@ class SamitiListScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             children: [
               Text(
-                'ঢোকার পর সবাই সমিতির নাম, উদ্দেশ্য, মাসিক দান আর সদস্য সংখ্যা দেখতে পারে — ভেতরের হিসাব শুধু ওই সমিতির সদস্যরাই দেখতে পারে।',
+                'ঢোকার পর সবাই সমিতির নাম, উদ্দেশ্য, মাসিক জমা আর সদস্য সংখ্যা দেখতে পারে — ভেতরের হিসাব শুধু ওই সমিতির সদস্যরাই দেখতে পারে।',
                 style: TextStyle(
                   fontSize: 13.5,
                   color: Theme.of(context)
@@ -136,7 +139,10 @@ class _SamitiCardItem extends StatelessWidget {
     final iconData = _iconForPurpose(branch.purpose);
 
     return AppCard(
-      onTap: () => context.go('/samiti/${branch.id}'),
+      onTap: () => context.goNamed(
+        'samitiDetail',
+        pathParameters: {'id': branch.id},
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -198,7 +204,7 @@ class _SamitiCardItem extends StatelessWidget {
           Row(
             children: [
               Text(
-                'মাসিক দান: ৳${branch.monthlyDepositAmount}',
+                'মাসিক জমা: ৳${branch.monthlyDepositAmount}',
                 style: const TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w700,
@@ -238,7 +244,10 @@ class _SamitiCardItem extends StatelessWidget {
           else
             PrimaryButton(
               label: 'সদস্য হতে আবেদন করুন',
-              onPressed: () => context.go('/apply?branchId=${branch.id}'),
+              onPressed: () => context.goNamed(
+                'apply',
+                queryParameters: {'branchId': branch.id},
+              ),
               icon: Icons.person_add_outlined,
             ),
         ],

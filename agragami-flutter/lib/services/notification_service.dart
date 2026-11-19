@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_strings.dart';
+import '../models/member_application.dart';
+import '../models/payment.dart';
+import 'auth_service.dart';
 import 'firestore_providers.dart';
 import 'settings_service.dart';
 
@@ -35,7 +38,10 @@ class AppNotificationItem {
   final String body;
   final DateTime timestamp;
   final NotificationType type;
-  final String? route;
+
+  /// যে রাউটে যাবে — রাউটের নাম (04-m2: পথের স্ট্রিং
+  /// নয়, goNamed-এর জন্য নাম ব্যবহার হয়)।
+  final String? routeName;
   final bool isRead;
 
   const AppNotificationItem({
@@ -44,7 +50,7 @@ class AppNotificationItem {
     required this.body,
     required this.timestamp,
     required this.type,
-    this.route,
+    this.routeName,
     this.isRead = false,
   });
 }
@@ -54,9 +60,20 @@ final notificationsListProvider =
     Provider.autoDispose<List<AppNotificationItem>>((ref) {
   final isBn = AppStrings.isBangla;
   final readIds = ref.watch(readNotificationIdsProvider);
-  final pendingApps =
-      ref.watch(pendingApplicationsProvider(null)).valueOrNull ?? [];
-  final pendingPayments = ref.watch(pendingPaymentsProvider).valueOrNull ?? [];
+  // Phase 5 (02-M2): অপেক্ষমাণ আবেদন/জমার প্রশ্ন শুধু
+  // অ্যাডমিনের জন্য — সদস্যের কাছে এগুলো নিয়মে (rules)
+  // বাধা পায়, আর অ্যাপ বার প্রতিটি স্ক্রিনে এটা দেখত।
+  // শাখা অ্যাডমিন শুধু নিজের সমিতির অপেক্ষমাণ কাজ দেখে।
+  final user = ref.watch(currentUserProvider).valueOrNull;
+  final isAdmin = user?.isAdmin ?? false;
+  final scopeBranchId = user?.isSuperAdmin == true ? null : user?.branchId;
+  final pendingApps = isAdmin
+      ? ref.watch(pendingApplicationsProvider(scopeBranchId)).valueOrNull ??
+          []
+      : const <MemberApplication>[];
+  final pendingPayments = isAdmin
+      ? ref.watch(pendingPaymentsProvider(scopeBranchId)).valueOrNull ?? []
+      : const <Payment>[];
   final notices = ref.watch(noticesStreamProvider).valueOrNull ?? [];
 
   final items = <AppNotificationItem>[];
@@ -76,7 +93,7 @@ final notificationsListProvider =
             : 'New member applications awaiting review.',
         timestamp: pendingApps.first.requestedAt,
         type: NotificationType.approval,
-        route: '/approval',
+        routeName: 'approval',
       ),
     );
   }
@@ -96,7 +113,7 @@ final notificationsListProvider =
             : 'Member deposits awaiting transaction verification.',
         timestamp: pendingPayments.first.date,
         type: NotificationType.deposit,
-        route: '/approval',
+        routeName: 'approval',
       ),
     );
   }
@@ -112,7 +129,7 @@ final notificationsListProvider =
         body: n.body,
         timestamp: n.postedAt,
         type: NotificationType.notice,
-        route: '/notices',
+        routeName: 'notices',
       ),
     );
   }

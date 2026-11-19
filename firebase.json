@@ -1,9 +1,9 @@
 {
   "firestore": {
+    "indexes": "agragami-flutter/firestore.indexes.json",
     "rules": "firestore.rules"
   },
   "storage": {
     "rules": "storage.rules"
   }
 }
-

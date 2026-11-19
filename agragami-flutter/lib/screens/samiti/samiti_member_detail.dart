@@ -20,10 +20,15 @@ class SamitiMemberDetail extends ConsumerStatefulWidget {
   final Branch branch;
   final bool isAdmin;
 
+  /// সুপার অ্যাডমিন কি না — সদস্য সংখ্যা মেলানো (recount)
+  /// শুধু সুপার অ্যাডমিনের কাজ (F6)।
+  final bool isSuperAdmin;
+
   const SamitiMemberDetail({
     super.key,
     required this.branch,
     required this.isAdmin,
+    this.isSuperAdmin = false,
   });
 
   @override
@@ -65,10 +70,23 @@ class _SamitiMemberDetailState extends ConsumerState<SamitiMemberDetail> {
   Widget build(BuildContext context) {
     final branch = widget.branch;
     final isAdmin = widget.isAdmin;
+    final isSuperAdmin = widget.isSuperAdmin;
     final totalsAsync = ref.watch(homeTotalsByBranchProvider(branch.id));
-    final membersAsync = ref.watch(membersByBranchProvider(branch.id));
+    // F3: সদস্য-মুখী তালিকায় শুধু সক্রিয় সদস্য — rules
+    // সদস্যদের শুধু status == 'active' ডকুমেন্ট পড়তে দেয়।
+    // অ্যাডমিন পুরো তালিকা দেখে (নিষ্ক্রিয় সদস্যসহ)।
+    final membersAsync = isAdmin
+        ? ref.watch(membersByBranchProvider(branch.id))
+        : ref.watch(activeMembersByBranchProvider(branch.id));
     final totals = totalsAsync.valueOrNull;
     final members = membersAsync.valueOrNull ?? const <Member>[];
+    // F11: সমিতির অ্যাডমিন মোট হিসাব আর সদস্য তালিকা
+    // সদস্যদের জন্য বন্ধ রাখতে পারে — তখন সদস্য ওই অংশ
+    // দেখে না (অ্যাডমিন সব দেখে)।
+    final totalsHiddenFromMembers =
+        !isAdmin && !branch.canMembersViewTotalFund;
+    final memberListHiddenFromMembers =
+        !isAdmin && !branch.canMembersViewMemberList;
 
     String value(int? amount, {bool money = true}) {
       if (amount == null) return '—';
@@ -81,75 +99,83 @@ class _SamitiMemberDetailState extends ConsumerState<SamitiMemberDetail> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (totalsAsync.hasError) ...[
+        if (totalsHiddenFromMembers) ...[
+          const Text(
+            'এই সমিতির মোট হিসাব সদস্যদের জন্য বন্ধ আছে।',
+            style: TextStyle(fontSize: 14, color: AppColors.muted),
+          ),
+          const SizedBox(height: 12),
+        ] else ...[
+          if (totalsAsync.hasError) ...[
+            Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'হিসাব আনা যায়নি — নেট দেখে আবার চেষ্টা করুন।',
+                    style: TextStyle(fontSize: 14.5),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => ref.invalidate(
+                    homeTotalsByBranchProvider(branch.id),
+                  ),
+                  child: Text(AppStrings.tryAgain),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
-              const Icon(Icons.error_outline, color: Colors.red),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'হিসাব আনা যায়নি — নেট দেখে আবার চেষ্টা করুন।',
-                  style: TextStyle(fontSize: 14.5),
+              Expanded(
+                child: StatCard(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'মোট জমা হয়েছে',
+                  value: value(totals?.approvedTotal),
                 ),
               ),
-              TextButton(
-                onPressed: () => ref.invalidate(
-                  homeTotalsByBranchProvider(branch.id),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  icon: Icons.receipt_long_outlined,
+                  label: 'মোট খরচ',
+                  value: value(totals?.expenseTotal),
+                  isGold: true,
                 ),
-                child: Text(AppStrings.tryAgain),
               ),
             ],
           ),
           const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: StatCard(
+                  icon: Icons.groups_outlined,
+                  label: 'সক্রিয় সদস্য',
+                  value: value(totals?.activeMembers, money: false),
+                  isGold: true,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'এখন তহবিলে আছে',
+                  value: fund == null ? '—' : formatTaka(fund),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
         ],
-        Row(
-          children: [
-            Expanded(
-              child: StatCard(
-                icon: Icons.account_balance_wallet_outlined,
-                label: 'মোট জমা হয়েছে',
-                value: value(totals?.approvedTotal),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: StatCard(
-                icon: Icons.receipt_long_outlined,
-                label: 'মোট খরচ',
-                value: value(totals?.expenseTotal),
-                isGold: true,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: StatCard(
-                icon: Icons.groups_outlined,
-                label: 'সক্রিয় সদস্য',
-                value: value(totals?.activeMembers, money: false),
-                isGold: true,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: StatCard(
-                icon: Icons.account_balance_wallet_outlined,
-                label: 'এখন তহবিলে আছে',
-                value: fund == null ? '—' : formatTaka(fund),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
               child: PrimaryButton(
                 label: 'জমা দিন',
-                onPressed: () => context.go('/deposit'),
+                onPressed: () => context.goNamed('deposit'),
                 icon: Icons.payments_outlined,
               ),
             ),
@@ -157,7 +183,7 @@ class _SamitiMemberDetailState extends ConsumerState<SamitiMemberDetail> {
             Expanded(
               child: SecondaryButton(
                 label: 'পাসবই',
-                onPressed: () => context.go('/passbook'),
+                onPressed: () => context.goNamed('passbook'),
               ),
             ),
           ],
@@ -171,7 +197,12 @@ class _SamitiMemberDetailState extends ConsumerState<SamitiMemberDetail> {
               ),
         ),
         const SizedBox(height: 8),
-        if (membersAsync.isLoading)
+        if (memberListHiddenFromMembers)
+          const Text(
+            'সদস্য তালিকা সদস্যদের জন্য বন্ধ আছে।',
+            style: TextStyle(fontSize: 14, color: AppColors.muted),
+          )
+        else if (membersAsync.isLoading)
           const SkeletonCardList()
         else if (membersAsync.hasError)
           EmptyState(
@@ -180,7 +211,9 @@ class _SamitiMemberDetailState extends ConsumerState<SamitiMemberDetail> {
             message: 'নেট দেখে আবার চেষ্টা করুন।',
             actionLabel: AppStrings.tryAgain,
             onAction: () => ref.invalidate(
-              membersByBranchProvider(branch.id),
+              isAdmin
+                  ? membersByBranchProvider(branch.id)
+                  : activeMembersByBranchProvider(branch.id),
             ),
           )
         else if (members.isEmpty)
@@ -194,13 +227,17 @@ class _SamitiMemberDetailState extends ConsumerState<SamitiMemberDetail> {
               padding: const EdgeInsets.only(bottom: 12),
               child: AppCard(
                 // B7: অ্যাডমিন সদস্যের কার্ডে ট্যাপ করলে
-                // সম্পাদনার ডায়ালগ খোলে।
+                // সম্পাদনার ডায়ালগ খোলে। সদস্য ট্যাপ করলে
+                // ওই সদস্যের পরিচয় পাতা খোলে (F18)।
                 onTap: isAdmin
                     ? () => showDialog(
                           context: context,
                           builder: (_) => EditMemberDialog(member: m),
                         )
-                    : null,
+                    : () => context.goNamed(
+                          'memberDetail',
+                          pathParameters: {'id': m.id},
+                        ),
                 child: Row(
                   children: [
                     CircleAvatar(
@@ -232,7 +269,8 @@ class _SamitiMemberDetailState extends ConsumerState<SamitiMemberDetail> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'ফোন: ${m.phone}',
+                            // F15: মানুষের পড়ার মতো সদস্য নম্বর।
+                            'সদস্য নং ${m.displayNumber} • ফোন: ${m.phone}',
                             style: TextStyle(
                               fontSize: 13.5,
                               color: Theme.of(context)
@@ -263,7 +301,8 @@ class _SamitiMemberDetailState extends ConsumerState<SamitiMemberDetail> {
               ),
             ),
           ),
-        if (isAdmin) ...[
+        // F6: সদস্য সংখ্যা মেলানো শুধু সুপার অ্যাডমিনের কাজ।
+        if (isSuperAdmin) ...[
           const SizedBox(height: 12),
           TextButton(
             // m2: গোনার সময় বোতাম বন্ধ, ভুল হলে জানানো হয়।

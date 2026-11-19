@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/loan.dart';
@@ -101,11 +102,29 @@ class _LoanRepaymentFormState extends ConsumerState<LoanRepaymentForm> {
         final usedInLoan = widget.loan.repayments.any(
           (r) => r.trxId == trxId && r.paymentMethodId == chosen.id,
         );
-        final usedInPayments = await store.trxIdAlreadyUsed(
-          paymentMethodId: chosen.id,
-          trxId: trxId,
-          branchId: widget.loan.branchId,
-        );
+        // F7: F2-এর নতুন rules-এ নিজের সমিতির জমা সব সদস্য
+        // পড়তে পারে, তাই এই যাচাই আর permission-denied খায়
+        // না। তবুও সুরক্ষা হিসেবে: যাচাই করা না গেলে কিস্তি
+        // আটকে রাখা হয় না — নিশ্চিত করে এগোনো যায়।
+        bool usedInPayments;
+        try {
+          usedInPayments = await store.trxIdAlreadyUsed(
+            paymentMethodId: chosen.id,
+            trxId: trxId,
+            branchId: widget.loan.branchId,
+          );
+        } on FirebaseException catch (e) {
+          if (e.code != 'permission-denied') rethrow;
+          if (!mounted) return;
+          final proceedAnyway = await _askConfirm(
+            'TrxID যাচাই করা যায়নি — অনুমতির সমস্যা। তবুও জমা নেবেন?',
+          );
+          if (!proceedAnyway) {
+            setState(() => _busy = false);
+            return;
+          }
+          usedInPayments = false;
+        }
         if ((usedInLoan || usedInPayments) && mounted) {
           final proceed = await _askConfirm(
             'এই TrxID দিয়ে এই মাধ্যমেই আগেই একটি জমা দেওয়া হয়েছে। '
@@ -146,6 +165,8 @@ class _LoanRepaymentFormState extends ConsumerState<LoanRepaymentForm> {
         _methodId = null;
       });
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,

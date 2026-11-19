@@ -1,3 +1,11 @@
+// ⚠️ সতর্কতা (Phase 5, F28): এই storage.rules কখনো
+// deploy করবেন না। এই প্রজেক্ট Spark প্ল্যানে — Firebase
+// Storage-এর কোনো bucket নেই, আর Spark-এ bucket বানানোও
+// যায় না। ছবি Cloudinary-তে যায় (lib/core/cloudinary_config.dart)।
+// তাছাড়া নিচের নিয়ম অতিরিক্ত ঢিলা: সাইন-ইন করা যে কেউ সব
+// ফাইল পড়তে/লিখতে পারত। ফাইলটা শুধু ইতিহাস হিসেবে রাখা —
+ // deploy করলে ভুল হবে।
+
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {

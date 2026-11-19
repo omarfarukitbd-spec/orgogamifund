@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -78,24 +77,5 @@ class StorageService {
         'ছবি আপলোড হয়নি — ইন্টারনেট দেখে আবার চেষ্টা করুন',
       );
     }
-  }
-
-  Future<String?> uploadMemberPhoto(String memberId, File file) async {
-    final bytes = await file.readAsBytes();
-    return uploadBytes('members/$memberId/photo.jpg', bytes);
-  }
-
-  Future<String?> uploadNidPhoto(
-    String memberId,
-    File file,
-    String side,
-  ) async {
-    final bytes = await file.readAsBytes();
-    return uploadBytes('members/$memberId/nid_$side.jpg', bytes);
-  }
-
-  Future<String?> uploadExpenseReceipt(String expenseId, File file) async {
-    final bytes = await file.readAsBytes();
-    return uploadBytes('expenses/$expenseId/receipt.jpg', bytes);
   }
 }

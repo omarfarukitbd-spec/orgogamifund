@@ -61,6 +61,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         _error = null;
       });
     } catch (_) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(() => _error = 'ছবি নেওয়া যায়নি — আবার চেষ্টা করুন');
     }
   }
@@ -98,12 +100,21 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         ),
       ),
     );
-    context.go('/expenses');
+    context.goNamed('expenses');
+  }
+
+  /// F16: কার্যকর সমিতি — শাখা অ্যাডমিনের ক্ষেত্রে নিজের
+  /// সমিতি, অন্যদের ক্ষেত্রে ড্রপডাউনে বাছা সমিতি।
+  String? _effectiveBranchId() {
+    final user = ref.read(currentUserProvider).valueOrNull;
+    if (user != null && user.isBranchAdmin) return user.branchId;
+    return _branchId;
   }
 
   Future<void> _submit() async {
     final amount = parseAmount(_amount.text);
-    if (_branchId == null) {
+    final branchId = _effectiveBranchId();
+    if (branchId == null) {
       setState(() => _error = 'কোন সমিতির খরচ, বেছে নিন');
       return;
     }
@@ -121,7 +132,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     });
     final expense = Expense(
       id: '',
-      branchId: _branchId!,
+      branchId: branchId,
       category: _category,
       amount: amount,
       date: _date,
@@ -156,6 +167,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         ),
       );
       if (saveWithout != true) {
+        // F14: ডায়ালগের পর setState-এর আগে mounted দেখা হয়।
+        if (!mounted) return;
         setState(() => _error = 'ছবি আপলোড হয়নি — আবার চেষ্টা করুন');
         return;
       }
@@ -164,6 +177,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         if (!mounted) return;
         _onExpenseSaved();
       } catch (e) {
+        // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+        if (!mounted) return;
         setState(
           () => _error = firebaseErrorMessage(
             e,
@@ -172,6 +187,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,
@@ -187,22 +203,37 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   Widget build(BuildContext context) {
     final branchesAsync = ref.watch(branchesStreamProvider);
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
+    final user = ref.watch(currentUserProvider).valueOrNull;
+    // F16: শাখা অ্যাডমিন শুধু নিজের সমিতি দেখে — অন্য
+    // সমিতির ড্রপডাউন আইটেম দেখানো হয় না।
+    final isBranchAdmin = user != null && user.isBranchAdmin;
+    final effectiveBranchId = isBranchAdmin ? user.branchId : _branchId;
+    final visibleBranches = isBranchAdmin
+        ? branches.where((b) => b.id == user.branchId).toList()
+        : branches;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DropdownButtonFormField<String>(
-            initialValue: _branchId,
-            decoration: const InputDecoration(
-              labelText: 'কোন সমিতি',
-              prefixIcon: Icon(Icons.groups_outlined),
+          if (isBranchAdmin && user.branchId == null)
+            const Text(
+              'আপনার কোনো সমিতি বাঁধা নেই — সুপার অ্যাডমিনকে জানান',
+              style: TextStyle(fontSize: 14, color: Colors.red),
+            )
+          else
+            DropdownButtonFormField<String>(
+              initialValue: effectiveBranchId,
+              decoration: const InputDecoration(
+                labelText: 'কোন সমিতি',
+                prefixIcon: Icon(Icons.groups_outlined),
+              ),
+              items: visibleBranches
+                  .map((b) => DropdownMenuItem(value: b.id, child: Text(b.name)))
+                  .toList(),
+              onChanged:
+                  isBranchAdmin ? null : (v) => setState(() => _branchId = v),
             ),
-            items: branches
-                .map((b) => DropdownMenuItem(value: b.id, child: Text(b.name)))
-                .toList(),
-            onChanged: (v) => setState(() => _branchId = v),
-          ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _category,

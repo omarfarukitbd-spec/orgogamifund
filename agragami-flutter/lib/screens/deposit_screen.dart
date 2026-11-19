@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -118,11 +119,29 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     try {
       final store = ref.read(firestoreServiceProvider);
       if (trxId.isNotEmpty) {
-        final used = await store.trxIdAlreadyUsed(
-          paymentMethodId: chosen.id,
-          trxId: trxId,
-          branchId: branchId,
-        );
+        // F7: F2-এর নতুন rules-এ নিজের সমিতির জমা সব সদস্য
+        // পড়তে পারে, তাই এই যাচাই আর permission-denied খায়
+        // না। তবুও সুরক্ষা হিসেবে: যাচাই করা না গেলে জমা
+        // আটকে রাখা হয় না — নিশ্চিত করে এগোনো যায়।
+        bool used;
+        try {
+          used = await store.trxIdAlreadyUsed(
+            paymentMethodId: chosen.id,
+            trxId: trxId,
+            branchId: branchId,
+          );
+        } on FirebaseException catch (e) {
+          if (e.code != 'permission-denied') rethrow;
+          if (!mounted) return;
+          final proceedAnyway = await _askConfirm(
+            'TrxID যাচাই করা যায়নি — অনুমতির সমস্যা। তবুও পাঠাবেন?',
+          );
+          if (!proceedAnyway) {
+            setState(() => _busy = false);
+            return;
+          }
+          used = false;
+        }
         if (used && mounted) {
           final proceed = await _askConfirm(
             'এই TrxID দিয়ে আগেই একটি জমা দেওয়া হয়েছে। '
@@ -186,6 +205,8 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
         _methodId = null;
       });
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,
@@ -201,7 +222,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
   Widget build(BuildContext context) {
     if (_submittedSuccess) {
       return DepositSuccessView(
-        onViewPassbook: () => context.go('/passbook'),
+        onViewPassbook: () => context.goNamed('passbook'),
         onDepositAgain: () => setState(() => _submittedSuccess = false),
       );
     }
@@ -252,7 +273,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
 
     final branchMembersAsync = effectiveBranchId == null || !isAdmin
         ? const AsyncValue<List<Member>>.data([])
-        : ref.watch(membersByBranchProvider(effectiveBranchId));
+        : ref.watch(activeMembersByBranchProvider(effectiveBranchId));
     final branchMembers =
         branchMembersAsync.valueOrNull ?? const <Member>[];
     final effectiveAdminMemberId =

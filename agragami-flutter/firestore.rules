@@ -17,7 +17,15 @@ rules_version = '2';
 // অনুযায়ী; আগে শুধু অ্যাডমিন পড়তে পারতো)। ৭) Phase 3 (M1):
 // বাতিল হওয়া সদস্য নিজের সদস্যপদ rejected থেকে pending-এ
 // ফেরাতে পারে — শুধু এই পরিবর্তন, শুধু চার ক্ষেত্রে — যাতে
-// আবার আবেদন করা যায়। branches পড়া
+// আবার আবেদন করা যায়। ৮) Phase 5 (F1/F2/F4, 2026-11-19):
+// শাখা-ভিত্তিক দেখার সীমা memberships ডকুমেন্ট দিয়ে ঠিক করা
+// হয় (users ডকুমেন্টের একটাই branchId নয় — দ্বিতীয় সমিতির
+// সদস্য সেটা দিয়ে চেনা যেত না); শাখা অ্যাডমিন নিজের সমিতির
+// আবেদন অনুমোদন করতে পারে (users ডকুমেন্টের অনুমোদনের
+// ক্ষেত্রগুলো + সদস্য সংখ্যা ১ বাড়ানো — শুধু এইটুকু);
+// অনুমোদিত সদস্য নিজের সমিতির সব জমা দেখতে পারে
+// (ব্যবহারকারীর সিদ্ধান্ত 2026-11-19 — কঠোরভাবে শুধু নিজের
+// সমিতির, অন্য সমিতির কিছু নয়)। branches পড়া
 // ইচ্ছা করে সাইন-ইন ব্যবহারকারীর মধ্যে সীমিত রাখা হয়েছে —
 // branch ডকুমেন্টে ব্যাংক অ্যাকাউন্ট নম্বর থাকে, তাই পাবলিক
 // পড়া দেওয়া যাবে না।
@@ -91,6 +99,33 @@ service cloud.firestore {
              getUserData().linkedMemberId == memberId;
     }
 
+    // Phase 5 (F4): ওই সমিতির অনুমোদিত সদস্য কি না —
+    // memberships ডকুমেন্টই "কোন সমিতির সদস্য" সেটার
+    // একমাত্র উৎস। users ডকুমেন্টের একটাই branchId থাকে
+    // (প্রথম সমিতির), তাই দ্বিতীয় সমিতির সদস্য সেটা দিয়ে
+    // চেনা যায় না। ডকুমেন্ট id: {uid}_{branchId}
+    // (অ্যাপের Membership.docId)। একই অনুরোধে get() cache
+    // হয়, তাই তালিকার প্রশ্নে প্রতিটি ডকুমেন্টে আলাদা পড়া লাগে না।
+    function isApprovedMemberOf(branchId) {
+      return isAuthenticated() &&
+             branchId is string &&
+             branchId != '' &&
+             exists(/databases/$(database)/documents/memberships/$(request.auth.uid + '_' + branchId)) &&
+             get(/databases/$(database)/documents/memberships/$(request.auth.uid + '_' + branchId)).data.status == 'approved';
+    }
+
+    // Phase 5 (F1): শাখা অ্যাডমিন নিজের সমিতির আবেদনকারীর
+    // users ডকুমেন্ট বদলাতে পারে — শুধু অনুমোদনের সময়,
+    // শুধু আবেদনকারীর সদস্যপদ ওই সমিতিতে pending থাকলে।
+    // অনুমোদন ছাড়া অন্য কোনো users লেখা এখান দিয়ে হয় না।
+    function hasPendingMembershipInMyBranch(userId) {
+      return isBranchAdminAny() &&
+             'branchId' in getUserData() &&
+             getUserData().branchId is string &&
+             exists(/databases/$(database)/documents/memberships/$(userId + '_' + getUserData().branchId)) &&
+             get(/databases/$(database)/documents/memberships/$(userId + '_' + getUserData().branchId)).data.status == 'pending';
+    }
+
     // ===============================================================
     // Collection Rules
     // ===============================================================
@@ -106,7 +141,16 @@ service cloud.firestore {
     // থাকে — কখনো allow read: if true করা যাবে না।
     match /branches/{branchId} {
       allow read: if isAuthenticated();
-      allow write: if isSuperAdmin();
+      allow create, delete: if isSuperAdmin();
+      // Phase 5 (F1): শাখা অ্যাডমিন অনুমোদনের সময় নিজের
+      // সমিতির সদস্য সংখ্যা শুধু ১ বাড়াতে পারে — অন্য কোনো
+      // ক্ষেত্র বদলানো যায় না, কমানো বা আন্দাজে বসানো যায় না।
+      allow update: if isSuperAdmin() ||
+                       (isBranchAdmin(branchId) &&
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['memberCount']) &&
+                        request.resource.data.memberCount ==
+                          resource.data.get('memberCount', 0) + 1);
     }
 
     // --- 3. Users (ইউজার প্রোফাইল ও অনুমোদন স্ট্যাটাস) ---
@@ -117,13 +161,36 @@ service cloud.firestore {
       // বানানো যাবে। নইলে যে কেউ নিজের ডকুমেন্টে সুপার অ্যাডমিন
       // লিখে নিতে পারতো (/setup ছিদ্র)। অ্যাডমিনের নিজের ডকুমেন্ট
       // আগেই আছে, তাই এতে তার কিছু আটকাবে না।
-      allow create: if isAuthenticated() && request.auth.uid == userId
+      // Phase 5 (F1): শাখা অ্যাডমিন অনুমোদনের সময় আবেদনকারীর
+      // ডকুমেন্ট না থাকলে সেটা বানাতে পারে — শুধু member রোল
+      // আর approved অবস্থা দিয়ে, শুধু অনুমোদনের ক্ষেত্রগুলো।
+      allow create: if (isAuthenticated() && request.auth.uid == userId
         && request.resource.data.role == 'pending'
-        && request.resource.data.approvalStatus == 'pending';
-      // শুধুমাত্র সুপার অ্যাডমিন রোল বা অনুমোদন পরিবর্তন করতে পারবে
-      allow update: if isSuperAdmin() || 
-                       (isAuthenticated() && request.auth.uid == userId && 
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approvalStatus', 'branchId', 'linkedMemberId']));
+        && request.resource.data.approvalStatus == 'pending') ||
+        (hasPendingMembershipInMyBranch(userId) &&
+         request.resource.data.keys()
+           .hasOnly(['email', 'approvalStatus', 'role', 'linkedMemberId', 'branchId']) &&
+         request.resource.data.approvalStatus == 'approved' &&
+         request.resource.data.role == 'member' &&
+         (!('branchId' in request.resource.data.keys()) ||
+           request.resource.data.branchId == getUserData().branchId));
+      // শুধুমাত্র সুপার অ্যাডমিন রোল বা অনুমোদন পরিবর্তন করতে পারবে।
+      // Phase 5 (F1): শাখা অ্যাডমিন নিজের সমিতির আবেদনকারীর
+      // ডকুমেন্টে শুধু অনুমোদনের ক্ষেত্রগুলো বদলাতে পারে —
+      // role বদলালে 'member' হতে হবে, branchId বদলালে নিজের
+      // সমিতিই হতে হবে। (email শুধু দেখানোর তথ্য — লগইনের
+      // পরিচয় Auth-এর, এই ফিল্ডের নয়।)
+      allow update: if isSuperAdmin() ||
+                       (isAuthenticated() && request.auth.uid == userId &&
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approvalStatus', 'branchId', 'linkedMemberId'])) ||
+                       (hasPendingMembershipInMyBranch(userId) &&
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['email', 'approvalStatus', 'role', 'linkedMemberId', 'branchId']) &&
+                        request.resource.data.approvalStatus == 'approved' &&
+                        (!('role' in request.resource.data.diff(resource.data).affectedKeys()) ||
+                          request.resource.data.role == 'member') &&
+                        (!('branchId' in request.resource.data.diff(resource.data).affectedKeys()) ||
+                          request.resource.data.branchId == getUserData().branchId));
       allow delete: if isSuperAdmin();
     }
 
@@ -164,7 +231,7 @@ service cloud.firestore {
     // --- 5. Member Applications (সদস্যপদের আবেদন ও অ্যাডমিন অনুমোদন) ---
     match /memberApplications/{appId} {
       // আবেদনকারী নিজের আবেদন এবং অ্যাডমিনরা সকল আবেদন দেখতে পারবে।
-      // Flutter অ্যাপ applicantUid লেখে, পুরনো অ্যাপ applicantId —
+      // Flutter অ্যাপ applicantUid লেখে, পুরোনো অ্যাপ applicantId —
       // দুইটাই দেখা হয়।
       allow read: if isSuperAdmin() || isBranchAdminAny() ||
                      (isAuthenticated() && (
@@ -182,12 +249,14 @@ service cloud.firestore {
     match /members/{memberId} {
       // সুপার অ্যাডমিন সব দেখতে পারবে; শাখা অ্যাডমিন তার শাখার সদস্য দেখতে পারবে;
       // ব্যবহারকারী নিজের লিঙ্কড প্রোফাইল (পাসবই, আইডি কার্ড) দেখতে পারবে;
-      // অনুমোদিত সদস্য শুধুমাত্র তার নিজস্ব শাখার সক্রিয় তালিকা দেখতে পারবে
-      allow read: if isSuperAdmin() || 
+      // অনুমোদিত সদস্য শুধুমাত্র তার নিজস্ব শাখার সক্রিয় তালিকা দেখতে পারবে।
+      // Phase 5 (F4): শাখার সদস্যপদ memberships ডকুমেন্ট দিয়ে
+      // যাচাই হয় — users ডকুমেন্টের একটাই branchId দিয়ে নয়।
+      allow read: if isSuperAdmin() ||
+                     (('branchId' in resource.data) && isApprovedMemberOf(resource.data.branchId) && resource.data.status == 'active') ||
                      (isBranchAdminAny() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId) ||
                      (isAuthenticated() && resource.data.linkedUserId == request.auth.uid) ||
-                     isMemberUser(memberId) ||
-                     (isApproved() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId && resource.data.status == 'active');
+                     isMemberUser(memberId);
       allow create, update: if isSuperAdmin() || (isBranchAdmin(request.resource.data.branchId));
       allow delete: if isSuperAdmin();
     }
@@ -201,7 +270,7 @@ service cloud.firestore {
 
     // --- 8. Edit Requests (সদস্য তথ্য সংশোধন আবেদন) ---
     match /editRequests/{requestId} {
-      allow read: if isSuperAdmin() || isBranchAdminAny() || 
+      allow read: if isSuperAdmin() || isBranchAdminAny() ||
                      (isApproved() && 'linkedMemberId' in getUserData() && resource.data.memberId == getUserData().linkedMemberId);
       allow create: if isApproved() && 'linkedMemberId' in getUserData() && request.resource.data.memberId == getUserData().linkedMemberId;
       allow update: if isSuperAdmin() || isBranchAdminAny();
@@ -210,8 +279,13 @@ service cloud.firestore {
 
     // --- 9. Payments / Contributions (চাঁদা ও আর্থিক লেনদেন) ---
     match /payments/{paymentId} {
-      // শুধুমাত্র সুপার অ্যাডমিন, সংশ্লিষ্ট শাখা অ্যাডমিন এবং সংশ্লিষ্ট সদস্য নিজের পেমেন্ট দেখতে পারবে
-      allow read: if isSuperAdmin() || 
+      // Phase 5 (F2): সমিতির অনুমোদিত সদস্য ওই সমিতির সব জমা
+      // দেখতে পারে — ব্যবহারকারীর সিদ্ধান্ত (2026-11-19):
+      // কঠোরভাবে শুধু নিজের সমিতির, অন্য সমিতির কিছু নয়।
+      // পুরোনো নিজের-জমা পথ (recordedBy / linkedMemberId)
+      // রাখা আছে — সদস্যপদ ছাড়া পুরোনো জমা যাতে দেখা যায়।
+      allow read: if isSuperAdmin() ||
+                     (('branchId' in resource.data) && isApprovedMemberOf(resource.data.branchId)) ||
                      (isBranchAdminAny() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId) ||
                      (isAuthenticated() && (
                        (resource.data.recordedBy == request.auth.uid) ||
@@ -220,7 +294,7 @@ service cloud.firestore {
       // সাধারণ সদস্যের জমা শুধু status 'pending' দিয়ে বানানো যাবে —
       // নইলে যে কেউ নিজের জমা approved লিখে তহবিল ফুলিয়ে নিতে
       // পারতো। অ্যাডমিন যেকোনো অবস্থায় বানাতে পারে।
-      allow create: if isSuperAdmin() || 
+      allow create: if isSuperAdmin() ||
                        isBranchAdmin(request.resource.data.branchId) ||
                        (isAuthenticated() && request.resource.data.status == 'pending' && (
                          (request.resource.data.recordedBy == request.auth.uid) ||
@@ -234,9 +308,11 @@ service cloud.firestore {
     match /expenses/{expenseId} {
       // অ্যাডমিন আর ওই সমিতির অনুমোদিত সদস্য পড়তে পারে
       // (অ্যাপের খরচের তালিকা সদস্যদের দেখায়)।
+      // Phase 5 (F4): শাখার সদস্যপদ memberships ডকুমেন্ট
+      // দিয়ে যাচাই হয় — users ডকুমেন্টের একটাই branchId দিয়ে নয়।
       allow read: if isSuperAdmin() ||
-                     (isBranchAdminAny() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId) ||
-                     (isApproved() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId);
+                     (('branchId' in resource.data) && isApprovedMemberOf(resource.data.branchId)) ||
+                     (isBranchAdminAny() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId);
       allow create, update: if isSuperAdmin() || isBranchAdmin(request.resource.data.branchId);
       allow delete: if isSuperAdmin();
     }
@@ -245,10 +321,12 @@ service cloud.firestore {
     match /loans/{loanId} {
       // অ্যাডমিন, ঋণগ্রহীতা সদস্য, আর ওই সমিতির অনুমোদিত সদস্য
       // (অ্যাপের ঋণের তালিকা সদস্যদের দেখায়) পড়তে পারে।
-      allow read: if isSuperAdmin() || 
+      // Phase 5 (F4): শাখার সদস্যপদ memberships ডকুমেন্ট
+      // দিয়ে যাচাই হয় — users ডকুমেন্টের একটাই branchId দিয়ে নয়।
+      allow read: if isSuperAdmin() ||
+                     (('branchId' in resource.data) && isApprovedMemberOf(resource.data.branchId)) ||
                      (isBranchAdminAny() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId) ||
-                     (isApproved() && 'linkedMemberId' in getUserData() && resource.data.memberId == getUserData().linkedMemberId) ||
-                     (isApproved() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId);
+                     (isApproved() && 'linkedMemberId' in getUserData() && resource.data.memberId == getUserData().linkedMemberId);
       allow create, update: if isSuperAdmin() || isBranchAdmin(request.resource.data.branchId);
       allow delete: if isSuperAdmin();
     }
@@ -283,13 +361,13 @@ service cloud.firestore {
       // অডিট লগ শুধুমাত্র সুপার অ্যাডমিন ও শাখা অ্যাডমিন পড়তে পারবে; অথেনটিকেটেড ইউজাররা শুধুমাত্র ইনসার্ট করতে পারবে (নো এডিট/ডিলিট)
       allow read: if isSuperAdmin() || isBranchAdminAny();
       allow create: if isAuthenticated();
-      allow update, delete: if false; 
+      allow update, delete: if false;
     }
 
     // --- 17. Notifications (নোটিফিকেশন) ---
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && 
-                     (resource.data.toUserId == request.auth.uid || 
+      allow read: if isAuthenticated() &&
+                     (resource.data.toUserId == request.auth.uid ||
                       resource.data.broadcast == true || isSuperAdmin());
       allow update: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
       allow write: if isSuperAdmin() || isBranchAdminAny();

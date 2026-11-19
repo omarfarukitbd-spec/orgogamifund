@@ -61,6 +61,8 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
         _error = null;
       });
     } catch (_) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(() => _error = 'ছবি নেওয়া যায়নি — আবার চেষ্টা করুন');
     }
   }
@@ -148,6 +150,8 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
         ),
       );
       if (sendWithout != true) {
+        // F14: ডায়ালগের পর setState-এর আগে mounted দেখা হয়।
+        if (!mounted) return;
         setState(() => _error = 'ছবি আপলোড হয়নি — আবার চেষ্টা করুন');
         return;
       }
@@ -156,11 +160,14 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
         if (!mounted) return;
         _onNoticeSent();
       } catch (_) {
+        // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+        if (!mounted) return;
         setState(
           () => _error = 'নোটিশ দেওয়া যায়নি — নেট দেখে আবার চেষ্টা করুন',
         );
       }
     } catch (_) {
+      if (!mounted) return;
       setState(() => _error = 'নোটিশ দেওয়া যায়নি — নেট দেখে আবার চেষ্টা করুন');
     } finally {
       if (mounted) setState(() => _busy = false);

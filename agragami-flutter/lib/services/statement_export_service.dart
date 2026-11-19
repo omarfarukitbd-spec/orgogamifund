@@ -15,7 +15,12 @@ final statementExportServiceProvider =
 
 /// সমিতির আর্থিক ও সদস্য লেনদেনের বিবরণী (CSV / Excel) এক্সপোর্ট সার্ভিস
 class StatementExportService {
-  /// মাসিক পূর্ণাঙ্গ আর্থিক বিবরণী CSV তৈরি
+  /// মাসিক পূর্ণাঙ্গ আর্থিক বিবরণী CSV তৈরি।
+  /// Phase 5 (F23): শুধু অনুমোদিত জমা গোনা হয় (যাচাইাধীন
+  /// জমা আয় নয়), আর ঋণের প্রবাহও যোগ হয় — এই মাসে দেওয়া
+  /// ঋণ আর এই মাসে ফেরত আসা কিস্তি, loadMonthTotals-এর
+  /// একই মাস-ছাঁকা দিয়ে। নীট স্থিতি PDF-এর সাথে মেলে:
+  /// জমা − খরচ − দেওয়া ঋণ + ফেরত কিস্তি।
   String generateMonthlyStatementCsv({
     required int year,
     required int month,
@@ -36,13 +41,14 @@ class StatementExportService {
         '${isBn ? "মাস ও বছর" : "Month & Year"},${isBn ? "$month/$year" : "$month/$year"}');
     sb.writeln('');
 
-    // ১. জমা তালিকা
+    // ১. জমা তালিকা — শুধু অনুমোদিত জমা (F23)।
     sb.writeln(isBn ? '[জমা ও কিস্তির বিবরণ]' : '[Deposits Ledger]');
     sb.writeln(
         '${isBn ? "তারিখ" : "Date"},${isBn ? "সদস্য আইডি" : "Member ID"},${isBn ? "রসিদ নম্বর" : "Receipt No"},${isBn ? "পদ্ধতি" : "Method"},${isBn ? "TrxID" : "TrxID"},${isBn ? "পরিমাণ (টাকা)" : "Amount (BDT)"}');
 
     int totalDeposit = 0;
     for (final p in payments) {
+      if (p.status != PaymentStatus.approved) continue;
       totalDeposit += p.amount;
       final dateStr =
           '${p.date.year}-${p.date.month.toString().padLeft(2, '0')}-${p.date.day.toString().padLeft(2, '0')}';
@@ -68,48 +74,50 @@ class StatementExportService {
     sb.writeln('${isBn ? "মোট খরচ" : "Total Expenses"},,,$totalExpense');
     sb.writeln('');
 
-    // ৩. সারসংক্ষেপ
-    final netBalance = totalDeposit - totalExpense;
-    sb.writeln(isBn ? '[সারসংক্ষেপ]' : '[Summary]');
+    // ৩. ঋণের প্রবাহ (F23) — loadMonthTotals-এর একই
+    // মাস-ছাঁকা: এই মাসে দেওয়া ঋণ (dateIssued দিয়ে) আর
+    // এই মাসে ফেরত আসা কিস্তি (কিস্তির তারিখ দিয়ে)।
+    sb.writeln(isBn ? '[ঋণ ও কিস্তির বিবরণ]' : '[Loans & Repayments]');
     sb.writeln(
-        '${isBn ? "মোট প্রাপ্তি" : "Total Inflow"},$totalDeposit ${isBn ? "টাকা" : "BDT"}');
-    sb.writeln(
-        '${isBn ? "মোট ব্যয়" : "Total Outflow"},$totalExpense ${isBn ? "টাকা" : "BDT"}');
-    sb.writeln(
-        '${isBn ? "নীট স্থিতি" : "Net Balance"},$netBalance ${isBn ? "টাকা" : "BDT"}');
+        '${isBn ? "তারিখ" : "Date"},${isBn ? "ধরন" : "Type"},${isBn ? "সদস্য আইডি" : "Member ID"},${isBn ? "পরিমাণ (টাকা)" : "Amount (BDT)"}');
 
-    return sb.toString();
-  }
-
-  /// পাসবই লেনদেন ইতিহাস CSV তৈরি
-  String generateMemberPassbookCsv({
-    required String memberName,
-    required String memberId,
-    required String branchName,
-    required List<Payment> payments,
-  }) {
-    final isBn = AppStrings.isBangla;
-    final sb = StringBuffer();
-    sb.write('\uFEFF');
-
-    sb.writeln(
-        '${isBn ? "সদস্য পাসবই বিবরণী" : "Member Passbook Statement"},$memberName ($memberId)');
-    sb.writeln('${isBn ? "সমিতি" : "Somithi"},$branchName');
-    sb.writeln('');
-
-    sb.writeln(
-        '${isBn ? "তারিখ" : "Date"},${isBn ? "মাস ও বছর" : "Month/Year"},${isBn ? "রসিদ নম্বর" : "Receipt No"},${isBn ? "পদ্ধতি" : "Method"},${isBn ? "পরিমাণ (টাকা)" : "Amount (BDT)"},${isBn ? "অবস্থা" : "Status"}');
-
-    int totalApproved = 0;
-    for (final p in payments) {
-      if (p.status == PaymentStatus.approved) totalApproved += p.amount;
-      final dateStr =
-          '${p.date.year}-${p.date.month.toString().padLeft(2, '0')}-${p.date.day.toString().padLeft(2, '0')}';
-      sb.writeln(
-          '$dateStr,"${p.forMonth}/${p.forYear}","${p.receiptNumber ?? ''}","${p.methodLabel}",${p.amount},"${p.status.name}"');
+    int loansGiven = 0;
+    int repayments = 0;
+    for (final l in loans) {
+      if (l.dateIssued.year == year && l.dateIssued.month == month) {
+        loansGiven += l.amount;
+        final dateStr =
+            '${l.dateIssued.year}-${l.dateIssued.month.toString().padLeft(2, '0')}-${l.dateIssued.day.toString().padLeft(2, '0')}';
+        sb.writeln(
+            '$dateStr,${isBn ? "ঋণ দেওয়া হয়েছে" : "Loan Given"},"${l.memberId}",${l.amount}');
+      }
+      for (final r in l.repayments) {
+        if (r.date.year == year && r.date.month == month) {
+          repayments += r.amount;
+          final dateStr =
+              '${r.date.year}-${r.date.month.toString().padLeft(2, '0')}-${r.date.day.toString().padLeft(2, '0')}';
+          sb.writeln(
+              '$dateStr,${isBn ? "কিস্তি ফেরত" : "Repayment"},"${l.memberId}",${r.amount}');
+        }
+      }
     }
     sb.writeln(
-        '${isBn ? "মোট অনুমোদিত জমা" : "Total Approved Deposit"},,,,$totalApproved,');
+        '${isBn ? "মোট ঋণ দেওয়া হয়েছে" : "Total Loans Given"},,,$loansGiven');
+    sb.writeln(
+        '${isBn ? "মোট কিস্তি ফেরত" : "Total Repayments"},,,$repayments');
+    sb.writeln('');
+
+    // ৪. সারসংক্ষেপ — PDF-এর সাথে একই সূত্র।
+    final totalInflow = totalDeposit + repayments;
+    final totalOutflow = totalExpense + loansGiven;
+    final netBalance = totalInflow - totalOutflow;
+    sb.writeln(isBn ? '[সারসংক্ষেপ]' : '[Summary]');
+    sb.writeln(
+        '${isBn ? "মোট প্রাপ্তি" : "Total Inflow"},$totalInflow ${isBn ? "টাকা" : "BDT"}');
+    sb.writeln(
+        '${isBn ? "মোট ব্যয়" : "Total Outflow"},$totalOutflow ${isBn ? "টাকা" : "BDT"}');
+    sb.writeln(
+        '${isBn ? "নীট স্থিতি" : "Net Balance"},$netBalance ${isBn ? "টাকা" : "BDT"}');
 
     return sb.toString();
   }

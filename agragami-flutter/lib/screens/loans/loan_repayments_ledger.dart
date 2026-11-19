@@ -27,8 +27,11 @@ class LoanRepaymentsLedger extends StatelessWidget {
           for (int i = 0; i < repayments.length; i++) ...[
             LedgerRowItem(
               icon: Icons.payments_outlined,
+              // F22: কিস্তির নম্বর সময়ের ক্রমে — recordRepayment
+              // শেষে যোগ করে, তাই repayments[0]-ই প্রথম কিস্তি।
+              // আগের `length - i` উল্টো নম্বর দিত।
               title:
-                  'কিস্তি ${repayments.length - i} — পরিশোধ (${repayments[i].methodLabel})',
+                  'কিস্তি ${i + 1} — পরিশোধ (${repayments[i].methodLabel})',
               subtitle:
                   '${repayments[i].date.day}/${repayments[i].date.month}/${repayments[i].date.year}${repayments[i].trxId != null ? " • TrxID: ${repayments[i].trxId}" : ""}',
               amount: formatTaka(repayments[i].amount),

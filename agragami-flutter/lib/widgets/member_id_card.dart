@@ -86,7 +86,7 @@ class MemberIdCardFront extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        _Field('সদস্য নম্বর', member.id),
+                        _Field('সদস্য নম্বর', member.displayNumber),
                         _Field('সমিতি', branch?.name ?? '—'),
                         _Field('ভর্তির তারিখ', _dateText(member.joinDate)),
                         _Field('ফোন', member.phone),
@@ -178,6 +178,10 @@ class _Field extends StatelessWidget {
 }
 
 String _dateText(DateTime date) {
+  // Phase 5 (F26): 1970 sentinel মানে "তারিখ জানা নেই" —
+  // 01/01/1970 দেখানো যাবে না। স্ক্রিনের কার্ড আর PDF
+  // দুটোই এই একই ফাংশন ব্যবহার করে।
+  if (date.year < 2000) return 'তারিখ নেই';
   // m9: শূন্য দিয়ে ভরাট — 5/3/2026 নয়, 05/03/2026।
   final day = date.day.toString().padLeft(2, '0');
   final month = date.month.toString().padLeft(2, '0');

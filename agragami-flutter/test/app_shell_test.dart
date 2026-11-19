@@ -26,6 +26,19 @@ void main() {
       role: UserRole.pending,
       approvalStatus: ApprovalStatus.pending,
     );
+    const branchAdmin = AppUser(
+      id: 'u3',
+      email: 'ba@b.c',
+      role: UserRole.branchAdmin,
+      approvalStatus: ApprovalStatus.approved,
+      branchId: 'b1',
+    );
+    const superAdmin = AppUser(
+      id: 'u4',
+      email: 'sa@b.c',
+      role: UserRole.superAdmin,
+      approvalStatus: ApprovalStatus.approved,
+    );
 
     String? redirect({
       bool authResolved = true,
@@ -130,6 +143,40 @@ void main() {
       expect(
         redirect(location: '/lock', user: approved, signedIn: true),
         '/home',
+      );
+    });
+
+    test('F16: সদস্য খরচ/ঋণ যোগের পাতা খুলতে পারে না', () {
+      expect(
+        redirect(location: '/expenses/add', user: approved, signedIn: true),
+        '/home',
+      );
+      expect(
+        redirect(location: '/loans/add', user: approved, signedIn: true),
+        '/home',
+      );
+    });
+
+    test('F16: অ্যাডমিন খরচ/ঋণ যোগের পাতা খুলতে পারে', () {
+      expect(
+        redirect(
+          location: '/expenses/add',
+          user: branchAdmin,
+          signedIn: true,
+        ),
+        isNull,
+      );
+      expect(
+        redirect(location: '/loans/add', user: branchAdmin, signedIn: true),
+        isNull,
+      );
+      expect(
+        redirect(location: '/expenses/add', user: superAdmin, signedIn: true),
+        isNull,
+      );
+      expect(
+        redirect(location: '/loans/add', user: superAdmin, signedIn: true),
+        isNull,
       );
     });
   });

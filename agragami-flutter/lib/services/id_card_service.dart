@@ -1,4 +1,7 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -30,6 +33,31 @@ class IdCardService {
     }
   }
 
+  /// সদস্যের ছবি (F25) — Cloudinary URL থেকে নিয়ে PDF-এ
+  /// বসানো হয়। ছবি না থাকলে, আনা না গেলে বা ফাইলটা আসল
+  /// ছবি না হলে null ফেরে — তখন নামের প্রথম অক্ষর দেখানো
+  /// হয় (আগের মতো)। ছবি যাচাই করে নেওয়া হয়, যাতে নষ্ট
+  /// ছবিতে পুরো PDF বানানো ভেঙে না যায়।
+  Future<pw.MemoryImage?> _memberPhoto(String? url) async {
+    if (url == null || url.isEmpty) return null;
+    try {
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+        return null;
+      }
+      final bytes = response.bodyBytes;
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      frame.image.dispose();
+      codec.dispose();
+      return pw.MemoryImage(bytes);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<pw.Font> _bengaliFontBold() async {
     try {
       final data = await rootBundle.load(
@@ -46,6 +74,7 @@ class IdCardService {
     final font = await _bengaliFont();
     final bold = await _bengaliFontBold();
     final logo = await _logoImage();
+    final photo = await _memberPhoto(member.photoUrl);
     const cardSize =
         PdfPageFormat(85.6 * PdfPageFormat.mm, 54 * PdfPageFormat.mm);
     final initials =
@@ -129,14 +158,22 @@ class IdCardService {
                         border: pw.Border.all(color: IdCardPdfWidgets.line),
                         borderRadius: pw.BorderRadius.circular(6),
                       ),
-                      child: pw.Text(
-                        initials,
-                        style: pw.TextStyle(
-                          font: bold,
-                          fontSize: 22,
-                          color: IdCardPdfWidgets.green,
-                        ),
-                      ),
+                      // F25: ছবি থাকলে ছবি, না থাকলে নামের
+                      // প্রথম অক্ষর (আগের মতো)।
+                      child: photo != null
+                          ? pw.ClipRRect(
+                              horizontalRadius: 6,
+                              verticalRadius: 6,
+                              child: pw.Image(photo, fit: pw.BoxFit.cover),
+                            )
+                          : pw.Text(
+                              initials,
+                              style: pw.TextStyle(
+                                font: bold,
+                                fontSize: 22,
+                                color: IdCardPdfWidgets.green,
+                              ),
+                            ),
                     ),
                     pw.SizedBox(width: 10),
                     pw.Expanded(
@@ -153,7 +190,7 @@ class IdCardService {
                           ),
                           pw.SizedBox(height: 4),
                           IdCardPdfWidgets.field(
-                              font, bold, 'সদস্য নম্বর', member.id),
+                              font, bold, 'সদস্য নম্বর', member.displayNumber),
                           IdCardPdfWidgets.field(
                               font, bold, 'সমিতি', branch?.name ?? '—'),
                           IdCardPdfWidgets.field(

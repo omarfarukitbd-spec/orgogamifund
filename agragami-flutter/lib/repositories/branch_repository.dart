@@ -93,7 +93,11 @@ class BranchRepository {
   /// বিলম্ব জরিমানা, ঐচ্ছিক জমা, কোষাধ্যক্ষ, ব্যাংক তথ্য,
   /// শর্তাবলি। পুরোনো `monthlyDonation` ক্ষেত্র মুছে দেওয়া
   /// হয় — লাইভ ডকুমেন্ট `monthlyDepositAmount` ব্যবহার করে।
-  /// memberCount/balance/permissions এখান থেকে ছোঁয়া হয় না।
+  /// memberCount/balance এখান থেকে ছোঁয়া হয় না। Phase 5
+  /// (F11): সদস্যদের দেখার অনুমতিগুলো (মোট তহবিল, খরচ,
+  /// সদস্য তালিকা) এখন এখান থেকেই বদলানো যায় — আগে
+  /// এগুলো শুধু Firebase Console থেকে বদলাতে হতো, আর
+  /// অ্যাপে কোথাও ব্যবহারই হতো না।
   Future<void> updateBranch({
     required String branchId,
     required String name,
@@ -109,6 +113,9 @@ class BranchRepository {
     BankDetails? bankDetails,
     required List<String> termsAndConditions,
     required String by,
+    bool? canMembersViewTotalFund,
+    bool? canMembersViewExpenses,
+    bool? canMembersViewMemberList,
   }) async {
     if (branchId.isEmpty) return;
     final data = <String, dynamic>{
@@ -125,6 +132,14 @@ class BranchRepository {
       'treasurerUserId': treasurerUserId,
       'termsAndConditions': termsAndConditions,
       'updatedAt': FieldValue.serverTimestamp(),
+      // F11: অনুমতিগুলো permissions ম্যাপের ভেতরে ডট-পথে
+      // লেখা হয় — বাকি permissions ছোঁয়া হয় না।
+      if (canMembersViewTotalFund != null)
+        'permissions.canMembersViewTotalFund': canMembersViewTotalFund,
+      if (canMembersViewExpenses != null)
+        'permissions.canMembersViewExpenses': canMembersViewExpenses,
+      if (canMembersViewMemberList != null)
+        'permissions.canMembersViewMemberList': canMembersViewMemberList,
     };
     if (bankDetails == null || bankDetails.isEmpty) {
       data['bankDetails'] = FieldValue.delete();

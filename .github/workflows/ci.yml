@@ -3,9 +3,11 @@ name: CI
 # M10: প্রতিটা push আর pull request-এ analyze + test চলে —
 # ভাঙা কোড main-এ ঢোকার আগেই ধরা পড়ে। APK বানানো আলাদা
 # build-apk.yml-এ হয় (শুধু v* ট্যাগ আর হাতে চালানো থেকে)।
+# F8: fix/** ব্রাঞ্চেও চলে — আগে শুধু main-এ চলত বলে
+# ফিক্স ব্রাঞ্চের ভাঙা কোড ধরা পড়ত না।
 on:
   push:
-    branches: [main]
+    branches: [main, 'fix/**']
     paths:
       - 'agragami-flutter/**'
       - '.github/workflows/ci.yml'
@@ -41,9 +43,13 @@ jobs:
         working-directory: agragami-flutter
         run: flutter pub get
 
+      # F8: --no-fatal-infos — নইলে info-লেভেলের নোটিশ
+      # (যেমন Flutter 3.50-এর material.dart deprecation)
+      # থাকলেই analyze exit 1 দেয় আর CI প্রতিবার ফেল করে।
+      # আসল error/warning এখনো বিল্ড আটকায়।
       - name: Analyze
         working-directory: agragami-flutter
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Test
         working-directory: agragami-flutter

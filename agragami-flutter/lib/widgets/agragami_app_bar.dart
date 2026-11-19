@@ -111,8 +111,8 @@ class AgragamiAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       ),
                       onTap: () {
                         Navigator.pop(ctx);
-                        if (item.route != null) {
-                          context.go(item.route!);
+                        if (item.routeName != null) {
+                          context.goNamed(item.routeName!);
                         }
                       },
                     );

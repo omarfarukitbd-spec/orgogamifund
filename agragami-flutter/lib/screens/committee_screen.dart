@@ -98,7 +98,10 @@ class CommitteeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final committeeAsync = ref.watch(committeeStreamProvider);
     final userAsync = ref.watch(currentUserProvider);
-    final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+    // F6: কমিটি বদলানো শুধু সুপার অ্যাডমিনের কাজ (rules:
+    // committee write শুধু সুপার অ্যাডমিন) — শাখা অ্যাডমিন
+    // যোগ/বদল/সরানোর বোতাম দেখে না।
+    final isSuperAdmin = userAsync.valueOrNull?.isSuperAdmin ?? false;
     final branchesAsync = ref.watch(branchesStreamProvider);
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
     if (committeeAsync.isLoading) {
@@ -139,7 +142,7 @@ class CommitteeScreen extends ConsumerWidget {
             style: TextStyle(fontSize: 14.5, color: Colors.grey),
           ),
           const SizedBox(height: 16),
-          if (isAdmin) ...[
+          if (isSuperAdmin) ...[
             ElevatedButton.icon(
               onPressed: () => _openForm(context, branches),
               icon: const Icon(Icons.add_outlined),
@@ -210,7 +213,7 @@ class CommitteeScreen extends ConsumerWidget {
                               const Icon(Icons.call_outlined, color: Colors.green),
                           ],
                         ),
-                        if (isAdmin)
+                        if (isSuperAdmin)
                           Row(
                             children: [
                               TextButton.icon(

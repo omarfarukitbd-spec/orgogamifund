@@ -151,7 +151,8 @@ class AppStrings {
 
   // সমিতি
   static String get samitiList => _s('সমিতিসমূহ', 'Somithis');
-  static String get monthlyDonation => _s('মাসিক দান', 'Monthly Deposit');
+  // F32: "দান" নয় — এটা সদস্যের মাসিক জমা।
+  static String get monthlyDonation => _s('মাসিক জমা', 'Monthly Deposit');
   static String get createSamiti => _s('নতুন সমিতি খুলুন', 'Create Somithi');
   static String get samitiEmptyTitle =>
       _s('এখনো কোনো সমিতি তৈরি হয়নি', 'No Somithi created yet');

@@ -111,7 +111,10 @@ class MemberApplication {
   }
 
   /// অনুমোদনের সময় members কালেকশনে বসানোর মতো রেকর্ড।
-  Map<String, dynamic> toMemberMap() {
+  /// অনুমোদনের সময় সদস্য ডকুমেন্টের ম্যাপ। [memberNumber] —
+  /// সমিতি-ভিত্তিক ক্রমিক সদস্য নম্বর (F15) — অনুমোদনকারী
+  /// ট্রানজ্যাকশন ঠিক করে দেয়; না দিলে ক্ষেত্রটা লেখা হয় না।
+  Map<String, dynamic> toMemberMap({int? memberNumber}) {
     return {
       'name': name,
       'phone': phone,
@@ -127,6 +130,7 @@ class MemberApplication {
       },
       'linkedUserId': applicantUid,
       'status': 'active',
+      if (memberNumber != null) 'memberNumber': memberNumber,
     };
   }
 

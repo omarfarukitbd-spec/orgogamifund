@@ -18,14 +18,23 @@ class PassbookLedger extends ConsumerStatefulWidget {
   final List<Payment> payments;
   final String memberName;
   final String branchName;
+
+  /// মানুষের পড়ার মতো সদস্য নম্বর (F15) — ভাউচারে দেখানো হয়।
+  final String? memberNumber;
   final bool isAdmin;
+
+  /// সুপার অ্যাডমিন কি না — "মুছুন" শুধু সুপার অ্যাডমিন
+  /// দেখে (F6); "বদলান" সব অ্যাডমিন দেখে।
+  final bool isSuperAdmin;
 
   const PassbookLedger({
     super.key,
     required this.payments,
     required this.memberName,
     required this.branchName,
+    this.memberNumber,
     this.isAdmin = false,
+    this.isSuperAdmin = false,
   });
 
   @override
@@ -85,6 +94,7 @@ class _PassbookLedgerState extends ConsumerState<PassbookLedger> {
       payment: p,
       memberName: widget.memberName,
       branchName: widget.branchName,
+      memberNumber: widget.memberNumber,
     );
 
     showModalBottomSheet(
@@ -157,6 +167,7 @@ class _PassbookLedgerState extends ConsumerState<PassbookLedger> {
               ),
             ),
             // M9: অ্যাডমিন ভাউচার থেকেই জমা বদলাতে/মুছতে পারে।
+            // F6: "মুছুন" শুধু সুপার অ্যাডমিন দেখে।
             if (widget.isAdmin) ...[
               const SizedBox(height: 10),
               Row(
@@ -177,28 +188,30 @@ class _PassbookLedgerState extends ConsumerState<PassbookLedger> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _deletePayment(p);
-                      },
-                      icon: const Icon(
-                        Icons.delete_outlined,
-                        size: 18,
-                        color: AppColors.danger,
-                      ),
-                      label: const Text(
-                        'মুছুন',
-                        style: TextStyle(color: AppColors.danger),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                        side: const BorderSide(color: AppColors.danger),
+                  if (widget.isSuperAdmin) ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _deletePayment(p);
+                        },
+                        icon: const Icon(
+                          Icons.delete_outlined,
+                          size: 18,
+                          color: AppColors.danger,
+                        ),
+                        label: const Text(
+                          'মুছুন',
+                          style: TextStyle(color: AppColors.danger),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          side: const BorderSide(color: AppColors.danger),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ],

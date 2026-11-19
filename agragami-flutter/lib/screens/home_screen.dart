@@ -28,21 +28,29 @@ class HomeScreen extends ConsumerWidget {
     final memberships = membershipsAsync.valueOrNull ?? const <Membership>[];
     final myBranchIds = approvedBranchIds(memberships);
     final isAdmin = user?.isAdmin ?? false;
+    final isSuperAdmin = user?.isSuperAdmin ?? false;
     final isMember = myBranchIds.isNotEmpty;
 
-    // মোট হিসাব: অ্যাডমিন সব সমিতি দেখে, সদস্য শুধু তার
-    // অনুমোদিত সমিতিগুলো — ফিল্টার ছাড়া পড়লে নিয়মে বাধা পায়।
+    // মোট হিসাব: সুপার অ্যাডমিন সব সমিতি দেখে, শাখা
+    // অ্যাডমিন শুধু নিজের সমিতি, সদস্য শুধু তার অনুমোদিত
+    // সমিতিগুলো — ফিল্টার ছাড়া পড়লে নিয়মে বাধা পায়।
     // অতিথির (কোনো সমিতির সদস্য নয়) জন্য হিসাব পড়া হয় না।
-    final totalsKey = isAdmin
+    final isBranchAdmin = isAdmin && !isSuperAdmin;
+    final totalsKey = isSuperAdmin
         ? ''
-        : myBranchIds.isEmpty
-            ? null
-            : (myBranchIds.toList()..sort()).join('|');
+        : isBranchAdmin
+            ? user!.branchId
+            : myBranchIds.isEmpty
+                ? null
+                : (myBranchIds.toList()..sort()).join('|');
     final totalsAsync = totalsKey == null
         ? const AsyncValue<HomeTotals>.data(HomeTotals())
         : ref.watch(homeTotalsForBranchesProvider(totalsKey));
     final totals = totalsAsync.valueOrNull;
     final totalsFailed = totalsKey != null && totalsAsync.hasError;
+    // Phase 5 (02-M2): কিছু সমিতির হিসাব না এলে আংশিক
+    // হিসাব দেখানো হয় — সাথে জানিয়ে দেওয়া হয়।
+    final totalsPartial = totals != null && !totals.isComplete;
 
     final fundTotal = totals == null || totalsKey == null
         ? '৳ —'
@@ -103,7 +111,9 @@ class HomeScreen extends ConsumerWidget {
                   value: fundTotal,
                   note: totalsFailed
                       ? 'তথ্য আনা যায়নি'
-                      : 'তহবিলের বর্তমান স্থিতি',
+                      : totalsPartial
+                          ? 'কিছু সমিতির হিসাব আসেনি'
+                          : 'তহবিলের বর্তমান স্থিতি',
                 ),
               ),
               const SizedBox(width: 12),
@@ -112,12 +122,21 @@ class HomeScreen extends ConsumerWidget {
                   icon: Icons.groups_outlined,
                   label: 'মোট সদস্য',
                   value: memberCountStr,
-                  note: 'সক্রিয় নিবন্ধিত সদস্য',
+                  note: totalsPartial
+                      ? 'কিছু সমিতির হিসাব আসেনি'
+                      : 'সক্রিয় নিবন্ধিত সদস্য',
                   isGold: true,
                 ),
               ),
             ],
           ),
+          if (totalsPartial) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'কিছু সমিতির হিসাব আনা যায়নি — এখানে শুধু পাওয়া হিসাব দেখানো হচ্ছে।',
+              style: TextStyle(fontSize: 13, color: AppColors.muted),
+            ),
+          ],
           const SizedBox(height: 12),
 
           // ২টি কুইক অ্যাকশন কার্ড (আমার পাসবই ও আইডি কার্ড)
@@ -128,7 +147,7 @@ class HomeScreen extends ConsumerWidget {
                   icon: Icons.book_outlined,
                   title: 'আমার পাসবই',
                   subtitle: '১২ মাসের ছক ও লেনদেন',
-                  onTap: () => context.go('/passbook'),
+                  onTap: () => context.goNamed('passbook'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -138,7 +157,7 @@ class HomeScreen extends ConsumerWidget {
                   title: 'আইডি কার্ড',
                   subtitle: 'PNG ডাউনলোড করা যাবে',
                   isGold: true,
-                  onTap: () => context.go('/id-card'),
+                  onTap: () => context.goNamed('idCard'),
                 ),
               ),
             ],
@@ -151,7 +170,7 @@ class HomeScreen extends ConsumerWidget {
               icon: Icons.fact_check_outlined,
               iconColor: AppColors.green,
               title: 'অনুমোদন কেন্দ্র — বাকি কাজগুলো এক জায়গায় দেখুন',
-              onTap: () => context.go('/approval'),
+              onTap: () => context.goNamed('approval'),
             ),
             const SizedBox(height: 10),
           ],
@@ -159,14 +178,15 @@ class HomeScreen extends ConsumerWidget {
             icon: Icons.campaign_outlined,
             iconColor: AppColors.goldDark,
             title: 'নোটিশ বোর্ড — সর্বশেষ ঘোষণা দেখুন',
-            onTap: () => context.go('/notices'),
+            onTap: () => context.goNamed('notices'),
           ),
 
           // সাম্প্রতিক লেনদেন সেকশন
           const SectionTitle('সাম্প্রতিক লেনদেন'),
           _RecentTransactionsCard(
             myBranchIds: myBranchIds,
-            isAdmin: isAdmin,
+            isSuperAdmin: isSuperAdmin,
+            adminBranchId: isBranchAdmin ? user?.branchId : null,
           ),
 
           // সদস্য না হলে আবেদনের ব্যানার
@@ -194,14 +214,14 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 10),
             PrimaryButton(
               label: AppStrings.viewSamitis,
-              onPressed: () => context.go('/samiti'),
+              onPressed: () => context.goNamed('samiti'),
               icon: Icons.groups_outlined,
             ),
             const SizedBox(height: 16),
             const PublicSamitiListSection(),
           ] else if (isMember) ...[
             const SizedBox(height: 16),
-            MySamitiTotalsSection(branchIds: myBranchIds),
+            MySamitiTotalsSection(branchIds: myBranchIds, isAdmin: isAdmin),
           ],
 
           // দরকারি পাতা সেকশন
@@ -215,23 +235,33 @@ class HomeScreen extends ConsumerWidget {
 }
 
 /// সাম্প্রতিক লেনদেন কার্ড — সাম্প্রতিক ২টি জমা আর ২টি খরচ।
-/// টপ-লেভেল প্রোভাইডার থেকে আসে; অ্যাডমিন সব সমিতি দেখে,
-/// সদস্য শুধু তার অনুমোদিত সমিতিগুলো।
+/// টপ-লেভেল প্রোভাইডার থেকে আসে; সুপার অ্যাডমিন সব সমিতি
+/// দেখে, শাখা অ্যাডমিন শুধু নিজের সমিতি, সদস্য শুধু তার
+/// অনুমোদিত সমিতিগুলো।
 class _RecentTransactionsCard extends ConsumerWidget {
   final List<String> myBranchIds;
-  final bool isAdmin;
+  final bool isSuperAdmin;
+
+  /// শাখা অ্যাডমিনের নিজের সমিতি (সুপার অ্যাডমিন/সদস্যের
+  /// ক্ষেত্রে null)।
+  final String? adminBranchId;
 
   const _RecentTransactionsCard({
     required this.myBranchIds,
-    required this.isAdmin,
+    required this.isSuperAdmin,
+    this.adminBranchId,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final key = isAdmin
+    final key = isSuperAdmin
         ? ''
-        : (myBranchIds.toList()..sort()).join('|');
-    final txnsAsync = (!isAdmin && myBranchIds.isEmpty)
+        : adminBranchId != null
+            ? adminBranchId!
+            : (myBranchIds.toList()..sort()).join('|');
+    final noScope =
+        !isSuperAdmin && adminBranchId == null && myBranchIds.isEmpty;
+    final txnsAsync = noScope
         ? const AsyncValue<RecentTransactions>.data(
             RecentTransactions(payments: [], expenses: []),
           )

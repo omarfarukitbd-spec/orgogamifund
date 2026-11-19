@@ -55,6 +55,8 @@ class _EditProfileDialogState extends ConsumerState<EditProfileDialog> {
         const SnackBar(content: Text('নাম বদলানো হয়েছে')),
       );
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,

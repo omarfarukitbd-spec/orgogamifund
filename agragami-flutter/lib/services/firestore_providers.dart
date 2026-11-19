@@ -60,6 +60,16 @@ final membersByBranchProvider =
   return service.watchMembers(branchId: branchId.isEmpty ? null : branchId);
 });
 
+/// সমিতি অনুযায়ী সক্রিয় সদস্যদের শেয়ার্ড লাইভ স্ট্রিম
+/// (F3) — সদস্য-মুখী তালিকায় (সদস্য তালিকা, বকেয়া, ঋণ)
+/// এই প্রোভাইডার ব্যবহার করা হয়, কারণ rules সদস্যদের
+/// শুধু status == 'active' ডকুমেন্ট পড়তে দেয়।
+final activeMembersByBranchProvider =
+    StreamProvider.autoDispose.family<List<Member>, String>((ref, branchId) {
+  final service = ref.watch(firestoreServiceProvider);
+  return service.watchActiveMembers(branchId: branchId.isEmpty ? null : branchId);
+});
+
 /// একজন সদস্যের রেকর্ডের লাইভ স্ট্রিম — পাসবইয়ের জন্য।
 final memberStreamProvider =
     StreamProvider.autoDispose.family<Member?, String>((ref, memberId) {
@@ -96,11 +106,15 @@ final pendingApplicationsProvider = StreamProvider.autoDispose
   return service.watchPendingApplications(branchId: branchId);
 });
 
-/// অপেক্ষমাণ জমার শেয়ার্ড লাইভ স্ট্রিম
-final pendingPaymentsProvider =
-    StreamProvider.autoDispose<List<Payment>>((ref) {
+/// অপেক্ষমাণ জমার শেয়ার্ড লাইভ স্ট্রিম (F5)।
+/// সমিতি অনুযায়ী ফিল্টার করা যায় — branchId null মানে সব
+/// সমিতি (শুধু সুপার অ্যাডমিন)। শাখা অ্যাডমিন সবসময়
+/// নিজের সমিতির id পাঠায় — ফিল্টার ছাড়া পড়লে নিয়মে
+/// (rules) বাধা পায়।
+final pendingPaymentsProvider = StreamProvider.autoDispose
+    .family<List<Payment>, String?>((ref, branchId) {
   final service = ref.watch(firestoreServiceProvider);
-  return service.watchPendingPayments();
+  return service.watchPendingPayments(branchId: branchId);
 });
 
 /// একজন সদস্যের সমস্ত জমার লাইভ স্ট্রিম — পাসবইয়ের জন্য।
@@ -248,15 +262,25 @@ class HomeTotals {
   final int activeMembers;
   final int loansOutstanding;
 
+  /// যে সমিতিগুলোর হিসাব আনা যায়নি (অনুমতি নেই বা নেটওয়ার্ক
+  /// সমস্যা) — Phase 5 (02-M2): একটা সমিতি ব্যর্থ হলে বাকিগুলোর
+  /// হিসাবও হারিয়ে যেত; এখন আংশিক হিসাব দেখানো হয় আর এই
+  /// তালিকা দিয়ে UI-তে "কিছু সমিতির হিসাব দেখা যায়নি" লেখা হয়।
+  final List<String> failedBranchIds;
+
   const HomeTotals({
     this.approvedTotal = 0,
     this.expenseTotal = 0,
     this.activeMembers = 0,
     this.loansOutstanding = 0,
+    this.failedBranchIds = const [],
   });
 
   /// তহবিলে আছে — অনুমোদিত জমা থেকে খরচ আর বকেয়া ঋণ বাদে।
   int get fund => approvedTotal - expenseTotal - loansOutstanding;
+
+  /// সব সমিতির হিসাব এসেছে কি না।
+  bool get isComplete => failedBranchIds.isEmpty;
 }
 
 /// এক মাসের হিসাব — রিপোর্ট, PDF আর CSV একই ফাংশন থেকে নেয়।

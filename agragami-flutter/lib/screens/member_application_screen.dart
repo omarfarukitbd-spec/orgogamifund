@@ -9,6 +9,7 @@ import '../l10n/app_strings.dart';
 import '../routes/app_router.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/firebase_errors.dart';
 import '../widgets/app_button.dart';
@@ -118,6 +119,8 @@ class _MemberApplicationScreenState
         }
       });
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,
@@ -125,6 +128,22 @@ class _MemberApplicationScreenState
         ),
       );
     }
+  }
+
+  /// ছবি সরানো (Phase 5: ছবি ব্যর্থ হলে এড়ানোর পথ) —
+  /// বাছা ছবি মুছে ফেলা যায়, যাতে ছবি ছাড়াই আবেদন
+  /// জমা দেওয়া যায়।
+  void _removePhoto(PhotoKind kind) {
+    setState(() {
+      switch (kind) {
+        case PhotoKind.photo:
+          _photoBytes = null;
+        case PhotoKind.nidFront:
+          _nidFrontBytes = null;
+        case PhotoKind.nidBack:
+          _nidBackBytes = null;
+      }
+    });
   }
 
   /// অ্যাকাউন্ট ধাপ: ইমেইল-পাসওয়ার্ডে অ্যাকাউন্ট খোলা।
@@ -163,8 +182,11 @@ class _MemberApplicationScreenState
         _step = _infoStep;
       });
     } on FirebaseAuthException catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(() => _error = bengaliAuthErrorMessage(e));
     } catch (e) {
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,
@@ -190,49 +212,100 @@ class _MemberApplicationScreenState
       _error = null;
     });
     try {
-      await ApplicationSubmitHandler.submit(
-        store: ref.read(firestoreServiceProvider),
-        name: _name.text.trim(),
-        phone: _phone.text.trim(),
-        address: _address.text.trim(),
-        emergencyName: _emergencyName.text.trim(),
-        emergencyPhone: _emergencyPhone.text.trim(),
-        branchId: branchId,
-        joinDate: _joinDate,
-        nid: _nid.text.trim(),
-        photoBytes: _photoBytes,
-        nidFrontBytes: _nidFrontBytes,
-        nidBackBytes: _nidBackBytes,
-      );
+      await _submitOnce(branchId: branchId, withPhotos: true);
+    } on UploadFailedException catch (_) {
+      // Phase 5 (ছবি ব্যর্থ হলে এড়ানোর পথ): ছবি আপলোড
+      // না হলে আবেদন আটকে থাকে না — খরচ/নোটিশের মতো
+      // "ছবি ছাড়াই জমা দিন" বেছে নেওয়া যায়। আপলোড
+      // লেখার আগে হয়, তাই ব্যর্থতায় কিছু লেখা হয়নি —
+      // ছবি ছাড়া আবার জমা দেওয়া নিরাপদ।
       if (!mounted) return;
-      // ছবি দিয়েও Cloudinary সেট করা না থাকলে ছবি জমা হয়নি —
-      // ব্যবহারকারীকে জানিয়ে দিই, আবেদন তবুও জমা হয়েছে।
-      final photosSkipped = (_photoBytes != null ||
-              _nidFrontBytes != null ||
-              _nidBackBytes != null) &&
-          !CloudinaryConfig.isConfigured;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            photosSkipped
-                ? 'আবেদন জমা হয়েছে — তবে ছবি আপলোড হয়নি, কারণ ছবি আপলোড এখনো সেট করা হয়নি'
-                : 'আবেদন জমা হয়েছে — অ্যাডমিন দেখছেন',
+      final submitWithout = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('ছবি আপলোড হয়নি'),
+          content: const Text(
+            'ছবিগুলো আপলোড করা যায়নি। ছবি ছাড়াই আবেদন জমা দেবেন?',
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('বাতিল'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('ছবি ছাড়াই জমা দিন'),
+            ),
+          ],
         ),
       );
-      context.go('/pending');
+      if (submitWithout != true) {
+        if (!mounted) return;
+        setState(() => _error = 'ছবি আপলোড হয়নি — আবার চেষ্টা করুন');
+        return;
+      }
+      try {
+        await _submitOnce(branchId: branchId, withPhotos: false);
+      } catch (e) {
+        if (!mounted) return;
+        _showSubmitError(e);
+      }
     } catch (e) {
-      final err = e is Exception
-          ? e.toString().replaceAll('Exception: ', '')
-          : firebaseErrorMessage(e, fallback: 'আবেদন জমা হয়নি — আবার চেষ্টা করুন');
       if (!mounted) return;
-      setState(() => _error = err);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(err)),
-      );
+      _showSubmitError(e);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// একবার জমা দেওয়ার চেষ্টা। সফল হলে স্ন্যাকবার দেখিয়ে
+  /// অপেক্ষার পাতায় পাঠানো হয়।
+  Future<void> _submitOnce({
+    required String branchId,
+    required bool withPhotos,
+  }) async {
+    await ApplicationSubmitHandler.submit(
+      store: ref.read(firestoreServiceProvider),
+      name: _name.text.trim(),
+      phone: _phone.text.trim(),
+      address: _address.text.trim(),
+      emergencyName: _emergencyName.text.trim(),
+      emergencyPhone: _emergencyPhone.text.trim(),
+      branchId: branchId,
+      joinDate: _joinDate,
+      nid: _nid.text.trim(),
+      photoBytes: withPhotos ? _photoBytes : null,
+      nidFrontBytes: withPhotos ? _nidFrontBytes : null,
+      nidBackBytes: withPhotos ? _nidBackBytes : null,
+    );
+    if (!mounted) return;
+    // ছবি দিয়েও Cloudinary সেট করা না থাকলে ছবি জমা হয়নি —
+    // ব্যবহারকারীকে জানিয়ে দিই, আবেদন তবুও জমা হয়েছে।
+    final photosSkipped = withPhotos &&
+        (_photoBytes != null ||
+            _nidFrontBytes != null ||
+            _nidBackBytes != null) &&
+        !CloudinaryConfig.isConfigured;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          photosSkipped
+              ? 'আবেদন জমা হয়েছে — তবে ছবি আপলোড হয়নি, কারণ ছবি আপলোড এখনো সেট করা হয়নি'
+              : 'আবেদন জমা হয়েছে — অ্যাডমিন দেখছেন',
+        ),
+      ),
+    );
+    context.goNamed('pending');
+  }
+
+  void _showSubmitError(Object e) {
+    final err = e is Exception
+        ? e.toString().replaceAll('Exception: ', '')
+        : firebaseErrorMessage(e, fallback: 'আবেদন জমা হয়নি — আবার চেষ্টা করুন');
+    setState(() => _error = err);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(err)),
+    );
   }
 
   void _next() {
@@ -282,7 +355,7 @@ class _MemberApplicationScreenState
         if (context.canPop()) {
           context.pop();
         } else {
-          context.go('/samiti');
+          context.goNamed('samiti');
         }
       }
     }
@@ -354,6 +427,7 @@ class _MemberApplicationScreenState
                 nidFrontBytes: _nidFrontBytes,
                 nidBackBytes: _nidBackBytes,
                 onPickPhoto: _pickPhoto,
+                onRemovePhoto: _removePhoto,
               ),
             if (isReview)
               ApplicationReviewStep(

@@ -68,13 +68,29 @@ class BnDigitsOnlyFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    final converted = convertDigitsToAscii(newValue.text).replaceAll(
-      RegExp(r'[^0-9]'),
-      '',
-    );
+    final converted = convertDigitsToAscii(newValue.text);
+    // F19: কার্সর ধরে রাখা — অঙ্ক বদল ১:১, কিন্তু বাদ
+    // পড়া অক্ষর কার্সর সরিয়ে দেয়। কার্সরের আগের অক্ষর
+    // গুনে কতটা অঙ্ক টিকেছে, সেটাই নতুন অবস্থান।
+    int mapOffset(int offset) {
+      var kept = 0;
+      final limit = offset.clamp(0, converted.length);
+      for (var i = 0; i < limit; i++) {
+        final code = converted.codeUnitAt(i);
+        if (code >= 0x30 && code <= 0x39) kept++;
+      }
+      return kept;
+    }
+
+    final digitsOnly = converted.replaceAll(RegExp(r'[^0-9]'), '');
+    final selection = newValue.selection;
     return TextEditingValue(
-      text: converted,
-      selection: TextSelection.collapsed(offset: converted.length),
+      text: digitsOnly,
+      selection: TextSelection(
+        baseOffset: mapOffset(selection.baseOffset),
+        extentOffset: mapOffset(selection.extentOffset),
+      ),
+      composing: TextRange.empty,
     );
   }
 }

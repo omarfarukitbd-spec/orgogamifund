@@ -105,7 +105,8 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
         ),
       );
     }
-    final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+    final user = userAsync.valueOrNull;
+    final isAdmin = user?.isAdmin ?? false;
     if (!isAdmin) {
       return Scaffold(
         body: EmptyState(
@@ -115,10 +116,16 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
         ),
       );
     }
+    // Phase 5 (F5): শাখা অ্যাডমিন শুধু নিজের সমিতির
+    // অপেক্ষমাণ কাজ দেখে — ফিল্টার ছাড়া পড়লে নিয়মে
+    // (rules) বাধা পায়। সুপার অ্যাডমিন "সব সমিতি" দেখতে পারে।
+    final isBranchAdmin = isAdmin && !(user?.isSuperAdmin ?? false);
+    final effectiveFilter = isBranchAdmin ? user!.branchId : _branchFilter;
     // M4: টপ-লেভেল family প্রোভাইডার — build()-এর ভেতরে নতুন
     // প্রোভাইডার বানানো হয় না, rebuild-এ স্ট্রিম বাঁচে।
-    final applications = ref.watch(pendingApplicationsProvider(_branchFilter));
-    final payments = ref.watch(pendingPaymentsProvider);
+    final applications =
+        ref.watch(pendingApplicationsProvider(effectiveFilter));
+    final payments = ref.watch(pendingPaymentsProvider(effectiveFilter));
     final branchesAsync = ref.watch(branchesStreamProvider);
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
 
@@ -131,7 +138,7 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
           actions: [
             IconButton(
               tooltip: AppStrings.navPaymentMethods,
-              onPressed: () => context.go('/payment-methods'),
+              onPressed: () => context.goNamed('paymentMethods'),
               icon: const Icon(Icons.account_balance_outlined),
             ),
           ],
@@ -148,8 +155,11 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
             PendingApplicationsTab(
               applicationsAsync: applications,
               branches: branches,
-              branchFilter: _branchFilter,
+              branchFilter: effectiveFilter,
+              isBranchAdmin: isBranchAdmin,
               onFilterChanged: (v) => setState(() => _branchFilter = v),
+              onRetry: () =>
+                  ref.invalidate(pendingApplicationsProvider(effectiveFilter)),
               reviewer: reviewer,
               store: store,
               onRun: _run,
@@ -157,6 +167,13 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
             ),
             PendingPaymentsTab(
               paymentsAsync: payments,
+              branches: branches,
+              branchFilter: effectiveFilter,
+              isBranchAdmin: isBranchAdmin,
+              isSuperAdmin: user?.isSuperAdmin ?? false,
+              onFilterChanged: (v) => setState(() => _branchFilter = v),
+              onRetry: () =>
+                  ref.invalidate(pendingPaymentsProvider(effectiveFilter)),
               reviewer: reviewer,
               store: store,
               onRun: _run,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../models/branch.dart';
 import '../models/loan.dart';
 import '../models/member.dart';
+import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../utils/bn_digits.dart';
 import '../utils/firebase_errors.dart';
@@ -50,6 +51,14 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
     if (picked != null) setState(() => _date = picked);
   }
 
+  /// F16: কার্যকর সমিতি — শাখা অ্যাডমিনের ক্ষেত্রে নিজের
+  /// সমিতি, অন্যদের ক্ষেত্রে ড্রপডাউনে বাছা সমিতি।
+  String? _effectiveBranchId() {
+    final user = ref.read(currentUserProvider).valueOrNull;
+    if (user != null && user.isBranchAdmin) return user.branchId;
+    return _branchId;
+  }
+
   Future<void> _submit() async {
     final amount = parseAmount(_amount.text);
     final installment = _installment.text.trim().isEmpty
@@ -57,7 +66,8 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
         : parseAmount(_installment.text);
     final months =
         _months.text.trim().isEmpty ? null : parseAmount(_months.text);
-    if (_branchId == null) {
+    final branchId = _effectiveBranchId();
+    if (branchId == null) {
       setState(() => _error = 'কোন সমিতি থেকে ঋণ দিচ্ছেন, বেছে নিন');
       return;
     }
@@ -89,7 +99,7 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
       final loan = Loan(
         id: '',
         memberId: _memberId!,
-        branchId: _branchId!,
+        branchId: branchId,
         amount: amount,
         dateIssued: _date,
         reason: _reason.text.trim(),
@@ -103,8 +113,10 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('ঋণ দেওয়া হয়েছে')),
       );
-      context.go('/loans');
+      context.goNamed('loans');
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,
@@ -119,8 +131,18 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
   @override
   Widget build(BuildContext context) {
     final branchesAsync = ref.watch(branchesStreamProvider);
-    final membersAsync = ref.watch(membersByBranchProvider(_branchId ?? ''));
+    final user = ref.watch(currentUserProvider).valueOrNull;
+    // F16: শাখা অ্যাডমিন শুধু নিজের সমিতি দেখে — অন্য
+    // সমিতির ড্রপডাউন আইটেম দেখানো হয় না।
+    final isBranchAdmin = user != null && user.isBranchAdmin;
+    final effectiveBranchId =
+        isBranchAdmin ? user.branchId : _branchId;
+    final membersAsync =
+        ref.watch(activeMembersByBranchProvider(effectiveBranchId ?? ''));
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
+    final visibleBranches = isBranchAdmin
+        ? branches.where((b) => b.id == user.branchId).toList()
+        : branches;
     final members = membersAsync.valueOrNull ?? const <Member>[];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -132,27 +154,35 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
             style: TextStyle(fontSize: 14.5, color: Colors.grey),
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: _branchId,
-            decoration: const InputDecoration(
-              labelText: 'কোন সমিতি',
-              prefixIcon: Icon(Icons.groups_outlined),
+          if (isBranchAdmin && user.branchId == null)
+            const Text(
+              'আপনার কোনো সমিতি বাঁধা নেই — সুপার অ্যাডমিনকে জানান',
+              style: TextStyle(fontSize: 14, color: Colors.red),
+            )
+          else
+            DropdownButtonFormField<String>(
+              initialValue: effectiveBranchId,
+              decoration: const InputDecoration(
+                labelText: 'কোন সমিতি',
+                prefixIcon: Icon(Icons.groups_outlined),
+              ),
+              items: visibleBranches
+                  .map((b) => DropdownMenuItem(value: b.id, child: Text(b.name)))
+                  .toList(),
+              onChanged: isBranchAdmin
+                  ? null
+                  : (v) => setState(() {
+                        _branchId = v;
+                        _memberId = null;
+                      }),
             ),
-            items: branches
-                .map((b) => DropdownMenuItem(value: b.id, child: Text(b.name)))
-                .toList(),
-            onChanged: (v) => setState(() {
-              _branchId = v;
-              _memberId = null;
-            }),
-          ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _memberId,
             decoration: InputDecoration(
               labelText: 'কাকে ঋণ দিচ্ছেন',
               prefixIcon: const Icon(Icons.person_outlined),
-              hintText: _branchId == null ? 'আগে সমিতি বেছে নিন' : null,
+              hintText: effectiveBranchId == null ? 'আগে সমিতি বেছে নিন' : null,
             ),
             items: members
                 .map((m) => DropdownMenuItem(value: m.id, child: Text(m.name)))
@@ -160,13 +190,13 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
             // m8: সমিতি না বাছলে সদস্যের ড্রপডাউন বন্ধ — নইলে
             // সব সমিতির সদস্য দেখাত, আর সমিতি বাছলে বাছাই
             // মুছে যেত।
-            onChanged: _branchId == null
+            onChanged: effectiveBranchId == null
                 ? null
                 : (v) => setState(() => _memberId = v),
           ),
           // M14: সমিতিতে সদস্য না থাকলে খালি ড্রপডাউনের
           // বদলে বোঝার মতো বার্তা।
-          if (_branchId != null && members.isEmpty) ...[
+          if (effectiveBranchId != null && members.isEmpty) ...[
             const SizedBox(height: 6),
             const Text(
               'এই সমিতিতে এখনো কোনো সদস্য নেই — আগে সদস্য অনুমোদন করুন',

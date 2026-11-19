@@ -10,14 +10,22 @@ final voucherShareServiceProvider =
 
 /// জমা রসিদ ও ভাউচার হোয়াটসঅ্যাপ এবং এসএমএসে শেয়ার করার সার্ভিস
 class VoucherShareService {
-  /// জমার আনুষ্ঠানিক ভাউচার টেক্সট তৈরি
+  /// জমার আনুষ্ঠানিক ভাউচার টেক্সট তৈরি।
+  /// [memberNumber] — মানুষের পড়ার মতো সদস্য নম্বর (F15);
+  /// না দিলে সদস্য id-এর সংক্ষিপ্ত রূপ দেখানো হয়, কখনো
+  /// পুরো ২০-অক্ষরের id নয়।
   String formatPaymentVoucherText({
     required Payment payment,
     required String memberName,
     required String branchName,
+    String? memberNumber,
   }) {
     final isBn = AppStrings.isBangla;
     final sb = StringBuffer();
+    final displayNo = memberNumber ??
+        (payment.memberId.length > 6
+            ? payment.memberId.substring(0, 6)
+            : payment.memberId);
 
     sb.writeln(isBn
         ? 'অগ্রগামী ফান্ড সমিতি — জমা নিশ্চিতকরণ রসিদ'
@@ -25,7 +33,7 @@ class VoucherShareService {
     sb.writeln('----------------------------------------');
     sb.writeln('${isBn ? "সমিতি" : "Somithi"}: $branchName');
     sb.writeln('${isBn ? "সদস্যের নাম" : "Member Name"}: $memberName');
-    sb.writeln('${isBn ? "সদস্য নম্বর" : "Member ID"}: ${payment.memberId}');
+    sb.writeln('${isBn ? "সদস্য নম্বর" : "Member ID"}: $displayNo');
     if (payment.receiptNumber != null && payment.receiptNumber!.isNotEmpty) {
       sb.writeln(
           '${isBn ? "রসিদ নম্বর" : "Receipt No"}: ${payment.receiptNumber}');
@@ -73,28 +81,6 @@ class VoucherShareService {
       }
     } catch (_) {
       // ব্যর্থ হলে সিস্টেম শেয়ার ডায়ালগ প্রদর্শন
-      await Share.share(text);
-      return true;
-    }
-  }
-
-  /// এসএমএস আকারে ভাউচার পাঠানো
-  Future<bool> shareViaSms({
-    required String text,
-    String? phoneNumber,
-  }) async {
-    final cleanPhone = phoneNumber?.replaceAll(RegExp(r'[^0-9+]'), '') ?? '';
-    final encoded = Uri.encodeComponent(text);
-    final uri = Uri.parse('sms:$cleanPhone?body=$encoded');
-
-    try {
-      if (await canLaunchUrl(uri)) {
-        return await launchUrl(uri);
-      } else {
-        await Share.share(text);
-        return true;
-      }
-    } catch (_) {
       await Share.share(text);
       return true;
     }

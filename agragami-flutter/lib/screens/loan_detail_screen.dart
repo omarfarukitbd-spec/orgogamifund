@@ -63,7 +63,7 @@ class LoanDetailScreen extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('ঋণ মুছা হয়েছে')),
       );
-      context.go('/loans');
+      context.goNamed('loans');
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -82,6 +82,8 @@ class LoanDetailScreen extends ConsumerWidget {
     final userAsync = ref.watch(currentUserProvider);
     final membershipsAsync = ref.watch(myMembershipsProvider);
     final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+    // F6: "ঋণ মুছুন" শুধু সুপার অ্যাডমিন দেখে।
+    final isSuperAdmin = userAsync.valueOrNull?.isSuperAdmin ?? false;
     final myBranchIds = approvedBranchIds(
       membershipsAsync.valueOrNull ?? const <Membership>[],
     );
@@ -114,12 +116,15 @@ class LoanDetailScreen extends ConsumerWidget {
         if (!isAdmin && !myBranchIds.contains(loan.branchId)) {
           return NotMemberGate(branchId: loan.branchId);
         }
+        // সদস্যের নাম সক্রিয় সদস্যদের মধ্যে খোঁজা হয় (F3)।
         final membersAsync =
-            ref.watch(membersByBranchProvider(loan.branchId));
+            ref.watch(activeMembersByBranchProvider(loan.branchId));
         final members = membersAsync.valueOrNull ?? const <Member>[];
         final found = members.where((m) => m.id == loan.memberId).toList();
         final name = found.isEmpty ? '—' : found.first.name;
         final isRepaid = loan.status == LoanStatus.repaid;
+        // F31: মেয়াদ পেরোনো কি না পড়ার সময় হিসাব হয়।
+        final isOverdue = loan.isOverdue;
 
         final methodsAsync =
             ref.watch(activePaymentMethodsProvider(loan.branchId));
@@ -147,11 +152,21 @@ class LoanDetailScreen extends ConsumerWidget {
                           ),
                         ),
                         PillTag(
-                          text: isRepaid ? 'পরিশোধিত' : 'চলমান',
-                          backgroundColor:
-                              isRepaid ? AppColors.greenSoft : AppColors.goldSoft,
-                          textColor:
-                              isRepaid ? AppColors.green : AppColors.goldDark,
+                          text: isRepaid
+                              ? 'পরিশোধিত'
+                              : isOverdue
+                                  ? 'মেয়াদ পার'
+                                  : 'চলমান',
+                          backgroundColor: isRepaid
+                              ? AppColors.greenSoft
+                              : isOverdue
+                                  ? AppColors.danger.withValues(alpha: 0.12)
+                                  : AppColors.goldSoft,
+                          textColor: isRepaid
+                              ? AppColors.green
+                              : isOverdue
+                                  ? AppColors.danger
+                                  : AppColors.goldDark,
                         ),
                       ],
                     ),
@@ -216,24 +231,27 @@ class LoanDetailScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.danger,
-                          side: const BorderSide(color: AppColors.danger),
+                    // F6: "ঋণ মুছুন" শুধু সুপার অ্যাডমিন দেখে।
+                    if (isSuperAdmin) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.danger,
+                            side: const BorderSide(color: AppColors.danger),
+                          ),
+                          // কিস্তি জমা আছে এমন ঋণ মুছা যায় না।
+                          onPressed: loan.repayments.isEmpty
+                              ? () => _deleteLoan(context, ref, loan)
+                              : null,
+                          icon: const Icon(Icons.delete_outlined, size: 18),
+                          label: const Text('ঋণ মুছুন'),
                         ),
-                        // কিস্তি জমা আছে এমন ঋণ মুছা যায় না।
-                        onPressed: loan.repayments.isEmpty
-                            ? () => _deleteLoan(context, ref, loan)
-                            : null,
-                        icon: const Icon(Icons.delete_outlined, size: 18),
-                        label: const Text('ঋণ মুছুন'),
                       ),
-                    ),
+                    ],
                   ],
                 ),
-                if (loan.repayments.isNotEmpty) ...[
+                if (isSuperAdmin && loan.repayments.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   const Text(
                     'কিস্তি জমা আছে — এই ঋণ মুছা যাবে না।',

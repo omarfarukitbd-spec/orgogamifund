@@ -40,7 +40,7 @@ class MemberIdCardBack extends StatelessWidget {
                     'জরুরি যোগাযোগ',
                     '${member.emergencyContactName} — ${member.emergencyContactPhone}',
                   ),
-                  _BackLine('সদস্য নম্বর', member.id),
+                  _BackLine('সদস্য নম্বর', member.displayNumber),
                   const SizedBox(height: 8),
                   const Text(
                     'এই কার্ড হারালে অফিসে জানান। কার্ডটি শুধু সদস্যের পরিচয়ের জন্য।',
@@ -85,7 +85,10 @@ class MemberIdCardBack extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  member.id,
+                  // F15: QR-এর নিচে দেখানোর নম্বর — QR নিজে
+                  // ডকুমেন্ট id দিয়ে বানানো থাকে (deep link),
+                  // কিন্তু চোখে দেখা নম্বর মানুষের পড়ার মতো।
+                  member.displayNumber,
                   style: const TextStyle(color: Colors.white70, fontSize: 10),
                 ),
               ],

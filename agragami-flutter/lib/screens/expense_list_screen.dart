@@ -79,7 +79,21 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(currentUserProvider);
-    final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+    final user = userAsync.valueOrNull;
+    final isAdmin = user?.isAdmin ?? false;
+    final isSuperAdmin = user?.isSuperAdmin ?? false;
+    // Phase 5 (F5): শাখা অ্যাডমিন শুধু নিজের সমিতি দেখে —
+    // "সব সমিতি" তার জন্য নেই, ফিল্টার ছাড়া পড়লে নিয়মে
+    // (rules) বাধা পায়।
+    final isBranchAdmin = isAdmin && !isSuperAdmin;
+    if (isBranchAdmin &&
+        (user!.branchId == null || user.branchId!.isEmpty)) {
+      return const EmptyState(
+        icon: Icons.groups_outlined,
+        title: 'আপনার সমিতি ঠিক করা নেই',
+        message: 'সুপার অ্যাডমিনের সাথে যোগাযোগ করুন।',
+      );
+    }
     final membershipsAsync = ref.watch(myMembershipsProvider);
     if (membershipsAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -94,7 +108,11 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
       );
     }
     final memberships = membershipsAsync.valueOrNull ?? const <Membership>[];
-    final allowedIds = isAdmin ? null : approvedBranchIds(memberships);
+    final allowedIds = isSuperAdmin
+        ? null
+        : isBranchAdmin
+            ? <String>[user!.branchId!]
+            : approvedBranchIds(memberships);
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
       return const NotMemberGate();
     }
@@ -106,11 +124,20 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
     // সদস্যের ক্ষেত্রে সমিতি ঠিক করা না থাকলে নিজের প্রথম
     // সমিতিটাই দেখানো হয় — "সব সমিতি" এখানে নেই, কারণ
     // অন্য সমিতির খরচের প্রশ্ন পাঠানোই যাবে না।
-    final effectiveBranchId = isAdmin
+    final effectiveBranchId = isSuperAdmin
         ? _branchId
-        : (_branchId != null && branches.any((b) => b.id == _branchId)
-            ? _branchId
-            : (branches.isEmpty ? null : branches.first.id));
+        : isBranchAdmin
+            ? user!.branchId
+            : (_branchId != null && branches.any((b) => b.id == _branchId)
+                ? _branchId
+                : (branches.isEmpty ? null : branches.first.id));
+    // Phase 5 (F11): সমিতির অ্যাডমিন খরচের তালিকা সদস্যদের
+    // জন্য বন্ধ রাখতে পারে — তখন সদস্য তালিকা দেখে না।
+    final selectedBranch =
+        branches.where((b) => b.id == effectiveBranchId).toList();
+    final expensesHiddenFromMembers = !isAdmin &&
+        selectedBranch.isNotEmpty &&
+        !selectedBranch.first.canMembersViewExpenses;
     final expensesAsync =
         ref.watch(expensesByBranchProvider(effectiveBranchId ?? ''));
     final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
@@ -125,21 +152,38 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DropdownButtonFormField<String>(
-            initialValue: effectiveBranchId,
-            decoration: const InputDecoration(
-              labelText: 'কোন সমিতি',
-              prefixIcon: Icon(Icons.groups_outlined),
-            ),
-            items: [
-              if (isAdmin)
-                const DropdownMenuItem(value: null, child: Text('সব সমিতি')),
-              ...branches.map(
-                (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
+          if (isBranchAdmin)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.groups_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'সমিতি: ${branchName(effectiveBranchId ?? '')}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
               ),
-            ],
-            onChanged: (v) => setState(() => _branchId = v),
-          ),
+            )
+          else
+            DropdownButtonFormField<String>(
+              initialValue: effectiveBranchId,
+              decoration: const InputDecoration(
+                labelText: 'কোন সমিতি',
+                prefixIcon: Icon(Icons.groups_outlined),
+              ),
+              items: [
+                if (isSuperAdmin)
+                  const DropdownMenuItem(value: null, child: Text('সব সমিতি')),
+                ...branches.map(
+                  (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
+                ),
+              ],
+              onChanged: (v) => setState(() => _branchId = v),
+            ),
           const SizedBox(height: 12),
           StatCard(
             icon: Icons.receipt_long_outlined,
@@ -154,12 +198,18 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
           const SizedBox(height: 12),
           if (isAdmin)
             ElevatedButton.icon(
-              onPressed: () => context.go('/expenses/add'),
+              onPressed: () => context.goNamed('addExpense'),
               icon: const Icon(Icons.add_outlined),
               label: Text(AppStrings.addExpense),
             ),
           const SizedBox(height: 16),
-          if (expensesAsync.isLoading)
+          if (expensesHiddenFromMembers)
+            const EmptyState(
+              icon: Icons.visibility_off_outlined,
+              title: 'খরচের তালিকা সদস্যদের জন্য বন্ধ আছে',
+              message: 'এই সমিতির অ্যাডমিন খরচ দেখা বন্ধ রেখেছেন।',
+            )
+          else if (expensesAsync.isLoading)
             const SkeletonCardList()
           else if (expensesAsync.hasError)
             EmptyState(
@@ -234,18 +284,20 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
                               label: const Text('বদলান'),
                             ),
                             const Spacer(),
-                            TextButton.icon(
-                              onPressed: () => _deleteExpense(e),
-                              icon: const Icon(
-                                Icons.delete_outlined,
-                                size: 16,
-                                color: AppColors.danger,
+                            // F6: "মুছুন" শুধু সুপার অ্যাডমিন দেখে।
+                            if (isSuperAdmin)
+                              TextButton.icon(
+                                onPressed: () => _deleteExpense(e),
+                                icon: const Icon(
+                                  Icons.delete_outlined,
+                                  size: 16,
+                                  color: AppColors.danger,
+                                ),
+                                label: const Text(
+                                  'মুছুন',
+                                  style: TextStyle(color: AppColors.danger),
+                                ),
                               ),
-                              label: const Text(
-                                'মুছুন',
-                                style: TextStyle(color: AppColors.danger),
-                              ),
-                            ),
                           ],
                         ),
                     ],

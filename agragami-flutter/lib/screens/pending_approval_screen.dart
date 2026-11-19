@@ -5,6 +5,8 @@ import '../l10n/app_strings.dart';
 import '../models/app_user.dart';
 import '../routes/app_router.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../utils/firebase_errors.dart';
 import '../widgets/app_button.dart';
 
 /// নতুন অ্যাকাউন্ট খোলার পর এই স্ক্রিন দেখাবে।
@@ -25,6 +27,7 @@ class _PendingApprovalScreenState
     extends ConsumerState<PendingApprovalScreen> {
   bool _busy = false;
   bool _refreshing = false;
+  bool _recovering = false;
 
   Future<void> _logout() async {
     if (_busy) return;
@@ -43,6 +46,38 @@ class _PendingApprovalScreenState
       await AppRouter.refreshAuth();
     } finally {
       if (mounted) setState(() => _refreshing = false);
+    }
+  }
+
+  /// F9: অর্ফান অ্যাকাউন্ট উদ্ধার — Firebase-এ ঢুকে আছে
+  /// কিন্তু users ডকুমেন্ট নেই। pending ডকুমেন্ট বানানো
+  /// হয় (অনুমোদন অ্যাডমিন দেবে); ডকুমেন্ট আগে থেকে
+  /// থাকলে কিছু করা হয় না।
+  Future<void> _restoreProfile() async {
+    if (_recovering) return;
+    final firebaseUser = ref.read(authServiceProvider).firebaseUser;
+    if (firebaseUser == null) return;
+    setState(() => _recovering = true);
+    try {
+      await ref.read(firestoreServiceProvider).restoreMissingProfile(
+            uid: firebaseUser.uid,
+            email: firebaseUser.email ?? '',
+          );
+      await AppRouter.refreshAuth();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            firebaseErrorMessage(
+              e,
+              fallback: 'প্রোফাইল তৈরি করা যায়নি — আবার চেষ্টা করুন',
+            ),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _recovering = false);
     }
   }
 
@@ -125,13 +160,25 @@ class _PendingApprovalScreenState
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
+              // F9: প্রোফাইল না থাকলে এখান থেকে আবার তৈরি
+              // করা যায় — অ্যাপ থেকে বেরিয়ে কোনো উপায় ছিল না।
+              if (profileMissing) ...[
+                PrimaryButton(
+                  label: _recovering
+                      ? AppStrings.loading
+                      : 'প্রোফাইল আবার তৈরি করুন',
+                  onPressed: _recovering ? null : _restoreProfile,
+                  icon: Icons.person_add_outlined,
+                ),
+                const SizedBox(height: 12),
+              ],
               // গুগল দিয়ে ঢুকে থাকলে আবেদন এখনো বাকি থাকতে
               // পারে — এখান থেকে ফরমটা শেষ করা যাবে।
               // প্রোফাইল না থাকলে আবেদন অর্থহীন — বোতাম লুকানো।
               if (!profileMissing) ...[
                 PrimaryButton(
                   label: AppStrings.pendingCompleteApplication,
-                  onPressed: () => context.go('/apply'),
+                  onPressed: () => context.goNamed('apply'),
                   icon: Icons.edit_note_outlined,
                 ),
                 const SizedBox(height: 12),

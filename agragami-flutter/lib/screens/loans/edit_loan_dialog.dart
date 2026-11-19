@@ -28,7 +28,9 @@ class _EditLoanDialogState extends ConsumerState<EditLoanDialog> {
   late final TextEditingController _reason;
   late final TextEditingController _installment;
   late final TextEditingController _months;
-  late DateTime _date;
+  // তারিখ জানা না থাকলে null — 1970 sentinel কখনো
+  // "আজকের তারিখ" বানানো হয় না (F21)।
+  DateTime? _date;
   bool _busy = false;
   String? _error;
 
@@ -44,7 +46,7 @@ class _EditLoanDialogState extends ConsumerState<EditLoanDialog> {
     _months = TextEditingController(
       text: l.installmentMonths == null ? '' : '${l.installmentMonths}',
     );
-    _date = l.dateIssued.year < 2000 ? DateTime.now() : l.dateIssued;
+    _date = l.dateIssued.year < 2000 ? null : l.dateIssued;
   }
 
   @override
@@ -59,7 +61,7 @@ class _EditLoanDialogState extends ConsumerState<EditLoanDialog> {
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _date,
+      initialDate: _date ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
     );
@@ -107,7 +109,9 @@ class _EditLoanDialogState extends ConsumerState<EditLoanDialog> {
         memberId: l.memberId,
         branchId: l.branchId,
         amount: amount,
-        dateIssued: _date,
+        // F21: তারিখ না বদলালে আসল তারিখটাই (sentinel
+        // হলেও) লেখা হয় — আজকের তারিখ বানানো হয় না।
+        dateIssued: _date ?? l.dateIssued,
         reason: _reason.text.trim(),
         status: l.status,
         repayments: l.repayments,
@@ -125,6 +129,8 @@ class _EditLoanDialogState extends ConsumerState<EditLoanDialog> {
         const SnackBar(content: Text('ঋণ বদলানো হয়েছে')),
       );
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,
@@ -176,7 +182,10 @@ class _EditLoanDialogState extends ConsumerState<EditLoanDialog> {
               child: ListTile(
                 leading: const ListIcon(icon: Icons.calendar_today_outlined),
                 title: Text(
-                  'তারিখ: ${_date.day}/${_date.month}/${_date.year}',
+                  // F21: তারিখ জানা না থাকলে "তারিখ নেই" দেখায়।
+                  _date == null
+                      ? 'তারিখ: তারিখ নেই'
+                      : 'তারিখ: ${_date!.day}/${_date!.month}/${_date!.year}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,

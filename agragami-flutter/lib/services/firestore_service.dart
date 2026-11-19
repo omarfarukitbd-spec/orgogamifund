@@ -85,6 +85,11 @@ class FirestoreService {
   // ইউজার ও অ্যাডমিন মেথড
   Future<void> createUserDoc({required String uid, required String email}) =>
       member.createUserDoc(uid: uid, email: email);
+  Future<bool> restoreMissingProfile({
+    required String uid,
+    required String email,
+  }) =>
+      member.restoreMissingProfile(uid: uid, email: email);
   Future<bool?> hasAnyUser() => member.hasAnyUser();
   Future<void> createFirstAdminDoc({
     required String uid,
@@ -139,6 +144,9 @@ class FirestoreService {
     BankDetails? bankDetails,
     required List<String> termsAndConditions,
     required String by,
+    bool? canMembersViewTotalFund,
+    bool? canMembersViewExpenses,
+    bool? canMembersViewMemberList,
   }) =>
       branch.updateBranch(
         branchId: branchId,
@@ -155,6 +163,9 @@ class FirestoreService {
         bankDetails: bankDetails,
         termsAndConditions: termsAndConditions,
         by: by,
+        canMembersViewTotalFund: canMembersViewTotalFund,
+        canMembersViewExpenses: canMembersViewExpenses,
+        canMembersViewMemberList: canMembersViewMemberList,
       );
   Future<void> recountMemberCount(String branchId) =>
       branch.recountMemberCount(branchId);
@@ -174,6 +185,8 @@ class FirestoreService {
       member.watchMembersForUser(userId);
   Stream<List<Member>> watchMembers({String? branchId}) =>
       member.watchMembers(branchId: branchId);
+  Stream<List<Member>> watchActiveMembers({String? branchId}) =>
+      member.watchActiveMembers(branchId: branchId);
   Stream<Member?> watchMember(String memberId) => member.watchMember(memberId);
   Future<Map<String, Member>> fetchMembersByIds(List<String> ids) =>
       member.fetchMembersByIds(ids);
@@ -403,8 +416,16 @@ class FirestoreService {
         _db.collection(Collections.payments);
     Query<Map<String, dynamic>> expensesQuery =
         _db.collection(Collections.expenses);
-    Query<Map<String, dynamic>> membersQuery =
-        _db.collection(Collections.members);
+    // Phase 5 (F3): সদস্য গোনায় শুধু সক্রিয় সদস্য ধরা হয় —
+    // rules সদস্যদের শুধু status == 'active' ডকুমেন্ট পড়তে
+    // দেয়, তাই ছাঁকা ছাড়া প্রশ্ন সদস্যের কাছে পুরো
+    // permission-denied খায়। (branchId, status) ইনডেক্স
+    // আগেই আছে। বিনিময়: status ক্ষেত্র নেই এমন পুরোনো
+    // ডকুমেন্ট আর সক্রিয় ধরা হয় না — recountMemberCount-ও
+    // একই সংজ্ঞা ব্যবহার করে, তাই দুই জায়গার সংখ্যা মেলে।
+    Query<Map<String, dynamic>> membersQuery = _db
+        .collection(Collections.members)
+        .where('status', isEqualTo: 'active');
     Query<Map<String, dynamic>> loansQuery = _db.collection(Collections.loans);
     if (branchId != null) {
       paymentsQuery = paymentsQuery.where('branchId', isEqualTo: branchId);
@@ -431,10 +452,9 @@ class FirestoreService {
           0,
           (total, d) => total + ((d.data()['amount'] as num?)?.toInt() ?? 0),
         );
-    final activeCount = r[2].docs.where((d) {
-      final s = (d.data()['status'] as String?)?.toLowerCase();
-      return s == null || (s != 'left' && s != 'inactive');
-    }).length;
+    // প্রশ্নেই শুধু সক্রিয় সদস্য ধরা হয় (F3) — ডকুমেন্ট
+    // সংখ্যাই সক্রিয় সদস্য সংখ্যা।
+    final activeCount = r[2].docs.length;
     final loansOutstanding = r[3].docs.fold<int>(0, (total, d) {
       final outstanding = Loan.fromMap(d.id, d.data()).outstanding;
       return total + (outstanding > 0 ? outstanding : 0);
@@ -450,6 +470,10 @@ class FirestoreService {
   /// কয়েকটি সমিতির হিসাব একসাথে — সদস্যের হোমের জন্য।
   /// ফিল্টার ছাড়া পড়লে নিয়মে (rules) বাধা পায়, তাই
   /// প্রতিটি অনুমোদিত সমিতি আলাদা করে পড়ে যোগ করা হয়।
+  /// Phase 5 (02-M2): প্রতিটি সমিতি আলাদা try/catch-এ পড়া
+  /// হয় — একটা সমিতি ব্যর্থ হলে (অনুমতি নেই, নেটওয়ার্ক
+  /// সমস্যা) বাকিগুলোর হিসাব দেখা যায়, আর ব্যর্থ সমিতির
+  /// id failedBranchIds-এ থাকে যাতে UI-তে জানানো যায়।
   Future<HomeTotals> fetchHomeTotalsForBranches(
     List<String> branchIds,
   ) async {
@@ -457,18 +481,24 @@ class FirestoreService {
     var expenses = 0;
     var members = 0;
     var loans = 0;
+    final failed = <String>[];
     for (final id in branchIds) {
-      final t = await fetchHomeTotals(branchId: id);
-      approved += t.approvedTotal;
-      expenses += t.expenseTotal;
-      members += t.activeMembers;
-      loans += t.loansOutstanding;
+      try {
+        final t = await fetchHomeTotals(branchId: id);
+        approved += t.approvedTotal;
+        expenses += t.expenseTotal;
+        members += t.activeMembers;
+        loans += t.loansOutstanding;
+      } catch (_) {
+        failed.add(id);
+      }
     }
     return HomeTotals(
       approvedTotal: approved,
       expenseTotal: expenses,
       activeMembers: members,
       loansOutstanding: loans,
+      failedBranchIds: failed,
     );
   }
 

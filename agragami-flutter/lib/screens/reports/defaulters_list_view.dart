@@ -26,7 +26,11 @@ class DefaultersListView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final membersAsync = ref.watch(membersByBranchProvider(branchId ?? ''));
+    // F3: বকেয়া তালিকা সদস্য-মুখী — শুধু সক্রিয় সদস্য
+    // ধরা হয় (rules সদস্যদের শুধু status == 'active'
+    // ডকুমেন্ট পড়তে দেয়)।
+    final membersAsync =
+        ref.watch(activeMembersByBranchProvider(branchId ?? ''));
     final branchesAsync = ref.watch(branchesStreamProvider);
     final paymentsAsync = ref.watch(approvedPaymentsProvider(branchId ?? ''));
     if (membersAsync.isLoading ||
@@ -43,7 +47,7 @@ class DefaultersListView extends ConsumerWidget {
         message: 'নেট দেখে আবার চেষ্টা করুন।',
         actionLabel: 'আবার চেষ্টা করুন',
         onAction: () {
-          ref.invalidate(membersByBranchProvider(branchId ?? ''));
+          ref.invalidate(activeMembersByBranchProvider(branchId ?? ''));
           ref.invalidate(branchesStreamProvider);
           ref.invalidate(approvedPaymentsProvider(branchId ?? ''));
         },

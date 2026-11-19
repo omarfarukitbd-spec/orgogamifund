@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- F33: ইন্টারনেট অনুমতি স্পষ্ট করে লেখা — Firebase/
+         Cloudinary ছাড়া অ্যাপ চলেই না; Flutter টেমপ্লেটে
+         ডিবাগ ম্যানিফেস্টে থাকলেও রিলিজে নিজে লেখা নিরাপদ। -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="অগ্রগামী ফান্ড"
         android:name="${applicationName}"
@@ -23,6 +27,17 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- F18/04-m3: সদস্য পরিচয়পত্রের QR কোড
+                 (orgogami://member/<id>) স্ক্যান করলে অ্যাপ খোলে —
+                 go_router-এর /member/:id রাউটে যায়। -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="orgogami"
+                    android:host="member" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

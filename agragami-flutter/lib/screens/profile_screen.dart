@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/skeleton_loader.dart';
 import 'member/edit_member_dialog.dart';
 import 'profile/edit_profile_dialog.dart';
@@ -26,11 +27,14 @@ class ProfileScreen extends ConsumerWidget {
         padding: EdgeInsets.all(16),
         child: SkeletonCardList(),
       ),
-      error: (e, _) => Center(
-        child: Text(
-          AppStrings.emptyTitle,
-          style: TextStyle(color: theme.colorScheme.onSurface),
-        ),
+      // F20: ভুল হলে "কিছু নেই" নয় — আসল ভুলের বার্তা আর
+      // আবার চেষ্টার বোতাম দেখানো হয়।
+      error: (e, _) => EmptyState(
+        icon: Icons.error_outline,
+        title: 'প্রোফাইল আনা যায়নি',
+        message: 'নেট দেখে আবার চেষ্টা করুন।',
+        actionLabel: AppStrings.tryAgain,
+        onAction: () => ref.invalidate(currentUserProvider),
       ),
       data: (user) {
         final memberId = user?.linkedMemberId;
@@ -87,7 +91,10 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${AppStrings.memberCountLabel}: ${member?.id ?? '—'}',
+                                // F15: মানুষের পড়ার মতো সদস্য
+                                // নম্বর (আগে ভুল লেবেল
+                                // "সদস্য সংখ্যা" + ডকুমেন্ট id)।
+                                'সদস্য নম্বর: ${member?.displayNumber ?? '—'}',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: theme.colorScheme.onSurfaceVariant,
@@ -145,7 +152,7 @@ class ProfileScreen extends ConsumerWidget {
 
               // পাসবই লিংক কার্ড
               AppCard(
-                onTap: () => context.go('/passbook'),
+                onTap: () => context.goNamed('passbook'),
                 child: Row(
                   children: [
                     const ListIcon(icon: Icons.book_outlined),
@@ -170,7 +177,7 @@ class ProfileScreen extends ConsumerWidget {
 
               // আইডি কার্ড লিংক কার্ড
               AppCard(
-                onTap: () => context.go('/id-card'),
+                onTap: () => context.goNamed('idCard'),
                 child: Row(
                   children: [
                     const ListIcon(icon: Icons.badge_outlined),

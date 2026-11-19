@@ -103,7 +103,7 @@ class IdCardPdfWidgets {
                 ),
                 pw.SizedBox(height: 3),
                 pw.Text(
-                  'সদস্য নম্বর: ${member.id}',
+                  'সদস্য নম্বর: ${member.displayNumber}',
                   style: pw.TextStyle(
                       font: font, fontSize: 9, color: PdfColors.white),
                 ),
@@ -170,7 +170,9 @@ class IdCardPdfWidgets {
               ),
               pw.SizedBox(height: 4),
               pw.Text(
-                member.id,
+                // F15: QR-এর নিচে দেখানোর নম্বর (QR নিজে
+                // ডকুমেন্ট id দিয়ে বানানো থাকে)।
+                member.displayNumber,
                 style: pw.TextStyle(
                   font: font,
                   fontSize: 7,

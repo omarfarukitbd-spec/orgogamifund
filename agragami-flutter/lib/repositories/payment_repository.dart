@@ -356,7 +356,13 @@ class PaymentRepository {
     return snap.docs.map((d) => Payment.fromMap(d.id, d.data())).toList();
   }
 
-  /// নির্দিষ্ট মাস ও বছরের অনুমোদিত জমা আনা (রিপোর্টের জন্য)
+  /// নির্দিষ্ট মাস ও বছরের অনুমোদিত জমা আনা (রিপোর্টের জন্য)।
+  /// Phase 5 (F23): ডকুমেন্টেশন "অনুমোদিত জমা" বললেও
+  /// প্রশ্নে status ছাঁকা ছিল না — যাচাইাধীন জমাও CSV-তে
+  /// আয় হিসেবে গোনা হতো, PDF-এর সাথে মিলত না। ছাঁকাটা
+  /// কোডে করা হয় (fetchApprovedPayments-এর মতো) — প্রশ্নে
+  /// status যোগ করলে নতুন কম্পোজিট ইনডেক্স লাগত, আর
+  /// fromMap পুরোনো approvalStatus ক্ষেত্রও বোঝে।
   Future<List<Payment>> fetchPaymentsForMonth({
     required int year,
     required int month,
@@ -370,6 +376,9 @@ class PaymentRepository {
       query = query.where('branchId', isEqualTo: branchId);
     }
     final snap = await query.get();
-    return snap.docs.map((d) => Payment.fromMap(d.id, d.data())).toList();
+    return snap.docs
+        .map((d) => Payment.fromMap(d.id, d.data()))
+        .where((p) => p.status == PaymentStatus.approved)
+        .toList();
   }
 }

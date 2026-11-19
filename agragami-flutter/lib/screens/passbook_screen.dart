@@ -238,7 +238,8 @@ class _PassbookContent extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${branchOrNull?.name ?? "সমিতি"} · সদস্য নং: ${member.id}',
+                      // F15: মানুষের পড়ার মতো সদস্য নম্বর।
+                      '${branchOrNull?.name ?? "সমিতি"} · সদস্য নং: ${member.displayNumber}',
                       style: TextStyle(
                         fontSize: 13.5,
                         color: Theme.of(context)
@@ -324,9 +325,14 @@ class _PassbookContent extends ConsumerWidget {
             payments: payments,
             memberName: member.name,
             branchName: branchOrNull?.name ?? 'অগ্রগামী ফান্ড সমিতি',
+            memberNumber: member.displayNumber,
             // M9: অ্যাডমিন খাতা থেকেই জমা বদলাতে/মুছতে পারে।
+            // F6: "মুছুন" শুধু সুপার অ্যাডমিন দেখে।
             isAdmin:
                 ref.watch(currentUserProvider).valueOrNull?.isAdmin ?? false,
+            isSuperAdmin:
+                ref.watch(currentUserProvider).valueOrNull?.isSuperAdmin ??
+                    false,
           ),
           const SizedBox(height: 20),
         ],

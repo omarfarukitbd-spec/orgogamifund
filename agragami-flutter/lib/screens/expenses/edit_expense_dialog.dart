@@ -28,8 +28,13 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
 
   late final TextEditingController _amount;
   late final TextEditingController _description;
+  // Phase 5 (F21): আসল খাতটাই থাকে — তালিকায় না থাকা
+  // খাত "মাদ্রাসা উন্নয়ন"-এ বদলে যায় না। ড্রপডাউনে আসল
+  // খাতটাও দেখানো হয়, যাতে না বদলালে সেটাই লেখা হয়।
   late String _category;
-  late DateTime _date;
+  // তারিখ জানা না থাকলে null — 1970 sentinel কখনো
+  // "আজকের তারিখ" বানানো হয় না।
+  DateTime? _date;
   Uint8List? _receiptBytes;
   bool _busy = false;
   String? _error;
@@ -40,9 +45,8 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
     final e = widget.expense;
     _amount = TextEditingController(text: '${e.amount}');
     _description = TextEditingController(text: e.description);
-    _category =
-        expenseCategories.contains(e.category) ? e.category : expenseCategories.first;
-    _date = e.date.year < 2000 ? DateTime.now() : e.date;
+    _category = e.category;
+    _date = e.date.year < 2000 ? null : e.date;
   }
 
   @override
@@ -62,14 +66,18 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
       if (picked == null) return;
       final bytes = await picked.readAsBytes();
       if (bytes.lengthInBytes > _maxBytes) {
+        if (!mounted) return;
         setState(() => _error = 'ছবিটি ৫ MB-এর বেশি — ছোট ছবি বেছে নিন');
         return;
       }
+      if (!mounted) return;
       setState(() {
         _receiptBytes = bytes;
         _error = null;
       });
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,
@@ -82,7 +90,7 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _date,
+      initialDate: _date ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
     );
@@ -110,7 +118,9 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
         branchId: e.branchId,
         category: _category,
         amount: amount,
-        date: _date,
+        // F21: তারিখ না বদলালে আসল তারিখটাই (sentinel হলেও)
+        // লেখা হয় — আজকের তারিখ বানানো হয় না।
+        date: _date ?? e.date,
         description: _description.text.trim(),
         attachmentUrl: e.attachmentUrl,
         recordedBy: e.recordedBy,
@@ -127,6 +137,8 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
         const SnackBar(content: Text('খরচ বদলানো হয়েছে')),
       );
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,
@@ -149,7 +161,12 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
             DropdownButtonFormField<String>(
               initialValue: _category,
               decoration: const InputDecoration(labelText: 'কী ধরনের খরচ'),
-              items: expenseCategories
+              // F21: আসল খাত তালিকায় না থাকলে সেটাও
+              // আইটেম হিসেবে থাকে — না বাছলে আসলটাই লেখা হয়।
+              items: [
+                ...expenseCategories,
+                if (!expenseCategories.contains(_category)) _category,
+              ]
                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                   .toList(),
               onChanged: (v) => setState(() => _category = v ?? _category),
@@ -171,7 +188,10 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
               child: ListTile(
                 leading: const ListIcon(icon: Icons.calendar_today_outlined),
                 title: Text(
-                  'তারিখ: ${_date.day}/${_date.month}/${_date.year}',
+                  // F21: তারিখ জানা না থাকলে "তারিখ নেই" দেখায়।
+                  _date == null
+                      ? 'তারিখ: তারিখ নেই'
+                      : 'তারিখ: ${_date!.day}/${_date!.month}/${_date!.year}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,

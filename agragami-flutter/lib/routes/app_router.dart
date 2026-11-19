@@ -18,6 +18,7 @@ import '../screens/loan_detail_screen.dart';
 import '../screens/loan_list_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/member_application_screen.dart';
+import '../screens/member_detail_screen.dart';
 import '../screens/not_found_screen.dart';
 import '../screens/notice_board_screen.dart';
 import '../screens/passbook_screen.dart';
@@ -178,14 +179,25 @@ class AppRouter {
     refreshListenable: _refresh,
     // m1: অজানা রাস্তায় বন্ধুত্বপূর্ণ "পাওয়া যায়নি" পাতা।
     errorBuilder: (context, state) => const NotFoundScreen(),
-    redirect: (context, state) => resolveRedirect(
-      authResolved: _refresh.authResolved,
-      hasUsers: _refresh.hasUsers,
-      user: _refresh.user,
-      signedIn: _refresh.signedIn,
-      appLocked: _refresh.appLocked,
-      location: state.matchedLocation,
-    ),
+    redirect: (context, state) {
+      // Phase 5 (04-m3/F18): আইডি কার্ডের QR স্ক্যানে অ্যাপ
+      // orgogami://member/<id> দিয়ে খোলে — টপ-লেভেল
+      // redirect রাস্তা মেলানোর আগেই চলে, তাই এখানেই
+      // অ্যাপের রাস্তায় নিয়ে আসা হয়।
+      final uri = state.uri;
+      if (uri.scheme == 'orgogami' && uri.host == 'member') {
+        final id = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
+        return id.isNotEmpty ? '/member/$id' : '/home';
+      }
+      return resolveRedirect(
+        authResolved: _refresh.authResolved,
+        hasUsers: _refresh.hasUsers,
+        user: _refresh.user,
+        signedIn: _refresh.signedIn,
+        appLocked: _refresh.appLocked,
+        location: state.matchedLocation,
+      );
+    },
     routes: [
       GoRoute(
         path: '/splash',
@@ -259,6 +271,16 @@ class AppRouter {
             path: '/passbook',
             name: 'passbook',
             builder: (context, state) => const PassbookScreen(),
+          ),
+          GoRoute(
+            // Phase 5 (04-m3/F18): আইডি কার্ডের QR স্ক্যানে
+            // খোলা সদস্যের পরিচয় — orgogami://member/<id>
+            // redirect-এ এখানে আসে।
+            path: '/member/:id',
+            name: 'memberDetail',
+            builder: (context, state) => MemberDetailScreen(
+              memberId: state.pathParameters['id'] ?? '',
+            ),
           ),
           GoRoute(
             path: '/id-card',
@@ -372,6 +394,12 @@ String? resolveRedirect({
   if (location == '/login' || location == '/pending' || location == '/splash') {
     return '/home';
   }
+  // Phase 5 (F16): খরচ যোগ আর ঋণ দেওয়া শুধু অ্যাডমিনের
+  // কাজ — সদস্য সরাসরি লিংক দিয়ে খুললেও হোমে ফেরে।
+  if ((location == '/expenses/add' || location == '/loans/add') &&
+      !user.isAdmin) {
+    return '/home';
+  }
   return null;
 }
 
@@ -395,23 +423,38 @@ String? backFallbackLocation(String location) {
 }
 
 /// নিচের মেনুর ৪টা আইটেম — মোবাইলে এটাই প্রধান নেভিগেশন।
+/// Phase 5 (04-m2): পথের স্ট্রিংয়ের পাশে রাউটের নামও থাকে —
+/// নেভিগেশন goNamed দিয়ে হয়, যাতে রাস্তা বদলালে এক জায়গায় বদলায়।
 class BottomNavItem {
   final String path;
+  final String name;
   final IconData icon;
   final String label;
 
   const BottomNavItem({
     required this.path,
+    required this.name,
     required this.icon,
     required this.label,
   });
 }
 
 const List<BottomNavItem> bottomNavItems = [
-  BottomNavItem(path: '/home', icon: Icons.home_outlined, label: 'হোম'),
-  BottomNavItem(path: '/samiti', icon: Icons.groups_outlined, label: 'সমিতি'),
   BottomNavItem(
-      path: '/deposit', icon: Icons.payments_outlined, label: 'জমা দিন'),
+      path: '/home', name: 'home', icon: Icons.home_outlined, label: 'হোম'),
   BottomNavItem(
-      path: '/profile', icon: Icons.person_outlined, label: 'প্রোফাইল'),
+      path: '/samiti',
+      name: 'samiti',
+      icon: Icons.groups_outlined,
+      label: 'সমিতি'),
+  BottomNavItem(
+      path: '/deposit',
+      name: 'deposit',
+      icon: Icons.payments_outlined,
+      label: 'জমা দিন'),
+  BottomNavItem(
+      path: '/profile',
+      name: 'profile',
+      icon: Icons.person_outlined,
+      label: 'প্রোফাইল'),
 ];

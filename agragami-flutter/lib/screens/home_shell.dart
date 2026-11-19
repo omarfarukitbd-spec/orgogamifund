@@ -48,6 +48,9 @@ class _HomeShellState extends State<HomeShell> {
     if (location.startsWith('/loans')) return AppStrings.navLoans;
     if (location.startsWith('/reports')) return AppStrings.navReports;
     if (location.startsWith('/notices')) return AppStrings.navNotices;
+    if (location.startsWith('/member')) {
+      return AppStrings.isBangla ? 'সদস্যের পরিচয়' : 'Member Profile';
+    }
     if (location.startsWith('/committee')) return AppStrings.navCommittee;
     return AppStrings.navHome;
   }
@@ -124,7 +127,7 @@ class _HomeShellState extends State<HomeShell> {
             children: [
               _Sidebar(
                 location: location,
-                onSelect: (path) => context.go(path),
+                onSelect: (name) => context.goNamed(name),
               ),
               Expanded(child: widget.child),
             ],
@@ -147,7 +150,7 @@ class _HomeShellState extends State<HomeShell> {
         body: widget.child,
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _lastTabIndex,
-          onTap: (i) => context.go(bottomNavItems[i].path),
+          onTap: (i) => context.goNamed(bottomNavItems[i].name),
           items: [
             BottomNavigationBarItem(
               icon: const Icon(Icons.home_outlined),
@@ -174,61 +177,79 @@ class _HomeShellState extends State<HomeShell> {
 
 class _Sidebar extends StatelessWidget {
   final String location;
-  final void Function(String path) onSelect;
+
+  /// রাউটের নাম দিয়ে নেভিগেট হয় (04-m2) — path শুধু
+  /// হাইলাইট বের করার জন্য থাকে।
+  final void Function(String name) onSelect;
 
   const _Sidebar({required this.location, required this.onSelect});
 
   @override
   Widget build(BuildContext context) {
     final items = [
-      (path: '/home', icon: Icons.home_outlined, label: AppStrings.navHome),
+      (
+        path: '/home',
+        name: 'home',
+        icon: Icons.home_outlined,
+        label: AppStrings.navHome
+      ),
       (
         path: '/samiti',
+        name: 'samiti',
         icon: Icons.groups_outlined,
         label: AppStrings.navSamiti
       ),
       (
         path: '/deposit',
+        name: 'deposit',
         icon: Icons.payments_outlined,
         label: AppStrings.navDeposit
       ),
       (
         path: '/approval',
+        name: 'approval',
         icon: Icons.fact_check_outlined,
         label: AppStrings.navApproval
       ),
       (
         path: '/payment-methods',
+        name: 'paymentMethods',
         icon: Icons.account_balance_outlined,
         label: AppStrings.navPaymentMethods
       ),
       (
         path: '/expenses',
+        name: 'expenses',
         icon: Icons.receipt_long_outlined,
         label: AppStrings.navExpenses
       ),
       (
         path: '/loans',
+        name: 'loans',
         icon: Icons.handshake_outlined,
         label: AppStrings.navLoans
       ),
       (
         path: '/reports',
+        name: 'reports',
         icon: Icons.bar_chart_outlined,
         label: AppStrings.navReports
       ),
       (
         path: '/notices',
+        name: 'notices',
         icon: Icons.campaign_outlined,
         label: AppStrings.navNotices
       ),
       (
         path: '/committee',
+        name: 'committee',
         icon: Icons.groups_outlined,
         label: AppStrings.navCommittee
       ),
       (
         path: '/profile',
+        name: 'profile',
         icon: Icons.settings_outlined,
         label: AppStrings.navProfile
       ),
@@ -290,7 +311,7 @@ class _Sidebar extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              onTap: () => onSelect(items[i].path),
+              onTap: () => onSelect(items[i].name),
             ),
         ],
       ),

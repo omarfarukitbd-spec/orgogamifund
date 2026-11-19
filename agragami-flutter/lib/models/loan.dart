@@ -101,6 +101,31 @@ class Loan {
   int get repaidTotal => repayments.fold(0, (sum, r) => sum + r.amount);
   int get outstanding => amount - repaidTotal;
 
+  /// ফেরত দেওয়ার শেষ তারিখ — ঋণ নেওয়ার তারিখ + কিস্তির
+  /// মাস। কিস্তির মেয়াদ না থাকলে শেষ তারিখ নেই।
+  DateTime? get dueDate {
+    final months = installmentMonths;
+    if (months == null || months <= 0) return null;
+    return DateTime(dateIssued.year, dateIssued.month + months,
+        dateIssued.day);
+  }
+
+  /// মেয়াদ পেরিয়েছে কি না — পড়ার সময় হিসাব হয় (F31)।
+  /// Firestore-এ 'overdue' অবস্থা কখনো লেখা হয় না (কোনো
+  /// কোড সেটা লেখে না), তাই সংরক্ষিত অবস্থার ওপর ভরসা না
+  /// করে শেষ তারিখ দিয়ে হিসাব করা হয়; পুরোনো ডকুমেন্টে
+  /// 'overdue' লেখা থাকলে সেটাও ধরা হয়। ফেরত দেওয়া ঋণ
+  /// কখনো মেয়াদ-পেরোনো নয়।
+  bool get isOverdue {
+    if (status == LoanStatus.repaid) return false;
+    if (status == LoanStatus.overdue) return true;
+    final due = dueDate;
+    if (due == null) return false;
+    final today = DateTime.now();
+    return DateTime(today.year, today.month, today.day)
+        .isAfter(DateTime(due.year, due.month, due.day));
+  }
+
   factory Loan.fromMap(String id, Map<String, dynamic> data) {
     final list = (data['repayments'] as List?) ?? [];
     final rawStatus = (data['status'] as String?)?.toLowerCase();

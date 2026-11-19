@@ -174,19 +174,30 @@ class GovernanceRepository {
         throw StateError('already-reviewed');
       }
       // ট্রানজ্যাকশনে সব পড়া লেখার আগে করতে হয় — তাই
-      // users ডকুমেন্টটাও এখানেই পড়ে নেওয়া হয়।
+      // users ডকুমেন্ট আর branch ডকুমেন্টও এখানেই পড়ে
+      // নেওয়া হয়।
       DocumentSnapshot<Map<String, dynamic>>? userSnap;
       if (uid != null && uid.isNotEmpty) {
         userSnap = await tx.get(
           _db.collection(Collections.users).doc(uid),
         );
       }
+      final branchSnap = await tx.get(
+        _db.collection(Collections.branches).doc(application.branchId),
+      );
       tx.update(appRef, {
         'status': ApplicationStatus.approved.name,
         'reviewedBy': reviewedBy,
         'reviewedAt': FieldValue.serverTimestamp(),
       });
-      tx.set(memberRef, application.toMemberMap());
+      // Phase 5 (F15): মানুষের পড়ার মতো সদস্য নম্বর —
+      // সমিতির বর্তমান সদস্য সংখ্যা + ১। একই ট্রানজ্যাকশনে
+      // সংখ্যা বাড়ে, তাই দুই অনুমোদন একসাথে হলে দ্বিতীয়টা
+      // আবার চেষ্টা করে পরের নম্বর পায়।
+      final branchData = branchSnap.data();
+      final memberNumber =
+          ((branchData?['memberCount'] as num?)?.toInt() ?? 0) + 1;
+      tx.set(memberRef, application.toMemberMap(memberNumber: memberNumber));
       if (uid != null && uid.isNotEmpty) {
         tx.set(
           _db
@@ -225,13 +236,19 @@ class GovernanceRepository {
           SetOptions(merge: true),
         );
       }
-      // branch ডকুমেন্ট না থাকলেও পুরো অনুমোদন ভাঙে না —
-      // set(merge) দিয়ে গোনা বাড়ানো হয়।
-      tx.set(
-        _db.collection(Collections.branches).doc(application.branchId),
-        {'memberCount': FieldValue.increment(1)},
-        SetOptions(merge: true),
-      );
+      // Phase 5 (F1): branch ডকুমেন্ট থাকলে তবেই সংখ্যা
+      // বাড়ানো হয় — শাখা অ্যাডমিনের rules শুধু memberCount
+      // ১ বাড়ানোর update দিতে পারে, ডকুমেন্ট বানাতে পারে
+      // না। (আগের মন্তব্য ভুল ছিল: ডকুমেন্ট না থাকলে
+      // set(merge) create হয়ে যেত, আর শাখা অ্যাডমিনের
+      // ক্ষেত্রে পুরো অনুমোদনই ভেঙে যেত।)
+      if (branchSnap.exists) {
+        tx.set(
+          _db.collection(Collections.branches).doc(application.branchId),
+          {'memberCount': FieldValue.increment(1)},
+          SetOptions(merge: true),
+        );
+      }
     });
   }
 

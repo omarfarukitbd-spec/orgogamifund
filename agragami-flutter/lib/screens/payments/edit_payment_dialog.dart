@@ -94,6 +94,8 @@ class _EditPaymentDialogState extends ConsumerState<EditPaymentDialog> {
         const SnackBar(content: Text('জমা বদলানো হয়েছে')),
       );
     } catch (e) {
+      // F14: await-এর পর setState-এর আগে mounted দেখা হয়।
+      if (!mounted) return;
       setState(
         () => _error = firebaseErrorMessage(
           e,

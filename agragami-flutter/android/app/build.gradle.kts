@@ -17,9 +17,19 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
 } else {
-    logger.warn(
-        "key.properties not found — release APK will be signed with the " +
-            "debug key. See android/key.properties.example."
+    // Phase 5 (fix-introduced gap): ডিবাগ-সই ফলব্যাক রাখা
+    // হয়েছে — এটাই key.properties/সিক্রেট ছাড়া পরীক্ষার
+    // পথ। কিন্তু সতর্কবার্তাটা আর চাপা warn লাইন নয়: বিল্ড
+    // লগে চোখে পড়ার মতো ব্যানার, যাতে কেউ ভুল করে
+    // ডিবাগ-সই করা APK Play Store-এ না পাঠায়।
+    logger.lifecycle(
+        "\n" +
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+            "!!!  WARNING: key.properties NOT FOUND — the release APK  !!!\n" +
+            "!!!  will be signed with the DEBUG key. This build is     !!!\n" +
+            "!!!  for local testing ONLY. Never upload it to the       !!!\n" +
+            "!!!  Play Store. See android/key.properties.example.     !!!\n" +
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
     )
 }
 
@@ -71,6 +81,11 @@ android {
     }
 
     lint {
+        // 04-m21: রিলিজ lint বন্ধই রাখা হয়েছে — Android SDK
+        // ছাড়া ./gradlew :app:lintRelease চালিয়ে যাচাই করা
+        // যায়নি; অন্ধভাবে চালু করলে বিল্ড আটকে যেতে পারে।
+        // ব্যবহারকারীর মেশিনে lintRelease চালিয়ে ঠিক করে
+        // তারপর চালু করা যাবে।
         checkReleaseBuilds = false
         abortOnError = false
     }

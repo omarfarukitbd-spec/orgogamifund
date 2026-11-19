@@ -75,5 +75,17 @@ class AppUser {
   }
 
   bool get isAdmin => role == UserRole.superAdmin || role == UserRole.branchAdmin;
+
+  /// সুপার অ্যাডমিন কি না। Phase 5 (F6): শাখা অ্যাডমিন আর
+  /// সুপার অ্যাডমিন এক নয় — মুছে ফেলা, কমিটি বদল, সমিতি
+  /// বানানো/বদলানো শুধু সুপার অ্যাডমিনের কাজ; শাখা অ্যাডমিন
+  /// দেখলেই শুধু permission-denied খেত। এখন এই getter দিয়ে
+  /// ওই বোতামগুলো শাখা অ্যাডমিনের কাছ থেকে লুকানো হয়।
+  bool get isSuperAdmin => role == UserRole.superAdmin;
+
+  /// শাখা অ্যাডমিন কি না (F16)। শাখা অ্যাডমিন শুধু নিজের
+  /// সমিতিতেই কাজ করে — ড্রপডাউনে অন্য সমিতি দেখানো হয় না।
+  bool get isBranchAdmin => role == UserRole.branchAdmin;
+
   bool get canEnter => approvalStatus == ApprovalStatus.approved;
 }

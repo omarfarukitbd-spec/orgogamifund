@@ -15,7 +15,14 @@ class PendingApplicationsTab extends StatefulWidget {
   final AsyncValue<List<MemberApplication>> applicationsAsync;
   final List<Branch> branches;
   final String? branchFilter;
+
+  /// শাখা অ্যাডমিন হলে true — তখন সমিতি বাছার ড্রপডাউন
+  /// দেখানো হয় না (নিজের সমিতিই ফিল্টার)।
+  final bool isBranchAdmin;
   final ValueChanged<String?> onFilterChanged;
+
+  /// তালিকা আনতে ভুল হলে আবার চেষ্টার বোতাম (F5)।
+  final VoidCallback onRetry;
   final String reviewer;
   final FirestoreService store;
   final Future<void> Function(BuildContext, Future<void> Function(), String)
@@ -27,7 +34,9 @@ class PendingApplicationsTab extends StatefulWidget {
     required this.applicationsAsync,
     required this.branches,
     required this.branchFilter,
+    required this.isBranchAdmin,
     required this.onFilterChanged,
+    required this.onRetry,
     required this.reviewer,
     required this.store,
     required this.onRun,
@@ -62,32 +71,54 @@ class _PendingApplicationsTabState extends State<PendingApplicationsTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-          child: DropdownButtonFormField<String>(
-            initialValue: widget.branchFilter,
-            decoration: const InputDecoration(
-              labelText: 'কোন সমিতির আবেদন',
-              prefixIcon: Icon(Icons.groups_outlined),
+        // F5: শাখা অ্যাডমিনের ড্রপডাউন নেই — নিজের সমিতির
+        // নামটুকু দেখানো হয়, যাতে বোঝা যায় কোন সমিতির
+        // আবেদন দেখছে।
+        if (widget.isBranchAdmin)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.groups_outlined, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'সমিতি: ${_branchName(widget.branchFilter ?? '')}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
             ),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('সব সমিতি')),
-              ...widget.branches.map(
-                (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: DropdownButtonFormField<String>(
+              initialValue: widget.branchFilter,
+              decoration: const InputDecoration(
+                labelText: 'কোন সমিতির আবেদন',
+                prefixIcon: Icon(Icons.groups_outlined),
               ),
-            ],
-            onChanged: widget.onFilterChanged,
+              items: [
+                const DropdownMenuItem(value: null, child: Text('সব সমিতি')),
+                ...widget.branches.map(
+                  (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
+                ),
+              ],
+              onChanged: widget.onFilterChanged,
+            ),
           ),
-        ),
         Expanded(
           child: widget.applicationsAsync.when(
             loading: () => const Padding(
               padding: EdgeInsets.all(16),
               child: SkeletonCardList(),
             ),
-            error: (e, _) => const EmptyState(
+            error: (e, _) => EmptyState(
               icon: Icons.error_outline,
               title: 'তালিকা আনা যায়নি',
+              actionLabel: AppStrings.tryAgain,
+              onAction: widget.onRetry,
             ),
             data: (list) {
               if (list.isEmpty) {

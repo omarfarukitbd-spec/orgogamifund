@@ -180,7 +180,8 @@ class _IdCardBodyState extends ConsumerState<_IdCardBody> {
     }
     final message = await savePngBytes(
       bytes,
-      'id-card-${member.id}-${front ? 'front' : 'back'}.png',
+      // F15: ফাইলের নামে সদস্য নম্বর — ডকুমেন্ট আইডি নয়।
+      'id-card-${member.displayNumber}-${front ? 'front' : 'back'}.png',
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));

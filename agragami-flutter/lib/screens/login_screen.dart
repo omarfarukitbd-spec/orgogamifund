@@ -271,7 +271,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   const SizedBox(height: 16),
                   TextButton(
-                    onPressed: _busy ? null : () => context.go('/apply'),
+                    onPressed: _busy ? null : () => context.goNamed('apply'),
                     child: Text(AppStrings.noAccount),
                   ),
                   FutureBuilder<bool?>(
@@ -283,7 +283,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         return const SizedBox.shrink();
                       }
                       return TextButton(
-                        onPressed: _busy ? null : () => context.go('/setup'),
+                        onPressed: _busy ? null : () => context.goNamed('setup'),
                         child: Text(AppStrings.firstSetupLink),
                       );
                     },
