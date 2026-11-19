@@ -16,12 +16,12 @@
 /// রাখবেন। (ব্যবহারকারী জেনেই এই পথ বেছেছেন।)
 class CloudinaryConfig {
   /// Cloudinary ড্যাশবোর্ডে দেখা cloud name।
-  /// TODO(ব্যবহারকারী): আসল cloud name এখানে বসান।
-  static const String cloudName = 'YOUR_CLOUD_NAME';
+  /// 2026-11-19 যাচাই করা: এই cloud name + preset দিয়ে লাইভ টেস্ট
+  /// আপলোড সফল হয়েছে।
+  static const String cloudName = 'eev4ff2r';
 
   /// Settings → Upload → Upload presets-এ বানানো unsigned preset-এর নাম।
-  /// TODO(ব্যবহারকারী): আসল preset নাম এখানে বসান।
-  static const String uploadPreset = 'YOUR_UPLOAD_PRESET';
+  static const String uploadPreset = 'Ogrogami';
 
   /// আসল মান বসানো হয়েছে কি না।
   static bool get isConfigured =>
