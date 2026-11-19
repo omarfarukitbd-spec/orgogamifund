@@ -97,6 +97,26 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
   }
 
   Future<void> _submit() async {
+    // Phase 8 (G5): শাখা অ্যাডমিন শুধু নিজের সমিতির নোটিশ
+    // দিতে পারে — "সবার জন্য" (org) শুধু সুপার অ্যাডমিনের।
+    // UI-তে বাঁধা থাকলেও এখানে আবার জোর করা হয়, যাতে
+    // কোনো পথেই ভুল সমিতির নোটিশ না যায়।
+    final currentUser = ref.read(currentUserProvider).valueOrNull;
+    final isBranchAdminWriter = currentUser?.isBranchAdmin ?? false;
+    var scope = _scope;
+    var branchId = _branchId;
+    if (isBranchAdminWriter) {
+      final adminBranch = currentUser?.branchId;
+      if (adminBranch == null || adminBranch.isEmpty) {
+        setState(
+          () => _error =
+              'আপনার সমিতি ঠিক করা নেই — সুপার অ্যাডমিনের সাথে যোগাযোগ করুন',
+        );
+        return;
+      }
+      scope = 'branch';
+      branchId = adminBranch;
+    }
     if (_title.text.trim().isEmpty) {
       setState(() => _error = 'নোটিশের শিরোনাম লিখুন');
       return;
@@ -105,7 +125,7 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
       setState(() => _error = 'নোটিশের কথা লিখুন');
       return;
     }
-    if (_scope == 'branch' && _branchId == null) {
+    if (scope == 'branch' && branchId == null) {
       setState(() => _error = 'কোন সমিতির জন্য, বেছে নিন');
       return;
     }
@@ -117,8 +137,8 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
       id: '',
       title: _title.text.trim(),
       body: _body.text.trim(),
-      scope: _scope == 'branch' ? NoticeScope.branch : NoticeScope.org,
-      branchId: _scope == 'branch' ? _branchId : null,
+      scope: scope == 'branch' ? NoticeScope.branch : NoticeScope.org,
+      branchId: scope == 'branch' ? branchId : null,
       postedBy: AuthService().uidOrEmpty,
       postedAt: DateTime.now(),
     );
@@ -179,7 +199,10 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
     final userAsync = ref.watch(currentUserProvider);
     final branchesAsync = ref.watch(branchesStreamProvider);
     final membershipsAsync = ref.watch(myMembershipsProvider);
-    final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+    final user = userAsync.valueOrNull;
+    final isAdmin = user?.isAdmin ?? false;
+    final isSuperAdmin = user?.isSuperAdmin ?? false;
+    final isBranchAdmin = isAdmin && !isSuperAdmin;
     // কোন সমিতির নোটিশ দেখবে — অনুমোদিত সদস্যপদ দিয়ে ঠিক হয়,
     // users ডকুমেন্টের একটিমাত্র branchId দিয়ে নয়। একাধিক
     // সমিতির সদস্য সবগুলোর নোটিশ পায়।
@@ -208,7 +231,15 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
         children: [
           if (isAdmin && !_writing)
             ElevatedButton.icon(
-              onPressed: () => setState(() => _writing = true),
+              onPressed: () => setState(() {
+                _writing = true;
+                // Phase 8 (G5): শাখা অ্যাডমিনের ফরম নিজের
+                // সমিতিতেই বাঁধা থাকে — স্কোপ বদলানোর সুযোগ নেই।
+                if (isBranchAdmin) {
+                  _scope = 'branch';
+                  _branchId = user?.branchId;
+                }
+              }),
               icon: const Icon(Icons.add_outlined),
               label: const Text('নতুন নোটিশ লিখুন'),
             ),
@@ -234,37 +265,65 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _scope,
-                    decoration: const InputDecoration(
-                      labelText: 'কার জন্য',
-                      prefixIcon: Icon(Icons.groups_outlined),
+                  // Phase 8 (G5): "সবার জন্য" (org) শুধু সুপার
+                  // অ্যাডমিন; শাখা অ্যাডমিন শুধু নিজের সমিতির
+                  // নাম দেখে — ড্রপডাউন নেই।
+                  if (isSuperAdmin) ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: _scope,
+                      decoration: const InputDecoration(
+                        labelText: 'কার জন্য',
+                        prefixIcon: Icon(Icons.groups_outlined),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'org',
+                          child: Text('সবার জন্য'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'branch',
+                          child: Text('একটি সমিতির জন্য'),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => _scope = v ?? 'org'),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'org', child: Text('সবার জন্য')),
-                      DropdownMenuItem(
-                        value: 'branch',
-                        child: Text('একটি সমিতির জন্য'),
+                    if (_scope == 'branch') ...[
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: _branchId,
+                        decoration: const InputDecoration(
+                          labelText: 'কোন সমিতি',
+                        ),
+                        items: branches
+                            .map(
+                              (b) => DropdownMenuItem(
+                                value: b.id,
+                                child: Text(b.name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) => setState(() => _branchId = v),
                       ),
                     ],
-                    onChanged: (v) => setState(() => _scope = v ?? 'org'),
-                  ),
-                  if (_scope == 'branch') ...[
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _branchId,
-                      decoration: const InputDecoration(labelText: 'কোন সমিতি'),
-                      items: branches
-                          .map(
-                            (b) => DropdownMenuItem(
-                              value: b.id,
-                              child: Text(b.name),
+                  ] else
+                    Row(
+                      children: [
+                        const Icon(Icons.groups_outlined, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _branchId == null
+                                ? 'আপনার সমিতি ঠিক করা নেই — সুপার অ্যাডমিনের সাথে যোগাযোগ করুন'
+                                : 'সমিতি: ${branches.where((b) => b.id == _branchId).map((b) => b.name).firstOrNull ?? '—'}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  _branchId == null ? Colors.red : null,
                             ),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() => _branchId = v),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: _pickAttachment,

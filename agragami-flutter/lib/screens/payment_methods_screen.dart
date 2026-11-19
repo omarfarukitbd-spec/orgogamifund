@@ -83,12 +83,14 @@ class PaymentMethodsScreen extends ConsumerWidget {
     BuildContext context,
     List<Branch> branches, {
     PaymentMethodConfig? existing,
+    String? fixedBranchId,
   }) {
     showDialog<void>(
       context: context,
       builder: (context) => MethodFormDialog(
         branches: branches,
         existing: existing,
+        fixedBranchId: fixedBranchId,
       ),
     );
   }
@@ -146,7 +148,10 @@ class PaymentMethodsScreen extends ConsumerWidget {
         ),
       );
     }
-    final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+    final user = userAsync.valueOrNull;
+    final isAdmin = user?.isAdmin ?? false;
+    final isSuperAdmin = user?.isSuperAdmin ?? false;
+    final isBranchAdmin = isAdmin && !isSuperAdmin;
     final methods = ref.watch(paymentMethodsProvider);
     final branches = ref.watch(branchesStreamProvider);
     final branchList = branches.valueOrNull ?? const <Branch>[];
@@ -155,6 +160,17 @@ class PaymentMethodsScreen extends ConsumerWidget {
       return const EmptyState(
         icon: Icons.lock_outlined,
         title: 'এই পাতা শুধু অ্যাডমিন দেখতে পারেন',
+      );
+    }
+    // Phase 8 (G2): শাখা অ্যাডমিনের সমিতি বাঁধা না থাকলে
+    // কোনো মাধ্যমই দেখানো যায় না।
+    if (isBranchAdmin && (user?.branchId == null || user!.branchId!.isEmpty)) {
+      return const Scaffold(
+        body: EmptyState(
+          icon: Icons.groups_outlined,
+          title: 'আপনার সমিতি ঠিক করা নেই',
+          message: 'সুপার অ্যাডমিনের সাথে যোগাযোগ করুন।',
+        ),
       );
     }
 
@@ -166,7 +182,11 @@ class PaymentMethodsScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
-        onPressed: () => _openForm(context, branchList),
+        onPressed: () => _openForm(
+          context,
+          branchList,
+          fixedBranchId: isBranchAdmin ? user?.branchId : null,
+        ),
         icon: const Icon(Icons.add_outlined),
         label: const Text('নতুন মাধ্যম যোগ করুন'),
       ),
@@ -180,7 +200,18 @@ class PaymentMethodsScreen extends ConsumerWidget {
           title: 'তালিকা আনা যায়নি',
         ),
         data: (list) {
-          if (list.isEmpty) {
+          // Phase 8 (G2): শাখা অ্যাডমিন শুধু নিজের সমিতির
+          // মাধ্যম দেখে/বদলায়/মুছে — অন্য সমিতি আর "সব
+          // সমিতি"র মাধ্যম তার তালিকায় আসে না।
+          final visible = isSuperAdmin
+              ? list
+              : list
+                  .where(
+                    (m) =>
+                        m.branchId != null && m.branchId == user?.branchId,
+                  )
+                  .toList();
+          if (visible.isEmpty) {
             return const EmptyState(
               icon: Icons.account_balance_outlined,
               title: 'এখনো কোনো পেমেন্ট মাধ্যম যোগ করা হয়নি',
@@ -188,10 +219,10 @@ class PaymentMethodsScreen extends ConsumerWidget {
           }
           return ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            itemCount: list.length,
+            itemCount: visible.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, i) {
-              final m = list[i];
+              final m = visible[i];
               final scope = m.branchId == null
                   ? 'সব সমিতি'
                   : branchList
@@ -292,8 +323,13 @@ class PaymentMethodsScreen extends ConsumerWidget {
                     Row(
                       children: [
                         TextButton.icon(
-                          onPressed: () =>
-                              _openForm(context, branchList, existing: m),
+                          onPressed: () => _openForm(
+                            context,
+                            branchList,
+                            existing: m,
+                            fixedBranchId:
+                                isBranchAdmin ? user?.branchId : null,
+                          ),
                           icon: const Icon(Icons.edit_outlined, size: 16),
                           label: const Text('বদলান'),
                         ),

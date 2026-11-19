@@ -7,6 +7,7 @@ import '../models/membership.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/admin_branch_scope.dart';
 import '../utils/samiti_apply.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
@@ -63,13 +64,27 @@ class SamitiDetailScreen extends ConsumerWidget {
         final isAdmin = user?.isAdmin ?? false;
         // F6: সমিতি বদলানো শুধু সুপার অ্যাডমিনের কাজ।
         final isSuperAdmin = user?.isSuperAdmin ?? false;
+        final isBranchAdmin = isAdmin && !isSuperAdmin;
         final memberships =
             membershipsAsync.valueOrNull ?? const <Membership>[];
         final found =
             memberships.where((m) => m.branchId == branch.id).toList();
         final membership = found.isEmpty ? null : found.first;
         final isUserBranch = user?.branchId == branch.id;
-        final canSee = isAdmin || isUserBranch || (membership?.isApproved ?? false);
+        // Phase 8 (G1): ভেতরের হিসাব আর ব্যাংক তথ্য দেখার
+        // অধিকার শাখা-ভিত্তিক — আগে গ্লোবাল isAdmin ছিল, তাই
+        // অন্য সমিতির শাখা অ্যাডমিনও এই সমিতির ব্যাংক/বিকাশ/
+        // নগদ নম্বর দেখে ফেলত। এখন শুধু এই সমিতির অ্যাডমিন
+        // (বা সুপার অ্যাডমিন), নিজের সমিতি, বা অনুমোদিত সদস্য।
+        final isAdminOfBranch = isAdminForBranch(
+          isSuperAdmin: isSuperAdmin,
+          isBranchAdmin: isBranchAdmin,
+          adminBranchId: user?.branchId,
+          branchId: branch.id,
+        );
+        final canSee = isAdminOfBranch ||
+            isUserBranch ||
+            (membership?.isApproved ?? false);
         // Phase 7: আবেদনের বোতামের নিয়ম — তালিকার কার্ডে
         // একই ফাংশন চলে, যাতে দুই জায়গায় নিয়ম আলাদা না হয়।
         final showApply = shouldShowApplyButton(
@@ -205,6 +220,9 @@ class SamitiDetailScreen extends ConsumerWidget {
               // Phase 5 (F10): ব্যাংক/বিকাশ/নগদ নম্বর শুধু
               // ওই সমিতির সদস্য আর অ্যাডমিন দেখে — বাইরের
               // কেউ সমিতির পাতা খুললেও নম্বর দেখে না।
+              // Phase 8 (G1): "অ্যাডমিন" এখানে শাখা-ভিত্তিক
+              // (canSee) — অন্য সমিতির শাখা অ্যাডমিন আর
+              // এই নম্বরগুলো দেখে না।
               if (branch.bankDetails != null && canSee) ...[
                 const SizedBox(height: 16),
                 AppCard(
@@ -358,7 +376,8 @@ class SamitiDetailScreen extends ConsumerWidget {
                 // ভেতরের হিসাব দেখা যায় (অ্যাডমিন বলে), কিন্তু
                 // সদস্য হিসেবে জমা দিতে চাইলে আবেদন করতে হয়।
                 // অনুমোদন হলেও অ্যাডমিন রোল থাকে (M10)।
-                if (isAdmin && showApply) ...[
+                // Phase 8 (G1): শাখা-ভিত্তিক অ্যাডমিন-পরীক্ষা।
+                if (isAdminOfBranch && showApply) ...[
                   AppCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,9 +411,13 @@ class SamitiDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
+                // Phase 8 (G1): ভেতরের পাতায়ও শাখা-ভিত্তিক
+                // অ্যাডমিন-পরীক্ষা যায় — অন্য সমিতির শাখা
+                // অ্যাডমিন (সদস্য হিসেবে ভেতরে এলে) সক্রিয়
+                // সদস্যের তালিকাই দেখে, সম্পাদনা পায় না।
                 SamitiMemberDetail(
                   branch: branch,
-                  isAdmin: isAdmin,
+                  isAdmin: isAdminOfBranch,
                   isSuperAdmin: isSuperAdmin,
                 ),
               ],

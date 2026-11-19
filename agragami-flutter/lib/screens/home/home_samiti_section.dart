@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/branch.dart';
 import '../../services/firestore_service.dart';
+import '../../utils/admin_branch_scope.dart';
 import '../../widgets/app_card.dart';
 import '../passbook_screen.dart';
 
@@ -11,14 +12,20 @@ import '../passbook_screen.dart';
 class MySamitiTotalsSection extends ConsumerWidget {
   final List<String> branchIds;
 
-  /// অ্যাডমিন হলে true — অ্যাডমিন মোট হিসাব সবসময় দেখে,
-  /// canMembersViewTotalFund শুধু সদস্যদের জন্য (F11)।
-  final bool isAdmin;
+  /// সুপার অ্যাডমিন কি না, শাখা অ্যাডমিন কি না, আর তার
+  /// নিজের সমিতি — প্রতিটি কার্ডে শাখা-ভিত্তিক পরীক্ষা হয়
+  /// (Phase 8, G3): মোট হিসাব সবসময় দেখে শুধু ওই সমিতির
+  /// অ্যাডমিন, canMembersViewTotalFund শুধু সদস্যদের জন্য (F11)।
+  final bool isSuperAdmin;
+  final bool isBranchAdmin;
+  final String? adminBranchId;
 
   const MySamitiTotalsSection({
     super.key,
     required this.branchIds,
-    this.isAdmin = false,
+    this.isSuperAdmin = false,
+    this.isBranchAdmin = false,
+    this.adminBranchId,
   });
 
   @override
@@ -53,7 +60,18 @@ class MySamitiTotalsSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final b in mine) ...[
-          _OneSamitiCard(branch: b, isAdmin: isAdmin),
+          _OneSamitiCard(
+            branch: b,
+            // Phase 8 (G3): কার্ড-প্রতি শাখা-ভিত্তিক
+            // অ্যাডমিন-পরীক্ষা — অন্য সমিতির শাখা অ্যাডমিন
+            // এখানে সদস্যের মতোই দেখে।
+            isAdmin: isAdminForBranch(
+              isSuperAdmin: isSuperAdmin,
+              isBranchAdmin: isBranchAdmin,
+              adminBranchId: adminBranchId,
+              branchId: b.id,
+            ),
+          ),
           const SizedBox(height: 12),
         ],
       ],

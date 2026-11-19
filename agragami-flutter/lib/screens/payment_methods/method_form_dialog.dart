@@ -14,7 +14,17 @@ class MethodFormDialog extends ConsumerStatefulWidget {
   final List<Branch> branches;
   final PaymentMethodConfig? existing;
 
-  const MethodFormDialog({super.key, required this.branches, this.existing});
+  /// শাখা অ্যাডমিনের জন্য বাঁধা সমিতি (Phase 8, G2) —
+  /// দেওয়া থাকলে সমিতি বাছার ড্রপডাউন থাকে না, মাধ্যম
+  /// এই সমিতিরই হয়। সুপার অ্যাডমিনের ক্ষেত্রে null।
+  final String? fixedBranchId;
+
+  const MethodFormDialog({
+    super.key,
+    required this.branches,
+    this.existing,
+    this.fixedBranchId,
+  });
 
   @override
   ConsumerState<MethodFormDialog> createState() => _MethodFormDialogState();
@@ -42,7 +52,9 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
     _sortOrder =
         TextEditingController(text: e == null ? '0' : '${e.sortOrder}');
     _type = e?.type ?? PaymentMethodType.mobileBanking;
-    _branchId = e?.branchId;
+    // শাখা অ্যাডমিনের নতুন মাধ্যম তার নিজের সমিতিরই হয় —
+    // "সব সমিতি" (null) তার জন্য নয়।
+    _branchId = e?.branchId ?? widget.fixedBranchId;
   }
 
   @override
@@ -84,6 +96,9 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
           isCash ? '' : toAsciiDigits(_accountNumber.text.trim());
       final holderName = isCash ? '' : _holderName.text.trim();
       final sortOrder = parseAmount(_sortOrder.text) ?? 0;
+      // Phase 8 (G2): বাঁধা সমিতি থাকলে সেটাই জোর করে
+      // বসে — ড্রপডাউন না থাকলেও সুরক্ষা হিসেবে।
+      final branchId = widget.fixedBranchId ?? _branchId;
       if (existing == null) {
         final method = PaymentMethodConfig(
           id: '',
@@ -91,7 +106,7 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
           type: _type,
           accountNumber: accountNumber,
           accountHolderName: holderName,
-          branchId: _branchId,
+          branchId: branchId,
           isActive: true,
           sortOrder: sortOrder,
           instructions: _instructions.text.trim().isEmpty
@@ -108,7 +123,7 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
           type: _type,
           accountNumber: accountNumber,
           accountHolderName: holderName,
-          branchId: _branchId,
+          branchId: branchId,
           isActive: existing.isActive,
           sortOrder: sortOrder,
           instructions: _instructions.text.trim().isEmpty
@@ -203,24 +218,40 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
               ),
               const SizedBox(height: 12),
             ],
-            DropdownButtonFormField<String?>(
-              initialValue: _branchId,
-              decoration: const InputDecoration(
-                labelText: 'কোন সমিতির জন্য',
-              ),
-              items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('সব সমিতি'),
-                ),
-                for (final b in widget.branches)
-                  DropdownMenuItem<String?>(
-                    value: b.id,
-                    child: Text(b.name),
+            // Phase 8 (G2): বাঁধা সমিতি থাকলে (শাখা
+            // অ্যাডমিন) ড্রপডাউন নেই — শুধু নাম দেখা যায়।
+            if (widget.fixedBranchId != null)
+              Row(
+                children: [
+                  const Icon(Icons.groups_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'সমিতি: ${widget.branches.where((b) => b.id == widget.fixedBranchId).map((b) => b.name).firstOrNull ?? '—'}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
-              ],
-              onChanged: (v) => setState(() => _branchId = v),
-            ),
+                ],
+              )
+            else
+              DropdownButtonFormField<String?>(
+                initialValue: _branchId,
+                decoration: const InputDecoration(
+                  labelText: 'কোন সমিতির জন্য',
+                ),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('সব সমিতি'),
+                  ),
+                  for (final b in widget.branches)
+                    DropdownMenuItem<String?>(
+                      value: b.id,
+                      child: Text(b.name),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _branchId = v),
+              ),
             const SizedBox(height: 12),
             TextField(
               controller: _instructions,

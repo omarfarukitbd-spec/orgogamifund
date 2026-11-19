@@ -8,6 +8,7 @@ import '../models/expense.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/admin_branch_scope.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import 'home/home_samiti_section.dart';
@@ -32,17 +33,22 @@ class HomeScreen extends ConsumerWidget {
     final isMember = myBranchIds.isNotEmpty;
 
     // মোট হিসাব: সুপার অ্যাডমিন সব সমিতি দেখে, শাখা
-    // অ্যাডমিন শুধু নিজের সমিতি, সদস্য শুধু তার অনুমোদিত
-    // সমিতিগুলো — ফিল্টার ছাড়া পড়লে নিয়মে বাধা পায়।
-    // অতিথির (কোনো সমিতির সদস্য নয়) জন্য হিসাব পড়া হয় না।
+    // অ্যাডমিন নিজের সমিতি + অনুমোদিত সদস্যপদের সমিতি
+    // (Phase 8, G3), সদস্য শুধু তার অনুমোদিত সমিতিগুলো —
+    // ফিল্টার ছাড়া পড়লে নিয়মে বাধা পায়। অতিথির (কোনো
+    // সমিতির সদস্য নয়) জন্য হিসাব পড়া হয় না।
     final isBranchAdmin = isAdmin && !isSuperAdmin;
-    final totalsKey = isSuperAdmin
+    final scopedIds = scopedBranchIds(
+      isSuperAdmin: isSuperAdmin,
+      isBranchAdmin: isBranchAdmin,
+      adminBranchId: user?.branchId,
+      approvedIds: myBranchIds,
+    );
+    final totalsKey = scopedIds == null
         ? ''
-        : isBranchAdmin
-            ? user!.branchId
-            : myBranchIds.isEmpty
-                ? null
-                : (myBranchIds.toList()..sort()).join('|');
+        : scopedIds.isEmpty
+            ? null
+            : (scopedIds.toList()..sort()).join('|');
     final totalsAsync = totalsKey == null
         ? const AsyncValue<HomeTotals>.data(HomeTotals())
         : ref.watch(homeTotalsForBranchesProvider(totalsKey));
@@ -183,11 +189,7 @@ class HomeScreen extends ConsumerWidget {
 
           // সাম্প্রতিক লেনদেন সেকশন
           const SectionTitle('সাম্প্রতিক লেনদেন'),
-          _RecentTransactionsCard(
-            myBranchIds: myBranchIds,
-            isSuperAdmin: isSuperAdmin,
-            adminBranchId: isBranchAdmin ? user?.branchId : null,
-          ),
+          _RecentTransactionsCard(scopedIds: scopedIds),
 
           // সদস্য না হলে আবেদনের ব্যানার
           if (!isAdmin && !isMember) ...[
@@ -221,7 +223,12 @@ class HomeScreen extends ConsumerWidget {
             const PublicSamitiListSection(),
           ] else if (isMember) ...[
             const SizedBox(height: 16),
-            MySamitiTotalsSection(branchIds: myBranchIds, isAdmin: isAdmin),
+            MySamitiTotalsSection(
+              branchIds: myBranchIds,
+              isSuperAdmin: isSuperAdmin,
+              isBranchAdmin: isBranchAdmin,
+              adminBranchId: user?.branchId,
+            ),
           ],
 
           // দরকারি পাতা সেকশন
@@ -235,32 +242,23 @@ class HomeScreen extends ConsumerWidget {
 }
 
 /// সাম্প্রতিক লেনদেন কার্ড — সাম্প্রতিক ২টি জমা আর ২টি খরচ।
-/// টপ-লেভেল প্রোভাইডার থেকে আসে; সুপার অ্যাডমিন সব সমিতি
-/// দেখে, শাখা অ্যাডমিন শুধু নিজের সমিতি, সদস্য শুধু তার
+/// টপ-লেভেল প্রোভাইডার থেকে আসে; স্কোপ মোট হিসাবের মতোই —
+/// সুপার অ্যাডমিন সব সমিতি, শাখা অ্যাডমিন নিজের সমিতি +
+/// অনুমোদিত সদস্যপদ (Phase 8, G3), সদস্য শুধু তার
 /// অনুমোদিত সমিতিগুলো।
 class _RecentTransactionsCard extends ConsumerWidget {
-  final List<String> myBranchIds;
-  final bool isSuperAdmin;
+  /// দেখার মতো সমিতিগুলো — null মানে সব সমিতি
+  /// (সুপার অ্যাডমিন)।
+  final List<String>? scopedIds;
 
-  /// শাখা অ্যাডমিনের নিজের সমিতি (সুপার অ্যাডমিন/সদস্যের
-  /// ক্ষেত্রে null)।
-  final String? adminBranchId;
-
-  const _RecentTransactionsCard({
-    required this.myBranchIds,
-    required this.isSuperAdmin,
-    this.adminBranchId,
-  });
+  const _RecentTransactionsCard({required this.scopedIds});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final key = isSuperAdmin
+    final key = scopedIds == null
         ? ''
-        : adminBranchId != null
-            ? adminBranchId!
-            : (myBranchIds.toList()..sort()).join('|');
-    final noScope =
-        !isSuperAdmin && adminBranchId == null && myBranchIds.isEmpty;
+        : (scopedIds!.toList()..sort()).join('|');
+    final noScope = scopedIds != null && scopedIds!.isEmpty;
     final txnsAsync = noScope
         ? const AsyncValue<RecentTransactions>.data(
             RecentTransactions(payments: [], expenses: []),

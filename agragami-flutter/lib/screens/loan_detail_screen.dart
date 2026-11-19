@@ -9,6 +9,7 @@ import '../models/membership.dart';
 import '../models/payment_method.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../utils/admin_branch_scope.dart';
 import '../utils/date_parser.dart';
 import '../utils/firebase_errors.dart';
 import '../theme/app_theme.dart';
@@ -81,9 +82,11 @@ class LoanDetailScreen extends ConsumerWidget {
     final loanAsync = ref.watch(loanStreamProvider(loanId));
     final userAsync = ref.watch(currentUserProvider);
     final membershipsAsync = ref.watch(myMembershipsProvider);
-    final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+    final user = userAsync.valueOrNull;
+    final isAdmin = user?.isAdmin ?? false;
     // F6: "ঋণ মুছুন" শুধু সুপার অ্যাডমিন দেখে।
-    final isSuperAdmin = userAsync.valueOrNull?.isSuperAdmin ?? false;
+    final isSuperAdmin = user?.isSuperAdmin ?? false;
+    final isBranchAdmin = isAdmin && !isSuperAdmin;
     final myBranchIds = approvedBranchIds(
       membershipsAsync.valueOrNull ?? const <Membership>[],
     );
@@ -116,6 +119,16 @@ class LoanDetailScreen extends ConsumerWidget {
         if (!isAdmin && !myBranchIds.contains(loan.branchId)) {
           return NotMemberGate(branchId: loan.branchId);
         }
+        // Phase 8 (G3): ঋণ বদলানো আর কিস্তি নেওয়া শুধু এই
+        // সমিতির অ্যাডমিনের কাজ — অন্য সমিতির শাখা অ্যাডমিন
+        // (সদস্য হিসেবে দেখলে) বোতাম দেখে না, কারণ rules-এ
+        // তার লেখা বাধা পায়।
+        final isAdminOfBranch = isAdminForBranch(
+          isSuperAdmin: isSuperAdmin,
+          isBranchAdmin: isBranchAdmin,
+          adminBranchId: user?.branchId,
+          branchId: loan.branchId,
+        );
         // সদস্যের নাম সক্রিয় সদস্যদের মধ্যে খোঁজা হয় (F3)।
         final membersAsync =
             ref.watch(activeMembersByBranchProvider(loan.branchId));
@@ -219,7 +232,7 @@ class LoanDetailScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 18),
-              if (isAdmin) ...[
+              if (isAdminOfBranch) ...[
                 Row(
                   children: [
                     Expanded(

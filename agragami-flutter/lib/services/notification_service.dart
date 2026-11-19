@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_strings.dart';
 import '../models/member_application.dart';
+import '../models/notice.dart';
 import '../models/payment.dart';
+import '../utils/admin_branch_scope.dart';
 import 'auth_service.dart';
 import 'firestore_providers.dart';
 import 'settings_service.dart';
@@ -74,7 +76,26 @@ final notificationsListProvider =
   final pendingPayments = isAdmin
       ? ref.watch(pendingPaymentsProvider(scopeBranchId)).valueOrNull ?? []
       : const <Payment>[];
-  final notices = ref.watch(noticesStreamProvider).valueOrNull ?? [];
+  // Phase 8 (G5): বেলে শুধু নিজের সমিতির নোটিশ আসে —
+  // সুপার অ্যাডমিন সব দেখে, শাখা অ্যাডমিন নিজের সমিতি +
+  // অনুমোদিত সদস্যপদ, সদস্য শুধু অনুমোদিত সমিতি। "সবার
+  // জন্য" (org) নোটিশ সবাই দেখে।
+  final memberships =
+      ref.watch(myMembershipsProvider).valueOrNull ?? const [];
+  final noticeScope = scopedBranchIds(
+    isSuperAdmin: user?.isSuperAdmin ?? false,
+    isBranchAdmin: user?.isBranchAdmin ?? false,
+    adminBranchId: user?.branchId,
+    approvedIds: approvedBranchIds(memberships),
+  );
+  final notices = (ref.watch(noticesStreamProvider).valueOrNull ?? [])
+      .where(
+        (n) =>
+            noticeScope == null ||
+            n.scope == NoticeScope.org ||
+            (n.branchId != null && noticeScope.contains(n.branchId)),
+      )
+      .toList();
 
   final items = <AppNotificationItem>[];
 

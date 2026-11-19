@@ -9,6 +9,7 @@ import '../services/firestore_service.dart';
 import '../services/report_pdf_service.dart';
 import '../services/statement_export_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/admin_branch_scope.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
 import 'passbook_screen.dart';
@@ -50,17 +51,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     final user = userAsync.valueOrNull;
     final isAdmin = user?.isAdmin ?? false;
     final isSuperAdmin = user?.isSuperAdmin ?? false;
-    // Phase 5 (F5): শাখা অ্যাডমিন শুধু নিজের সমিতির
-    // রিপোর্ট দেখে — "সব সমিতি" তার জন্য নেই।
+    // Phase 5 (F5): শাখা অ্যাডমিন "সব সমিতি" দেখে না।
     final isBranchAdmin = isAdmin && !isSuperAdmin;
-    if (isBranchAdmin &&
-        (user!.branchId == null || user.branchId!.isEmpty)) {
-      return const EmptyState(
-        icon: Icons.groups_outlined,
-        title: 'আপনার সমিতি ঠিক করা নেই',
-        message: 'সুপার অ্যাডমিনের সাথে যোগাযোগ করুন।',
-      );
-    }
     final membershipsAsync = ref.watch(myMembershipsProvider);
 
     if (membershipsAsync.isLoading) {
@@ -78,26 +70,45 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       );
     }
     final memberships = membershipsAsync.valueOrNull ?? const <Membership>[];
-    final allowedIds = isSuperAdmin
-        ? null
-        : isBranchAdmin
-            ? <String>[user!.branchId!]
-            : approvedBranchIds(memberships);
+    // Phase 8 (G3): শাখা অ্যাডমিনের স্কোপ = নিজের সমিতি +
+    // অনুমোদিত সদস্যপদের সমিতি — খরচ, ঋণ, রিপোর্ট, হোম —
+    // চার পাতায় একই নিয়ম।
+    final allowedIds = scopedBranchIds(
+      isSuperAdmin: isSuperAdmin,
+      isBranchAdmin: isBranchAdmin,
+      adminBranchId: user?.branchId,
+      approvedIds: approvedBranchIds(memberships),
+    );
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
       return const NotMemberGate();
+    }
+    // Phase 8 (G3): শাখা অ্যাডমিনের সমিতি বাঁধা না থাকলেও
+    // সদস্যপদের সমিতি থাকলে সেটা দেখা যায় — স্কোপ একেবারে
+    // খালি হলেই এই বার্তা।
+    if (isBranchAdmin && (allowedIds == null || allowedIds.isEmpty)) {
+      return const EmptyState(
+        icon: Icons.groups_outlined,
+        title: 'আপনার সমিতি ঠিক করা নেই',
+        message: 'সুপার অ্যাডমিনের সাথে যোগাযোগ করুন।',
+      );
     }
     final branchesAsync = ref.watch(branchesStreamProvider);
     final allBranches = branchesAsync.valueOrNull ?? const <Branch>[];
     final branches = allowedIds == null
         ? allBranches
         : allBranches.where((b) => allowedIds.contains(b.id)).toList();
+    // সমিতি ঠিক করা না থাকলে শাখা অ্যাডমিনের নিজের সমিতি,
+    // সদস্যের ক্ষেত্রে নিজের প্রথম সমিতিটাই দেখানো হয়।
+    final defaultBranchId = isBranchAdmin &&
+            user?.branchId != null &&
+            branches.any((b) => b.id == user!.branchId)
+        ? user!.branchId
+        : (branches.isEmpty ? null : branches.first.id);
     final effectiveBranchId = isSuperAdmin
         ? _branchId
-        : isBranchAdmin
-            ? user!.branchId
-            : (_branchId != null && branches.any((b) => b.id == _branchId)
-                ? _branchId
-                : (branches.isEmpty ? null : branches.first.id));
+        : (_branchId != null && branches.any((b) => b.id == _branchId)
+            ? _branchId
+            : defaultBranchId);
     final branchName = () {
       final found =
           allBranches.where((b) => b.id == effectiveBranchId).toList();
@@ -142,7 +153,10 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          if (isBranchAdmin)
+          // Phase 8 (G3): স্কোপে একটাই সমিতি থাকলে শাখা
+          // অ্যাডমিন আগের মতো স্থির নাম দেখে; একাধিক হলে
+          // (দ্বিতীয় সমিতির সদস্য) ড্রপডাউন পায়।
+          if (isBranchAdmin && branches.length <= 1)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(

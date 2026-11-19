@@ -340,7 +340,27 @@ service cloud.firestore {
     // --- 13. Notices & Meeting Minutes (নোটিশ ও রেজুলেশন) ---
     match /notices/{noticeId} {
       allow read: if isApproved();
-      allow create, update: if isSuperAdmin() || isBranchAdminAny();
+      // Phase 8 (G5): শাখা অ্যাডমিন শুধু নিজের সমিতির
+      // নোটিশ (scope 'branch' + branchId মিলিয়ে) লিখতে
+      // পারে — "সবার জন্য" (org) নোটিশ শুধু সুপার
+      // অ্যাডমিনের। বদলানোর সময় scope/branchId বদলানো
+      // যায় না। মুছতে পারে শুধু সুপার অ্যাডমিন।
+      allow create: if isSuperAdmin() ||
+                       ('scope' in request.resource.data &&
+                        request.resource.data.scope == 'branch' &&
+                        'branchId' in request.resource.data &&
+                        request.resource.data.branchId is string &&
+                        isBranchAdmin(request.resource.data.branchId));
+      allow update: if isSuperAdmin() ||
+                       ('scope' in resource.data &&
+                        resource.data.scope == 'branch' &&
+                        'branchId' in resource.data &&
+                        resource.data.branchId is string &&
+                        isBranchAdmin(resource.data.branchId) &&
+                        'scope' in request.resource.data &&
+                        request.resource.data.scope == 'branch' &&
+                        'branchId' in request.resource.data &&
+                        request.resource.data.branchId == resource.data.branchId);
       allow delete: if isSuperAdmin();
     }
 
@@ -376,7 +396,25 @@ service cloud.firestore {
     // --- 18. Payment Methods (পেমেন্ট পদ্ধতি ও মার্চেন্ট/অ্যাকাউন্ট কনফিগারেশন) ---
     match /paymentMethods/{methodId} {
       allow read: if isAuthenticated();
-      allow write: if isSuperAdmin() || isBranchAdminAny();
+      // Phase 8 (G2): শাখা অ্যাডমিন শুধু নিজের সমিতির
+      // মাধ্যম লিখতে পারে — "সব সমিতি"র (branchId খালি)
+      // মাধ্যম শুধু সুপার অ্যাডমিনের। বদলানোর সময়
+      // branchId বদলানো যায় না।
+      allow create: if isSuperAdmin() ||
+                       ('branchId' in request.resource.data &&
+                        request.resource.data.branchId is string &&
+                        request.resource.data.branchId != '' &&
+                        isBranchAdmin(request.resource.data.branchId));
+      allow update: if isSuperAdmin() ||
+                       ('branchId' in resource.data &&
+                        resource.data.branchId is string &&
+                        isBranchAdmin(resource.data.branchId) &&
+                        'branchId' in request.resource.data &&
+                        request.resource.data.branchId == resource.data.branchId);
+      allow delete: if isSuperAdmin() ||
+                       ('branchId' in resource.data &&
+                        resource.data.branchId is string &&
+                        isBranchAdmin(resource.data.branchId));
     }
   }
 }

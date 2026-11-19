@@ -10,6 +10,7 @@ import '../models/payment.dart';
 import '../models/payment_method.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../utils/admin_branch_scope.dart';
 import '../utils/bn_digits.dart';
 import '../utils/firebase_errors.dart';
 import '../widgets/empty_state.dart';
@@ -230,6 +231,8 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     final userAsync = ref.watch(currentUserProvider);
     final user = userAsync.valueOrNull;
     final isAdmin = user?.isAdmin ?? false;
+    final isSuperAdmin = user?.isSuperAdmin ?? false;
+    final isBranchAdmin = isAdmin && !isSuperAdmin;
     final uid = user?.id ?? AuthService().uidOrEmpty;
     final membershipsAsync = ref.watch(myMembershipsProvider);
 
@@ -246,9 +249,24 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
       );
     }
     final memberships = membershipsAsync.valueOrNull ?? const <Membership>[];
-    final allowedIds = isAdmin ? null : approvedBranchIds(memberships);
+    // Phase 8 (G4): শাখা অ্যাডমিনের ড্রপডাউন F5 প্যাটার্নে —
+    // নিজের সমিতি + অনুমোদিত সদস্যপদ (G3-এর নিয়ম)। আগে
+    // শাখা অ্যাডমিনও সুপার অ্যাডমিনের মতো সব সমিতি দেখত।
+    final allowedIds = scopedBranchIds(
+      isSuperAdmin: isSuperAdmin,
+      isBranchAdmin: isBranchAdmin,
+      adminBranchId: user?.branchId,
+      approvedIds: approvedBranchIds(memberships),
+    );
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
       return const NotMemberGate();
+    }
+    if (isBranchAdmin && (allowedIds == null || allowedIds.isEmpty)) {
+      return const EmptyState(
+        icon: Icons.groups_outlined,
+        title: 'আপনার সমিতি ঠিক করা নেই',
+        message: 'সুপার অ্যাডমিনের সাথে যোগাযোগ করুন।',
+      );
     }
     final branchesAsync = ref.watch(branchesStreamProvider);
     final allBranches = branchesAsync.valueOrNull ?? const <Branch>[];
@@ -323,7 +341,31 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                   .toList(),
               onChanged: (v) => setState(() => _adminMemberId = v),
             ),
-            if (branchMembers.isEmpty)
+            // Phase 8 (G4): সদস্যের প্রশ্ন ভাঙলে (অনুমতি নেই
+            // বা নেট সমস্যা) "কোনো সদস্য নেই" ভুল বার্তা না
+            // দেখিয়ে ভুলই দেখানো হয় — সাথে আবার চেষ্টা।
+            if (branchMembersAsync.hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'সদস্যের তালিকা আনা যায়নি — নেট দেখে আবার চেষ্টা করুন',
+                        style: TextStyle(fontSize: 13, color: Colors.red),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => ref.invalidate(
+                        activeMembersByBranchProvider(effectiveBranchId),
+                      ),
+                      child: Text(AppStrings.tryAgain),
+                    ),
+                  ],
+                ),
+              )
+            else if (!branchMembersAsync.isLoading &&
+                branchMembers.isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: 6),
                 child: Text(
