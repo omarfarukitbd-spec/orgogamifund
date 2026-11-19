@@ -7,6 +7,7 @@ import '../models/membership.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/samiti_apply.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
@@ -69,6 +70,12 @@ class SamitiDetailScreen extends ConsumerWidget {
         final membership = found.isEmpty ? null : found.first;
         final isUserBranch = user?.branchId == branch.id;
         final canSee = isAdmin || isUserBranch || (membership?.isApproved ?? false);
+        // Phase 7: আবেদনের বোতামের নিয়ম — তালিকার কার্ডে
+        // একই ফাংশন চলে, যাতে দুই জায়গায় নিয়ম আলাদা না হয়।
+        final showApply = shouldShowApplyButton(
+          isApprovedMember: membership?.isApproved ?? false,
+          isPendingApplication: membership?.isPending ?? false,
+        );
         final theme = Theme.of(context);
         final iconData = _iconForPurpose(branch.purpose);
 
@@ -346,12 +353,51 @@ class SamitiDetailScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-              ] else
+              ] else ...[
+                // Phase 7: অ্যাডমিন কিন্তু এই সমিতির সদস্য নয় —
+                // ভেতরের হিসাব দেখা যায় (অ্যাডমিন বলে), কিন্তু
+                // সদস্য হিসেবে জমা দিতে চাইলে আবেদন করতে হয়।
+                // অনুমোদন হলেও অ্যাডমিন রোল থাকে (M10)।
+                if (isAdmin && showApply) ...[
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'আপনি এই সমিতির সদস্য নন',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'সদস্য হিসেবে জমা দিতে চাইলে আবেদন করুন — অনুমোদন হলেও আপনার অ্যাডমিন রোল থাকবে।',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        PrimaryButton(
+                          label: AppStrings.joinSamiti,
+                          onPressed: () => context.goNamed(
+                            'apply',
+                            queryParameters: {'branchId': branch.id},
+                          ),
+                          icon: Icons.person_add_outlined,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 SamitiMemberDetail(
                   branch: branch,
                   isAdmin: isAdmin,
                   isSuperAdmin: isSuperAdmin,
                 ),
+              ],
             ],
           ),
         );

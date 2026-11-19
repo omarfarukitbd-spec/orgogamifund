@@ -7,6 +7,7 @@ import '../models/membership.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/samiti_apply.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
@@ -136,6 +137,10 @@ class _SamitiCardItem extends StatelessWidget {
     final theme = Theme.of(context);
     final isApproved = membership?.isApproved ?? false;
     final isPending = membership?.isPending ?? false;
+    final showApply = shouldShowApplyButton(
+      isApprovedMember: isApproved,
+      isPendingApplication: isPending,
+    );
     final iconData = _iconForPurpose(branch.purpose);
 
     return AppCard(
@@ -223,13 +228,19 @@ class _SamitiCardItem extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          if (isAdmin)
+          // Phase 7: অ্যাডমিনও এই সমিতির সদস্য হতে পারে — তাই
+          // অ্যাডমিন ট্যাগ আর সদস্যপদের অবস্থা আলাদা আলাদা
+          // দেখানো হয়। আগে অ্যাডমিন হলে শুধু ট্যাগ দেখা যেত,
+          // আবেদনের বোতাম কখনো আসত না।
+          if (isAdmin) ...[
             const PillTag(
               text: 'আপনি অ্যাডমিন',
               backgroundColor: AppColors.goldSoft,
               textColor: AppColors.goldDark,
-            )
-          else if (isApproved)
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (isApproved)
             const PillTag(
               text: 'আপনি এই সমিতির সদস্য',
               backgroundColor: AppColors.greenSoft,
@@ -240,8 +251,8 @@ class _SamitiCardItem extends StatelessWidget {
               text: 'আবেদন প্রক্রিয়াধীন',
               backgroundColor: AppColors.goldSoft,
               textColor: AppColors.goldDark,
-            )
-          else
+            ),
+          if (showApply)
             PrimaryButton(
               label: 'সদস্য হতে আবেদন করুন',
               onPressed: () => context.goNamed(
