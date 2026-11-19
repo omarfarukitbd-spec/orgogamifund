@@ -31,18 +31,25 @@ class HomeScreen extends ConsumerWidget {
     final isAdmin = user?.isAdmin ?? false;
     final isMember = myBranchIds.isNotEmpty;
 
-    final totalsAsync = ref.watch(homeTotalsFutureProvider);
+    // মোট হিসাব: অ্যাডমিন সব সমিতি দেখে, সদস্য শুধু তার
+    // অনুমোদিত সমিতিগুলো — ফিল্টার ছাড়া পড়লে নিয়মে বাধা পায়।
+    // অতিথির (কোনো সমিতির সদস্য নয়) জন্য হিসাব পড়া হয় না।
+    final totalsKey = isAdmin
+        ? ''
+        : myBranchIds.isEmpty
+            ? null
+            : (myBranchIds.toList()..sort()).join('|');
+    final totalsAsync = totalsKey == null
+        ? const AsyncValue<HomeTotals>.data(HomeTotals())
+        : ref.watch(homeTotalsForBranchesProvider(totalsKey));
     final totals = totalsAsync.valueOrNull;
+    final totalsFailed = totalsKey != null && totalsAsync.hasError;
 
-    final fundTotal = totals == null ||
-            totals.approvedTotal == null ||
-            totals.expenseTotal == null
+    final fundTotal = totals == null || totalsKey == null
         ? '৳ —'
-        : formatTaka(totals.approvedTotal! - totals.expenseTotal!);
-
-    final memberCountStr = totals?.activeMembers != null
-        ? '${totals!.activeMembers} জন'
-        : '—';
+        : formatTaka(totals.fund);
+    final memberCountStr =
+        totals == null || totalsKey == null ? '—' : '${totals.activeMembers} জন';
 
     final displayName = (user?.email.isNotEmpty == true)
         ? user!.email.split('@').first
@@ -95,7 +102,9 @@ class HomeScreen extends ConsumerWidget {
                   icon: Icons.account_balance_wallet_outlined,
                   label: 'মোট তহবিল',
                   value: fundTotal,
-                  note: 'তহবিলের বর্তমান স্থিতি',
+                  note: totalsFailed
+                      ? 'তথ্য আনা যায়নি'
+                      : 'তহবিলের বর্তমান স্থিতি',
                 ),
               ),
               const SizedBox(width: 12),
@@ -156,7 +165,10 @@ class HomeScreen extends ConsumerWidget {
 
           // সাম্প্রতিক লেনদেন সেকশন
           const SectionTitle('সাম্প্রতিক লেনদেন'),
-          _RecentTransactionsCard(myBranchIds: myBranchIds),
+          _RecentTransactionsCard(
+            myBranchIds: myBranchIds,
+            isAdmin: isAdmin,
+          ),
 
           // সদস্য না হলে আবেদনের ব্যানার
           if (!isAdmin && !isMember) ...[
@@ -203,27 +215,46 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// সাম্প্রতিক লেনদেন কার্ড
+/// সাম্প্রতিক লেনদেন কার্ড — সাম্প্রতিক ২টি জমা আর ২টি খরচ।
+/// টপ-লেভেল প্রোভাইডার থেকে আসে; অ্যাডমিন সব সমিতি দেখে,
+/// সদস্য শুধু তার অনুমোদিত সমিতিগুলো।
 class _RecentTransactionsCard extends ConsumerWidget {
   final List<String> myBranchIds;
+  final bool isAdmin;
 
-  const _RecentTransactionsCard({required this.myBranchIds});
+  const _RecentTransactionsCard({
+    required this.myBranchIds,
+    required this.isAdmin,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final paymentsAsync = ref.watch(
-      FutureProvider<List<Payment>>(
-        (ref) => FirestoreService().fetchApprovedPayments(),
-      ),
-    );
-    final expensesAsync = ref.watch(
-      StreamProvider<List<Expense>>(
-        (ref) => FirestoreService().watchExpenses(),
-      ),
-    );
+    final key = isAdmin
+        ? ''
+        : (myBranchIds.toList()..sort()).join('|');
+    final txnsAsync = (!isAdmin && myBranchIds.isEmpty)
+        ? const AsyncValue<RecentTransactions>.data(
+            RecentTransactions(payments: [], expenses: []),
+          )
+        : ref.watch(recentTransactionsProvider(key));
 
-    final payments = paymentsAsync.valueOrNull ?? const <Payment>[];
-    final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
+    if (txnsAsync.hasError) {
+      return const AppCard(
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        child: LedgerRowItem(
+          icon: Icons.error_outline,
+          title: 'তথ্য আনা যায়নি',
+          subtitle: 'নেট দেখে আবার চেষ্টা করুন',
+          amount: '৳ —',
+          isIncome: true,
+          showDivider: false,
+        ),
+      );
+    }
+
+    final txns = txnsAsync.valueOrNull;
+    final payments = txns?.payments ?? const <Payment>[];
+    final expenses = txns?.expenses ?? const <Expense>[];
 
     final hasPayments = payments.isNotEmpty;
     final hasExpenses = expenses.isNotEmpty;

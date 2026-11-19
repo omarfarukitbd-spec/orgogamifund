@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../utils/date_parser.dart';
 
 /// একটি নোটিশ বা সভার কার্যবিবরণী।
@@ -46,7 +48,7 @@ class Notice {
       'scope': scope.name,
       'branchId': branchId,
       'postedBy': postedBy,
-      'postedAt': postedAt.toIso8601String(),
+      'postedAt': Timestamp.fromDate(postedAt),
     };
   }
 }

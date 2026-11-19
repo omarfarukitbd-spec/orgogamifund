@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/payment.dart';
 import '../../services/voucher_share_service.dart';
+import '../../utils/date_parser.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/empty_state.dart';
@@ -10,8 +11,15 @@ import '../passbook_screen.dart';
 /// লেনদেনের খাতা — ফিল্টার, লেজার রো এবং এক-ক্লিকে রসিদ ভাউচার শেয়ার
 class PassbookLedger extends StatefulWidget {
   final List<Payment> payments;
+  final String memberName;
+  final String branchName;
 
-  const PassbookLedger({super.key, required this.payments});
+  const PassbookLedger({
+    super.key,
+    required this.payments,
+    required this.memberName,
+    required this.branchName,
+  });
 
   @override
   State<PassbookLedger> createState() => _PassbookLedgerState();
@@ -25,8 +33,8 @@ class _PassbookLedgerState extends State<PassbookLedger> {
     final voucherService = VoucherShareService();
     final voucherText = voucherService.formatPaymentVoucherText(
       payment: p,
-      memberName: 'সদস্য',
-      branchName: 'অগ্রগামী ফান্ড সমিতি',
+      memberName: widget.memberName,
+      branchName: widget.branchName,
     );
 
     showModalBottomSheet(
@@ -60,7 +68,7 @@ class _PassbookLedgerState extends State<PassbookLedger> {
             const Divider(),
             const SizedBox(height: 8),
             Text(
-              '${isBn ? "পরিমাণ" : "Amount"}: ${formatTaka(p.amount)} (${p.status.name})',
+              '${isBn ? "পরিমাণ" : "Amount"}: ${formatTaka(p.amount)} (${p.statusLabel})',
               style:
                   const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
@@ -140,9 +148,9 @@ class _PassbookLedgerState extends State<PassbookLedger> {
                   LedgerRowItem(
                     icon: Icons.account_balance_wallet_outlined,
                     title:
-                        '${bengaliMonths[shown[i].forMonth - 1]} মাসের জমা',
+                        '${bengaliMonths[(shown[i].forMonth - 1).clamp(0, 11)]} মাসের জমা',
                     subtitle:
-                        '${shown[i].methodLabel} • TrxID: ${shown[i].trxId ?? "—"}${shown[i].receiptNumber != null ? " • রসিদ: ${shown[i].receiptNumber}" : ""}',
+                        '${shown[i].methodLabel} • ${isMissingDate(shown[i].date) ? "তারিখ নেই" : "${shown[i].date.day}/${shown[i].date.month}/${shown[i].date.year}"} • TrxID: ${shown[i].trxId ?? "—"}${shown[i].receiptNumber != null ? " • রসিদ: ${shown[i].receiptNumber}" : ""}',
                     amount: formatTaka(shown[i].amount),
                     isIncome: true,
                     showDivider: i < shown.length - 1,

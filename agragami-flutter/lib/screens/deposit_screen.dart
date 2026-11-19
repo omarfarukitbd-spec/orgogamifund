@@ -9,6 +9,7 @@ import '../models/payment.dart';
 import '../models/payment_method.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
 import 'deposit/deposit_components.dart';
 import 'deposit/deposit_form_fields.dart';
@@ -99,7 +100,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
       _error = null;
     });
     try {
-      final store = FirestoreService();
+      final store = ref.read(firestoreServiceProvider);
       if (trxId.isNotEmpty) {
         final used = await store.trxIdAlreadyUsed(
           paymentMethodId: chosen.id,
@@ -175,6 +176,15 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     if (membershipsAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+    if (membershipsAsync.hasError) {
+      return EmptyState(
+        icon: Icons.error_outline,
+        title: 'তথ্য আনা যায়নি',
+        message: 'নেট দেখে আবার চেষ্টা করুন।',
+        actionLabel: AppStrings.tryAgain,
+        onAction: () => ref.invalidate(myMembershipsProvider),
+      );
+    }
     final memberships = membershipsAsync.valueOrNull ?? const <Membership>[];
     final allowedIds = isAdmin ? null : approvedBranchIds(memberships);
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
@@ -190,11 +200,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
             ? _branchId
             : null;
 
-    final myMembersAsync = ref.watch(
-      StreamProvider.autoDispose<List<Member>>(
-        (ref) => ref.watch(firestoreServiceProvider).watchMembersForUser(uid),
-      ),
-    );
+    final myMembersAsync = ref.watch(membersForUserProvider(uid));
     final myMembers = myMembersAsync.valueOrNull ?? const <Member>[];
     String memberIdFor(String branchId) {
       final found = myMembers.where((m) => m.branchId == branchId).toList();
@@ -204,13 +210,12 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
 
     final methodsAsync = effectiveBranchId == null
         ? const AsyncValue<List<PaymentMethodConfig>>.data([])
-        : ref.watch(
-            StreamProvider.autoDispose<List<PaymentMethodConfig>>(
-              (ref) => ref.watch(firestoreServiceProvider).watchActivePaymentMethods(
-                branchId: effectiveBranchId,
-              ),
-            ),
-          );
+        : ref.watch(activePaymentMethodsProvider(effectiveBranchId));
+    final effectiveBranch = effectiveBranchId == null
+        ? null
+        : branches
+            .where((b) => b.id == effectiveBranchId)
+            .firstOrNull;
     final methods = methodsAsync.valueOrNull ?? const <PaymentMethodConfig>[];
     final loadingMethods =
         effectiveBranchId != null && methodsAsync is AsyncLoading;
@@ -236,6 +241,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
               _branchId = v;
               _methodId = null;
             }),
+            bankDetails: effectiveBranch?.bankDetails,
             methods: methods,
             loadingMethods: loadingMethods,
             methodId: _methodId,

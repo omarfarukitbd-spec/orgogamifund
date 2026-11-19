@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../core/cloudinary_config.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_card.dart';
 
@@ -31,18 +32,25 @@ class ApplicationPhotosStep extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         const Text(
-          'ছবি JPG বা PNG হতে হবে, ৫ MB-এর বেশি নয়।',
+          'ছবি JPG বা PNG হতে হবে, ৫ MB-এর বেশি নয়। ছবি দেওয়া ঐচ্ছিক — ছবি ছাড়াই আবেদন করা যাবে।',
           style: TextStyle(fontSize: 13.5, color: AppColors.muted),
         ),
+        if (!CloudinaryConfig.isConfigured) ...[
+          const SizedBox(height: 8),
+          const Text(
+            'ছবি আপলোড এখনো চালু হয়নি — এখন ছবি দিলে তা জমা হবে না, তবে আবেদন জমা হবে।',
+            style: TextStyle(fontSize: 13.5, color: AppColors.amber),
+          ),
+        ],
         const SizedBox(height: 16),
         _PhotoPickTile(
-          label: 'নিজের ছবি',
+          label: 'নিজের ছবি (ঐচ্ছিক)',
           bytes: photoBytes,
           onPick: () => onPickPhoto(PhotoKind.photo),
         ),
         const SizedBox(height: 12),
         _PhotoPickTile(
-          label: 'এনআইডির সামনের ছবি',
+          label: 'এনআইডির সামনের ছবি (ঐচ্ছিক)',
           bytes: nidFrontBytes,
           onPick: () => onPickPhoto(PhotoKind.nidFront),
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../l10n/app_strings.dart';
 import '../models/branch.dart';
 import '../models/member.dart';
 import '../models/payment.dart';
@@ -32,14 +33,6 @@ const List<String> bengaliMonths = [
   'নভেম্বর',
   'ডিসেম্বর',
 ];
-
-final _memberProvider = StreamProvider.family<Member?, String>(
-  (ref, id) => FirestoreService().watchMember(id),
-);
-final _paymentsProvider = StreamProvider.family<List<Payment>, String>(
-  (ref, id) => FirestoreService().watchMemberPayments(id),
-);
-final _branchesProvider = branchesStreamProvider;
 
 /// সদস্যের পাসবই — ১২ মাসের ছক, মোট জমা ও বকেয়া, লেনদেনের খাতা।
 class PassbookScreen extends ConsumerStatefulWidget {
@@ -74,11 +67,7 @@ class _PassbookScreenState extends ConsumerState<PassbookScreen> {
             message: 'নেট দেখে আবার চেষ্টা করুন।',
           );
         }
-        final membersAsync = ref.watch(
-          StreamProvider<List<Member>>(
-            (ref) => FirestoreService().watchMembersForUser(uid),
-          ),
-        );
+        final membersAsync = ref.watch(membersForUserProvider(uid));
         return membersAsync.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(16),
@@ -135,7 +124,7 @@ class _MemberPicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final branchesAsync = ref.watch(_branchesProvider);
+    final branchesAsync = ref.watch(branchesStreamProvider);
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
     String branchName(String id) {
       final found = branches.where((b) => b.id == id).toList();
@@ -170,12 +159,29 @@ class _PassbookContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final memberAsync = ref.watch(_memberProvider(memberId));
-    final paymentsAsync = ref.watch(_paymentsProvider(memberId));
-    final branchesAsync = ref.watch(_branchesProvider);
+    final memberAsync = ref.watch(memberStreamProvider(memberId));
+    final paymentsAsync = ref.watch(memberPaymentsProvider(memberId));
+    final branchesAsync = ref.watch(branchesStreamProvider);
 
     if (memberAsync.isLoading || paymentsAsync.isLoading || branchesAsync.isLoading) {
       return const Padding(padding: EdgeInsets.all(16), child: SkeletonCardList());
+    }
+    // জমার তালিকা আনতে ভুল হলে খালি ধরে বকেয়া হিসাব করা
+    // হয় না — ভুল হলে ভুলই দেখানো হয়।
+    if (memberAsync.hasError ||
+        paymentsAsync.hasError ||
+        branchesAsync.hasError) {
+      return EmptyState(
+        icon: Icons.error_outline,
+        title: 'তথ্য আনা যায়নি',
+        message: 'নেট দেখে আবার চেষ্টা করুন।',
+        actionLabel: AppStrings.tryAgain,
+        onAction: () {
+          ref.invalidate(memberStreamProvider(memberId));
+          ref.invalidate(memberPaymentsProvider(memberId));
+          ref.invalidate(branchesStreamProvider);
+        },
+      );
     }
     final member = memberAsync.valueOrNull;
     if (member == null) {
@@ -196,15 +202,17 @@ class _PassbookContent extends ConsumerWidget {
         payments.where((p) => p.status == PaymentStatus.approved).toList();
     final totalDeposit = approved.fold(0, (sum, p) => sum + p.amount);
 
-    int? dues;
-    if (branchOrNull != null) {
-      dues = memberDues(
-        joinDate: member.joinDate,
-        branchStart: branchOrNull.startDate,
-        monthlyDonation: branchOrNull.monthlyDonation,
-        approvedTotal: totalDeposit,
-      );
-    }
+    // মাসভিত্তিক বকেয়া — বকেয়া তালিকার সাথে একই ফাংশন।
+    final duesResult = branchOrNull == null
+        ? null
+        : memberDuesPerMonth(
+            joinDate: member.joinDate,
+            branchStart: branchOrNull.startDate,
+            monthlyAmount: branchOrNull.monthlyDepositAmount,
+            payments: payments,
+            dueDay: branchOrNull.monthlyDueDay,
+            lateFineAmount: branchOrNull.lateFineAmount,
+          );
 
     final now = DateTime.now();
 
@@ -262,15 +270,35 @@ class _PassbookContent extends ConsumerWidget {
                 child: StatCard(
                   icon: Icons.pending_actions_outlined,
                   label: 'মোট বকেয়া',
-                  value: dues == null ? '—' : formatTaka(dues),
+                  value: duesResult == null
+                      ? '—'
+                      : formatTaka(duesResult.totalWithFine),
                   isGold: true,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
+          if (duesResult != null && duesResult.lateFine > 0)
+            Text(
+              'মাসিক বকেয়া ${formatTaka(duesResult.totalDue)} + '
+              'বিলম্ব জরিমানা ${formatTaka(duesResult.lateFine)} '
+              '(শাখার নিয়মে, বকেয়া মাসপ্রতি '
+              '৳${branchOrNull!.lateFineAmount})।',
+              style: TextStyle(
+                fontSize: 12.5,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
+              ),
+            ),
           Text(
-            'বকেয়া গোনা হয় সদস্যের যোগ দেওয়ার তারিখ আর সমিতি শুরুর তারিখের মধ্যে যেটা পরে, সেখান থেকে।',
+            branchOrNull == null
+                ? 'সমিতির তথ্য পাওয়া যায়নি — বকেয়া হিসাব করা যায়নি।'
+                : duesResult == null
+                    ? 'যোগদানের তারিখ জানা নেই — বকেয়া হিসাব করা যায়নি।'
+                    : 'বকেয়া গোনা হয় যোগদানের তারিখ থেকে, প্রতি মাসে আলাদাভাবে। চলতি মাস ধরা হয় মাসের ${branchOrNull.monthlyDueDay} তারিখের পর।',
             style: TextStyle(
               fontSize: 12.5,
               color: Theme.of(context)
@@ -282,11 +310,21 @@ class _PassbookContent extends ConsumerWidget {
 
           // ১২ মাসের ছক
           SectionTitle('${now.year} সালের ছক'),
-          PassbookMonthGrid(payments: payments, year: now.year),
+          PassbookMonthGrid(
+            payments: payments,
+            year: now.year,
+            joinDate: member.joinDate,
+            branchStart: branchOrNull?.startDate,
+            monthlyAmount: branchOrNull?.monthlyDepositAmount ?? 0,
+          ),
 
           // লেনদেনের খাতা
           const SectionTitle('লেনদেনের খাতা'),
-          PassbookLedger(payments: payments),
+          PassbookLedger(
+            payments: payments,
+            memberName: member.name,
+            branchName: branchOrNull?.name ?? 'অগ্রগামী ফান্ড সমিতি',
+          ),
           const SizedBox(height: 20),
         ],
       ),

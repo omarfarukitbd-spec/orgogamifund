@@ -3,13 +3,19 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import '../core/cloudinary_config.dart';
+import '../l10n/app_strings.dart';
 import '../models/branch.dart';
+import '../models/membership.dart';
 import '../models/notice.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
+import '../utils/date_parser.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/not_member_gate.dart';
 import '../widgets/skeleton_loader.dart';
 
 /// নোটিশ বোর্ড — সবার জন্য লেখা নোটিশ আর সভার কার্যবিবরণী।
@@ -60,6 +66,35 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
     }
   }
 
+  Future<void> _sendNotice(Notice notice, Uint8List? attachmentBytes) {
+    return ref.read(firestoreServiceProvider).submitNotice(
+      notice: notice,
+      attachmentBytes: attachmentBytes,
+    );
+  }
+
+  void _onNoticeSent() {
+    // ছবি দিয়েও Cloudinary সেট করা না থাকলে ছবি জমা হয়নি —
+    // ব্যবহারকারীকে জানিয়ে দিই, নোটিশ তবুও দেওয়া হয়েছে।
+    final attachmentSkipped =
+        _attachmentBytes != null && !CloudinaryConfig.isConfigured;
+    setState(() {
+      _writing = false;
+      _title.clear();
+      _body.clear();
+      _attachmentBytes = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          attachmentSkipped
+              ? 'নোটিশ দেওয়া হয়েছে — তবে ছবি আপলোড হয়নি, কারণ ছবি আপলোড এখনো সেট করা হয়নি'
+              : 'নোটিশ দেওয়া হয়েছে',
+        ),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (_title.text.trim().isEmpty) {
       setState(() => _error = 'নোটিশের শিরোনাম লিখুন');
@@ -77,30 +112,55 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
       _busy = true;
       _error = null;
     });
+    final notice = Notice(
+      id: '',
+      title: _title.text.trim(),
+      body: _body.text.trim(),
+      scope: _scope == 'branch' ? NoticeScope.branch : NoticeScope.org,
+      branchId: _scope == 'branch' ? _branchId : null,
+      postedBy: AuthService().uidOrEmpty,
+      postedAt: DateTime.now(),
+    );
     try {
-      final notice = Notice(
-        id: '',
-        title: _title.text.trim(),
-        body: _body.text.trim(),
-        scope: _scope == 'branch' ? NoticeScope.branch : NoticeScope.org,
-        branchId: _scope == 'branch' ? _branchId : null,
-        postedBy: AuthService().uidOrEmpty,
-        postedAt: DateTime.now(),
-      );
-      await FirestoreService().submitNotice(
-        notice: notice,
-        attachmentBytes: _attachmentBytes,
-      );
+      await _sendNotice(notice, _attachmentBytes);
       if (!mounted) return;
-      setState(() {
-        _writing = false;
-        _title.clear();
-        _body.clear();
-        _attachmentBytes = null;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('নোটিশ দেওয়া হয়েছে')),
+      _onNoticeSent();
+    } on UploadFailedException catch (_) {
+      // ছবি আপলোড হয়নি — নিঃশব্দে ছবি ছাড়া পাঠানো হয় না।
+      // ব্যবহারকারী চাইলে ছবি ছাড়াই পাঠাতে পারে।
+      if (!mounted) return;
+      final sendWithout = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('ছবি আপলোড হয়নি'),
+          content: const Text(
+            'ছবিটা আপলোড করা যায়নি। ছবি ছাড়াই নোটিশ পাঠাবেন?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('বাতিল'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('ছবি ছাড়াই পাঠান'),
+            ),
+          ],
+        ),
       );
+      if (sendWithout != true) {
+        setState(() => _error = 'ছবি আপলোড হয়নি — আবার চেষ্টা করুন');
+        return;
+      }
+      try {
+        await _sendNotice(notice, null);
+        if (!mounted) return;
+        _onNoticeSent();
+      } catch (_) {
+        setState(
+          () => _error = 'নোটিশ দেওয়া যায়নি — নেট দেখে আবার চেষ্টা করুন',
+        );
+      }
     } catch (_) {
       setState(() => _error = 'নোটিশ দেওয়া যায়নি — নেট দেখে আবার চেষ্টা করুন');
     } finally {
@@ -112,15 +172,28 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
   Widget build(BuildContext context) {
     final userAsync = ref.watch(currentUserProvider);
     final branchesAsync = ref.watch(branchesStreamProvider);
-    final userBranchId = userAsync.valueOrNull?.branchId;
-    final noticesAsync = ref.watch(
-      StreamProvider.autoDispose<List<Notice>>(
-        (ref) => ref.watch(firestoreServiceProvider).watchNotices(branchId: userBranchId),
-      ),
-    );
-    final branches = branchesAsync.valueOrNull ?? const <Branch>[];
-    final notices = noticesAsync.valueOrNull ?? const <Notice>[];
+    final membershipsAsync = ref.watch(myMembershipsProvider);
     final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+    // কোন সমিতির নোটিশ দেখবে — অনুমোদিত সদস্যপদ দিয়ে ঠিক হয়,
+    // users ডকুমেন্টের একটিমাত্র branchId দিয়ে নয়। একাধিক
+    // সমিতির সদস্য সবগুলোর নোটিশ পায়।
+    final approvedIds = isAdmin
+        ? null
+        : approvedBranchIds(
+            membershipsAsync.valueOrNull ?? const <Membership>[],
+          );
+    final noticesAsync = ref.watch(noticesForBranchProvider(''));
+    final branches = branchesAsync.valueOrNull ?? const <Branch>[];
+    final allNotices = noticesAsync.valueOrNull ?? const <Notice>[];
+    final notices = approvedIds == null
+        ? allNotices
+        : allNotices
+            .where(
+              (n) =>
+                  n.scope == NoticeScope.org ||
+                  (n.branchId != null && approvedIds.contains(n.branchId)),
+            )
+            .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -224,6 +297,15 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
           ],
           if (noticesAsync.isLoading)
             const SkeletonCardList()
+          else if (noticesAsync.hasError)
+            EmptyState(
+              icon: Icons.error_outline,
+              title: 'তথ্য আনা যায়নি',
+              message: 'নেট দেখে আবার চেষ্টা করুন।',
+              actionLabel: AppStrings.tryAgain,
+              onAction: () =>
+                  ref.invalidate(noticesForBranchProvider('')),
+            )
           else if (notices.isEmpty)
             const EmptyState(
               icon: Icons.campaign_outlined,
@@ -257,7 +339,7 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
                       Text(n.body, style: const TextStyle(fontSize: 15)),
                       const SizedBox(height: 6),
                       Text(
-                        '${n.postedAt.day}/${n.postedAt.month}/${n.postedAt.year}'
+                        '${isMissingDate(n.postedAt) ? "তারিখ নেই" : "${n.postedAt.day}/${n.postedAt.month}/${n.postedAt.year}"}'
                         ' • ${n.scope == NoticeScope.org ? 'সবার জন্য' : 'সমিতির জন্য'}',
                         style: const TextStyle(
                           fontSize: 12.5,

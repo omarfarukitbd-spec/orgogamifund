@@ -5,7 +5,6 @@ import 'l10n/app_strings.dart';
 import 'routes/app_router.dart';
 import 'services/auth_service.dart';
 import 'services/firebase_service.dart';
-import 'services/offline_cache_service.dart';
 import 'theme/app_theme.dart';
 
 /// থিম মোড স্টেট প্রোভাইডার (সিস্টেম, লাইট, ডার্ক)
@@ -19,10 +18,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await FirebaseService.instance.init();
-  } catch (_) {}
-
-  try {
-    await OfflineCacheService().configureOfflineCache();
   } catch (_) {}
 
   try {

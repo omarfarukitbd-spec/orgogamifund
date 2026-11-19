@@ -7,6 +7,7 @@ import '../models/expense.dart';
 import '../models/membership.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../utils/date_parser.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
@@ -37,6 +38,15 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
     if (membershipsAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+    if (membershipsAsync.hasError) {
+      return EmptyState(
+        icon: Icons.error_outline,
+        title: 'তথ্য আনা যায়নি',
+        message: 'নেট দেখে আবার চেষ্টা করুন।',
+        actionLabel: AppStrings.tryAgain,
+        onAction: () => ref.invalidate(myMembershipsProvider),
+      );
+    }
     final memberships = membershipsAsync.valueOrNull ?? const <Membership>[];
     final allowedIds = isAdmin ? null : approvedBranchIds(memberships);
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
@@ -55,11 +65,8 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
         : (_branchId != null && branches.any((b) => b.id == _branchId)
             ? _branchId
             : (branches.isEmpty ? null : branches.first.id));
-    final expensesAsync = ref.watch(
-      StreamProvider.autoDispose<List<Expense>>(
-        (ref) => ref.watch(firestoreServiceProvider).watchExpenses(branchId: effectiveBranchId),
-      ),
-    );
+    final expensesAsync =
+        ref.watch(expensesByBranchProvider(effectiveBranchId ?? ''));
     final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
     final total = expenses.fold(0, (sum, e) => sum + e.amount);
     String branchName(String id) {
@@ -91,8 +98,12 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
           StatCard(
             icon: Icons.receipt_long_outlined,
             label: 'মোট খরচ',
-            value: expensesAsync.isLoading ? '—' : formatTaka(total),
-            note: '${expenses.length}টি খরচ',
+            value: expensesAsync.isLoading || expensesAsync.hasError
+                ? '—'
+                : formatTaka(total),
+            note: expensesAsync.hasError
+                ? 'তথ্য আনা যায়নি'
+                : '${expenses.length}টি খরচ',
           ),
           const SizedBox(height: 12),
           if (isAdmin)
@@ -104,6 +115,16 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
           const SizedBox(height: 16),
           if (expensesAsync.isLoading)
             const SkeletonCardList()
+          else if (expensesAsync.hasError)
+            EmptyState(
+              icon: Icons.error_outline,
+              title: 'তথ্য আনা যায়নি',
+              message: 'নেট দেখে আবার চেষ্টা করুন।',
+              actionLabel: AppStrings.tryAgain,
+              onAction: () => ref.invalidate(
+                expensesByBranchProvider(effectiveBranchId ?? ''),
+              ),
+            )
           else if (expenses.isEmpty)
             const EmptyState(
               icon: Icons.receipt_long_outlined,
@@ -133,7 +154,7 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
                             const SizedBox(height: 2),
                             Text(
                               '${e.category} • ${branchName(e.branchId)} • '
-                              '${e.date.day}/${e.date.month}/${e.date.year}',
+                              '${isMissingDate(e.date) ? "তারিখ নেই" : "${e.date.day}/${e.date.month}/${e.date.year}"}',
                               style: const TextStyle(
                                 fontSize: 12.5,
                                 color: Colors.grey,

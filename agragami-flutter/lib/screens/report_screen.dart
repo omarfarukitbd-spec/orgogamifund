@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n/app_strings.dart';
 import '../models/branch.dart';
 import '../models/membership.dart';
-import '../models/payment.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/report_pdf_service.dart';
 import '../services/statement_export_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
 import 'passbook_screen.dart';
 import 'reports/defaulters_list_view.dart';
@@ -42,44 +43,6 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     return digits.startsWith('0') ? '880${digits.substring(1)}' : digits;
   }
 
-  Future<Map<String, int>> _loadMonth(
-    FirestoreService store,
-    String? branchId,
-  ) async {
-    final payments = await store.fetchPaymentsForMonth(
-      year: _year,
-      month: _month,
-      branchId: branchId,
-    );
-    final expenses = await store.fetchExpensesForMonth(
-      year: _year,
-      month: _month,
-      branchId: branchId,
-    );
-    final loans = await store.fetchLoans(branchId: branchId);
-    final income = payments
-        .where((p) => p.status == PaymentStatus.approved)
-        .fold(0, (sum, p) => sum + p.amount);
-    final expenseTotal = expenses.fold(0, (sum, e) => sum + e.amount);
-    final loansGiven = loans
-        .where(
-          (l) => l.dateIssued.year == _year && l.dateIssued.month == _month,
-        )
-        .fold(0, (sum, l) => sum + l.amount);
-    final repayments = loans.fold(0, (sum, l) {
-      return sum +
-          l.repayments
-              .where((r) => r.date.year == _year && r.date.month == _month)
-              .fold(0, (s, r) => s + r.amount);
-    });
-    return {
-      'income': income,
-      'expenses': expenseTotal,
-      'loansGiven': loansGiven,
-      'repayments': repayments,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     final store = ref.watch(firestoreServiceProvider);
@@ -89,6 +52,17 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
     if (membershipsAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
+    }
+    // সদস্যপদ পড়তে ভুল হলে "সদস্য নন" দেখানো হয় না —
+    // ভুল হলে ভুলই দেখানো হয়।
+    if (membershipsAsync.hasError) {
+      return EmptyState(
+        icon: Icons.error_outline,
+        title: 'তথ্য আনা যায়নি',
+        message: 'নেট দেখে আবার চেষ্টা করুন।',
+        actionLabel: AppStrings.tryAgain,
+        onAction: () => ref.invalidate(myMembershipsProvider),
+      );
     }
     final memberships = membershipsAsync.valueOrNull ?? const <Membership>[];
     final allowedIds = isAdmin ? null : approvedBranchIds(memberships);
@@ -179,7 +153,6 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           const SizedBox(height: 16),
           if (_tab == 'report')
             MonthlyReportBreakdown(
-              store: store,
               branchId: effectiveBranchId,
               branchName: branchName,
               month: _month,
@@ -191,16 +164,20 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   _error = null;
                 });
                 try {
-                  final data = await _loadMonth(store, effectiveBranchId);
+                  final totals = await store.loadMonthTotals(
+                    year: _year,
+                    month: _month,
+                    branchId: effectiveBranchId,
+                  );
                   if (!mounted) return;
                   await ReportPdfService().shareMonthlyReport(
                     branchName: branchName,
                     year: _year,
                     month: _month,
-                    income: data['income']!,
-                    expenses: data['expenses']!,
-                    loansGiven: data['loansGiven']!,
-                    repayments: data['repayments']!,
+                    income: totals.income,
+                    expenses: totals.expenses,
+                    loansGiven: totals.loansGiven,
+                    repayments: totals.repayments,
                   );
                 } catch (_) {
                   setState(

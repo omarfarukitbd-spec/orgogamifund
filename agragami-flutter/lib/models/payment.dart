@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../utils/date_parser.dart';
 
 /// একটি জমা।
@@ -54,6 +56,15 @@ class Payment {
     this.rejectReason,
   });
 
+  /// অবস্থার বাংলা নাম — UI-তে ইংরেজি enum নাম দেখানো হয় না।
+  String get statusLabel {
+    return switch (status) {
+      PaymentStatus.approved => 'অনুমোদিত',
+      PaymentStatus.pending => 'যাচাইাধীন',
+      PaymentStatus.rejected => 'বাতিল',
+    };
+  }
+
   /// দেখানোর মতো মাধ্যমের নাম — ছাপ থাকলে সেটাই,
   /// না থাকলে (পুরোনো জমা) ধরনের নাম।
   String get methodLabel {
@@ -83,6 +94,20 @@ class Payment {
       _ => PaymentStatus.pending,
     };
 
+    final date = parseFirestoreDate(data['date']);
+    // কোন মাসের জমা: লেখা থাকলে সেটাই। না থাকলে বা ভুল
+    // থাকলে (মাস ১–১২-এর বাইরে) জমার তারিখ থেকে নেওয়া হয়।
+    // তারিখও না থাকলে ১৯৭০-০১ — ফলে জমাটা হিসাবের বাইরে
+    // থাকে, জানুয়ারিতে ভুলভাবে জমা হয় না।
+    var forMonth = (data['forMonth'] as num?)?.toInt();
+    if (forMonth == null || forMonth < 1 || forMonth > 12) {
+      forMonth = isMissingDate(date) ? 1 : date.month;
+    }
+    var forYear = (data['forYear'] as num?)?.toInt();
+    if (forYear == null || forYear < 2000 || forYear > 2100) {
+      forYear = isMissingDate(date) ? 1970 : date.year;
+    }
+
     return Payment(
       id: id,
       memberId: (data['memberId'] as String?) ?? '',
@@ -98,9 +123,9 @@ class Payment {
       paymentMethodName: data['paymentMethodName'] as String?,
       paymentAccountNumber: data['paymentAccountNumber'] as String?,
       senderMobile: data['senderMobile'] as String?,
-      forMonth: (data['forMonth'] as num?)?.toInt() ?? 1,
-      forYear: (data['forYear'] as num?)?.toInt() ?? DateTime.now().year,
-      date: parseFirestoreDate(data['date']),
+      forMonth: forMonth,
+      forYear: forYear,
+      date: date,
       recordedBy: (data['recordedBy'] as String?) ?? '',
       status: status,
       receiptNumber: data['receiptNumber'] as String?,
@@ -123,7 +148,7 @@ class Payment {
       'senderMobile': senderMobile,
       'forMonth': forMonth,
       'forYear': forYear,
-      'date': date.toIso8601String(),
+      'date': Timestamp.fromDate(date),
       'recordedBy': recordedBy,
       'status': status.name,
       'approvalStatus': status.name.toUpperCase(),

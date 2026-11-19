@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/branch.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 
 /// নতুন সমিতি খোলার ফরম — শুধু অ্যাডমিন দেখতে পায়।
-class CreateSamitiDialog extends StatefulWidget {
+class CreateSamitiDialog extends ConsumerStatefulWidget {
   const CreateSamitiDialog({super.key});
 
   @override
-  State<CreateSamitiDialog> createState() => _CreateSamitiDialogState();
+  ConsumerState<CreateSamitiDialog> createState() =>
+      _CreateSamitiDialogState();
 }
 
-class _CreateSamitiDialogState extends State<CreateSamitiDialog> {
+class _CreateSamitiDialogState extends ConsumerState<CreateSamitiDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -33,11 +35,11 @@ class _CreateSamitiDialogState extends State<CreateSamitiDialog> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
     try {
-      await FirestoreService().createBranch(
+      await ref.read(firestoreServiceProvider).createBranch(
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
         purpose: _purpose,
-        monthlyDonation: int.parse(_donationController.text.trim()),
+        monthlyDepositAmount: int.parse(_donationController.text.trim()),
         by: AuthService().uidOrEmpty,
       );
       if (!mounted) return;

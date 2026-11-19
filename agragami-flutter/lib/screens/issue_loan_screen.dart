@@ -92,7 +92,7 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
         monthlyInstallment: installment,
         installmentMonths: months,
       );
-      await FirestoreService().issueLoan(loan);
+      await ref.read(firestoreServiceProvider).issueLoan(loan);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('ঋণ দেওয়া হয়েছে')),

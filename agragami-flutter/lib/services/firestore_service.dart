@@ -85,14 +85,14 @@ class FirestoreService {
     required String name,
     required String description,
     required SamitiPurpose purpose,
-    required int monthlyDonation,
+    required int monthlyDepositAmount,
     required String by,
   }) =>
       branch.createBranch(
         name: name,
         description: description,
         purpose: purpose,
-        monthlyDonation: monthlyDonation,
+        monthlyDepositAmount: monthlyDepositAmount,
         by: by,
       );
   Future<void> updateBranch({
@@ -100,7 +100,7 @@ class FirestoreService {
     required String name,
     required String description,
     required SamitiPurpose purpose,
-    required int monthlyDonation,
+    required int monthlyDepositAmount,
     required String by,
   }) =>
       branch.updateBranch(
@@ -108,7 +108,7 @@ class FirestoreService {
         name: name,
         description: description,
         purpose: purpose,
-        monthlyDonation: monthlyDonation,
+        monthlyDepositAmount: monthlyDepositAmount,
         by: by,
       );
   Future<void> recountMemberCount(String branchId) =>
@@ -130,6 +130,8 @@ class FirestoreService {
   Stream<List<Member>> watchMembers({String? branchId}) =>
       member.watchMembers(branchId: branchId);
   Stream<Member?> watchMember(String memberId) => member.watchMember(memberId);
+  Future<Map<String, Member>> fetchMembersByIds(List<String> ids) =>
+      member.fetchMembersByIds(ids);
 
   // জমা ও পেমেন্ট মেথড
   Stream<List<Payment>> watchPendingPayments({String? branchId}) =>
@@ -185,6 +187,11 @@ class FirestoreService {
       );
   Future<List<Payment>> fetchApprovedPayments({String? branchId}) =>
       payment.fetchApprovedPayments(branchId: branchId);
+  Future<List<Payment>> fetchRecentApprovedPayments({
+    String? branchId,
+    int limit = 2,
+  }) =>
+      payment.fetchRecentApprovedPayments(branchId: branchId, limit: limit);
   Future<List<Payment>> fetchPaymentsForMonth({
     required int year,
     required int month,
@@ -206,6 +213,11 @@ class FirestoreService {
     String? branchId,
   }) =>
       expense.fetchExpensesForMonth(year: year, month: month, branchId: branchId);
+  Future<List<Expense>> fetchRecentExpenses({
+    String? branchId,
+    int limit = 2,
+  }) =>
+      expense.fetchRecentExpenses(branchId: branchId, limit: limit);
 
   // ঋণ মেথড
   Stream<List<Loan>> watchLoans({String? branchId}) =>
@@ -260,34 +272,157 @@ class FirestoreService {
       governance.watchCommittee(branchId: branchId);
 
   // সামগ্রিক হিসাব মেথড
+  /// হোমের মোট হিসাব — অনুমোদিত জমা, মোট খরচ, সক্রিয়
+  /// সদস্য আর বকেয়া ঋণ। ভুল হলে ব্যতিক্রম ছোড়া হয় —
+  /// আগের মতো নিঃশব্দে শূন্য হিসাব ফেরত দেওয়া হয় না,
+  /// যাতে UI "তথ্য আনা যায়নি" দেখাতে পারে।
   Future<HomeTotals> fetchHomeTotals({String? branchId}) async {
-    try {
-      var pQ = _db.collection(Collections.payments).where('branchId', isEqualTo: branchId);
-      var eQ = _db.collection(Collections.expenses).where('branchId', isEqualTo: branchId);
-      var mQ = _db.collection(Collections.members).where('branchId', isEqualTo: branchId);
-      final r = await Future.wait([
-        (branchId != null ? pQ : _db.collection(Collections.payments)).get(),
-        (branchId != null ? eQ : _db.collection(Collections.expenses)).get(),
-        (branchId != null ? mQ : _db.collection(Collections.members)).get(),
-      ]);
-      final approvedTotal = r[0].docs.fold<int>(0, (sum, d) {
-        final s = (d.data()['status'] as String?)?.toLowerCase();
-        return s == 'approved' ? sum + ((d.data()['amount'] as num?)?.toInt() ?? 0) : sum;
-      });
-      final expenseTotal = r[1].docs.fold<int>(
-        0, (sum, d) => sum + ((d.data()['amount'] as num?)?.toInt() ?? 0),
-      );
-      final activeCount = r[2].docs.where((d) {
-        final s = (d.data()['status'] as String?)?.toLowerCase();
-        return s == null || (s != 'left' && s != 'inactive');
-      }).length;
-      return HomeTotals(
-        approvedTotal: approvedTotal,
-        expenseTotal: expenseTotal,
-        activeMembers: activeCount,
-      );
-    } catch (_) {
-      return const HomeTotals();
+    Query<Map<String, dynamic>> paymentsQuery =
+        _db.collection(Collections.payments);
+    Query<Map<String, dynamic>> expensesQuery =
+        _db.collection(Collections.expenses);
+    Query<Map<String, dynamic>> membersQuery =
+        _db.collection(Collections.members);
+    Query<Map<String, dynamic>> loansQuery =
+        _db.collection(Collections.loans);
+    if (branchId != null) {
+      paymentsQuery = paymentsQuery.where('branchId', isEqualTo: branchId);
+      expensesQuery = expensesQuery.where('branchId', isEqualTo: branchId);
+      membersQuery = membersQuery.where('branchId', isEqualTo: branchId);
+      loansQuery = loansQuery.where('branchId', isEqualTo: branchId);
     }
+    final r = await Future.wait([
+      paymentsQuery.get(),
+      expensesQuery.get(),
+      membersQuery.get(),
+      loansQuery.get(),
+    ]);
+    final approvedTotal = r[0].docs.fold<int>(0, (total, d) {
+      // পুরোনো ডকুমেন্টে শুধু approvalStatus থাকতে পারে।
+      final data = d.data();
+      final s = ((data['status'] ?? data['approvalStatus']) as String?)
+          ?.toLowerCase();
+      return s == 'approved'
+          ? total + ((data['amount'] as num?)?.toInt() ?? 0)
+          : total;
+    });
+    final expenseTotal = r[1].docs.fold<int>(
+      0,
+      (total, d) => total + ((d.data()['amount'] as num?)?.toInt() ?? 0),
+    );
+    final activeCount = r[2].docs.where((d) {
+      final s = (d.data()['status'] as String?)?.toLowerCase();
+      return s == null || (s != 'left' && s != 'inactive');
+    }).length;
+    final loansOutstanding = r[3].docs.fold<int>(0, (total, d) {
+      final outstanding = Loan.fromMap(d.id, d.data()).outstanding;
+      return total + (outstanding > 0 ? outstanding : 0);
+    });
+    return HomeTotals(
+      approvedTotal: approvedTotal,
+      expenseTotal: expenseTotal,
+      activeMembers: activeCount,
+      loansOutstanding: loansOutstanding,
+    );
+  }
+
+  /// কয়েকটি সমিতির হিসাব একসাথে — সদস্যের হোমের জন্য।
+  /// ফিল্টার ছাড়া পড়লে নিয়মে (rules) বাধা পায়, তাই
+  /// প্রতিটি অনুমোদিত সমিতি আলাদা করে পড়ে যোগ করা হয়।
+  Future<HomeTotals> fetchHomeTotalsForBranches(
+    List<String> branchIds,
+  ) async {
+    var approved = 0;
+    var expenses = 0;
+    var members = 0;
+    var loans = 0;
+    for (final id in branchIds) {
+      final t = await fetchHomeTotals(branchId: id);
+      approved += t.approvedTotal;
+      expenses += t.expenseTotal;
+      members += t.activeMembers;
+      loans += t.loansOutstanding;
+    }
+    return HomeTotals(
+      approvedTotal: approved,
+      expenseTotal: expenses,
+      activeMembers: members,
+      loansOutstanding: loans,
+    );
+  }
+
+  /// হোমের "সাম্প্রতিক লেনদেন" — সাম্প্রতিক জমা আর খরচ।
+  /// branchIds null মানে সব সমিতি (অ্যাডমিন); সদস্যের জন্য
+  /// শুধু তার অনুমোদিত সমিতিগুলো — ফিল্টার ছাড়া পড়লে
+  /// নিয়মে (rules) বাধা পায়।
+  Future<RecentTransactions> fetchRecentTransactions({
+    List<String>? branchIds,
+    int limit = 2,
+  }) async {
+    final payments = <Payment>[];
+    final expenses = <Expense>[];
+    final ids = branchIds ?? <String?>[null];
+    for (final id in ids) {
+      payments.addAll(
+        await payment.fetchRecentApprovedPayments(
+          branchId: id,
+          limit: limit,
+        ),
+      );
+      expenses.addAll(
+        await expense.fetchRecentExpenses(branchId: id, limit: limit),
+      );
+    }
+    payments.sort((a, b) => b.date.compareTo(a.date));
+    expenses.sort((a, b) => b.date.compareTo(a.date));
+    return RecentTransactions(
+      payments: payments.take(limit).toList(),
+      expenses: expenses.take(limit).toList(),
+    );
+  }
+
+  /// এক মাসের হিসাব — রিপোর্ট স্ক্রিন, PDF আর CSV একই
+  /// ফাংশন থেকে নেয়, যাতে তিন জায়গায় তিন রকম হিসাব না হয়।
+  /// আয় = ওই মাসের অনুমোদিত জমা (forMonth/forYear দিয়ে),
+  /// খরচ = ওই মাসের খরচ, ঋণ = ওই মাসে দেওয়া ঋণ,
+  /// কিস্তি = ওই মাসে ফেরত আসা কিস্তি।
+  Future<MonthTotals> loadMonthTotals({
+    required int year,
+    required int month,
+    String? branchId,
+  }) async {
+    final paymentsFuture = payment.fetchPaymentsForMonth(
+      year: year,
+      month: month,
+      branchId: branchId,
+    );
+    final expensesFuture = expense.fetchExpensesForMonth(
+      year: year,
+      month: month,
+      branchId: branchId,
+    );
+    final loansFuture = loan.fetchLoans(branchId: branchId);
+    final payments = await paymentsFuture;
+    final expenses = await expensesFuture;
+    final loans = await loansFuture;
+    final income = payments
+        .where((p) => p.status == PaymentStatus.approved)
+        .fold(0, (total, p) => total + p.amount);
+    final expenseTotal = expenses.fold(0, (total, e) => total + e.amount);
+    final loansGiven = loans
+        .where((l) => l.dateIssued.year == year && l.dateIssued.month == month)
+        .fold(0, (total, l) => total + l.amount);
+    final repayments = loans.fold(0, (total, l) {
+      return total +
+          l.repayments
+              .where((r) => r.date.year == year && r.date.month == month)
+              .fold(0, (s, r) => s + r.amount);
+    });
+    return MonthTotals(
+      income: income,
+      expenses: expenseTotal,
+      loansGiven: loansGiven,
+      repayments: repayments,
+    );
   }
 }

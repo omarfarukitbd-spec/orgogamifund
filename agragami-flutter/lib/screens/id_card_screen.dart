@@ -53,11 +53,7 @@ class _IdCardScreenState extends ConsumerState<IdCardScreen> {
             message: 'নেট দেখে আবার চেষ্টা করুন।',
           );
         }
-        final membersAsync = ref.watch(
-          StreamProvider<List<Member>>(
-            (ref) => FirestoreService().watchMembersForUser(uid),
-          ),
-        );
+        final membersAsync = ref.watch(membersForUserProvider(uid));
         return membersAsync.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(16),
@@ -209,11 +205,7 @@ class _IdCardBodyState extends ConsumerState<_IdCardBody> {
 
   @override
   Widget build(BuildContext context) {
-    final memberAsync = ref.watch(
-      StreamProvider.autoDispose<Member?>(
-        (ref) => ref.watch(firestoreServiceProvider).watchMember(widget.memberId),
-      ),
-    );
+    final memberAsync = ref.watch(memberStreamProvider(widget.memberId));
     final branchesAsync = ref.watch(branchesStreamProvider);
     return memberAsync.when(
       loading: () => const Padding(

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/app_user.dart';
 import '../models/committee_member.dart';
+import '../models/member.dart';
 import '../models/member_application.dart';
 import '../models/membership.dart';
 import '../models/notice.dart';
@@ -62,6 +63,21 @@ class GovernanceRepository {
       if (existing?.isApproved ?? false) {
         throw StateError('already-member');
       }
+      // পুরোনো সদস্য (member ডকুমেন্ট আছে, membership নেই)
+      // আবার আবেদন করতে পারবে না।
+      final legacyMembers = await _db
+          .collection(Collections.members)
+          .where('linkedUserId', isEqualTo: uid)
+          .where('branchId', isEqualTo: application.branchId)
+          .limit(1)
+          .get();
+      if (legacyMembers.docs.isNotEmpty) {
+        final legacyMember = Member.fromMap(
+          legacyMembers.docs.first.id,
+          legacyMembers.docs.first.data(),
+        );
+        if (legacyMember.active) throw StateError('already-member');
+      }
     }
     final doc = _db.collection(Collections.memberApplications).doc();
     String? photoUrl;
@@ -99,7 +115,7 @@ class GovernanceRepository {
         'branchId': application.branchId,
         'status': MembershipStatus.pending.name,
         'applicationId': doc.id,
-        'appliedAt': DateTime.now().toIso8601String(),
+        'appliedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     }
     return doc.id;
@@ -116,7 +132,7 @@ class GovernanceRepository {
     batch.update(appRef, {
       'status': ApplicationStatus.approved.name,
       'reviewedBy': reviewedBy,
-      'reviewedAt': DateTime.now().toIso8601String(),
+      'reviewedAt': FieldValue.serverTimestamp(),
     });
     final memberRef = _db.collection(Collections.members).doc();
     batch.set(memberRef, application.toMemberMap());
@@ -133,7 +149,7 @@ class GovernanceRepository {
           'applicationId': application.id,
           'memberId': memberRef.id,
           'approvedBy': reviewedBy,
-          'approvedAt': DateTime.now().toIso8601String(),
+          'approvedAt': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
       );
@@ -152,9 +168,12 @@ class GovernanceRepository {
       }
       batch.set(userRef, userData, SetOptions(merge: true));
     }
-    batch.update(
+    // branch ডকুমেন্ট না থাকলেও পুরো অনুমোদন ভাঙে না —
+    // set(merge) দিয়ে গোনা বাড়ানো হয়।
+    batch.set(
       _db.collection(Collections.branches).doc(application.branchId),
       {'memberCount': FieldValue.increment(1)},
+      SetOptions(merge: true),
     );
     await batch.commit();
   }
@@ -173,7 +192,7 @@ class GovernanceRepository {
       'status': ApplicationStatus.rejected.name,
       'rejectReason': reason,
       'reviewedBy': reviewedBy,
-      'reviewedAt': DateTime.now().toIso8601String(),
+      'reviewedAt': FieldValue.serverTimestamp(),
     });
     final uid = data?['applicantUid'] as String?;
     final branchId = data?['branchId'] as String?;
@@ -194,11 +213,12 @@ class GovernanceRepository {
     }
   }
 
-  /// নোটিশ লাইভ স্ট্রিম (সকল বা সমিতিভিত্তিক)
+  /// নোটিশ লাইভ স্ট্রিম (সকল বা সমিতিভিত্তিক, সর্বোচ্চ ২০০টি)
   Stream<List<Notice>> watchNotices({String? branchId}) {
     return _db
         .collection(Collections.notices)
         .orderBy('postedAt', descending: true)
+        .limit(200)
         .snapshots()
         .map((snap) {
       final all =
@@ -229,9 +249,12 @@ class GovernanceRepository {
     return doc.id;
   }
 
-  /// পরিচালনা কমিটির তালিকা পর্যবেক্ষণ
+  /// পরিচালনা কমিটির তালিকা পর্যবেক্ষণ (সর্বোচ্চ ২০০ জন)
   Stream<List<CommitteeMember>> watchCommittee({String? branchId}) {
-    var query = _db.collection(Collections.committee).orderBy('designation');
+    var query = _db
+        .collection(Collections.committee)
+        .orderBy('designation')
+        .limit(200);
     if (branchId != null) {
       query = query.where('branchId', isEqualTo: branchId);
     }

@@ -1,9 +1,12 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../core/cloudinary_config.dart';
 import '../l10n/app_strings.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import 'application/application_info_step.dart';
@@ -13,17 +16,18 @@ import 'application/application_step_bar.dart';
 import 'application/application_submit_handler.dart';
 
 /// সদস্য হওয়ার আবেদন — ৩ ধাপে তথ্য, ছবি ও নিশ্চিতকরণ।
-class MemberApplicationScreen extends StatefulWidget {
+class MemberApplicationScreen extends ConsumerStatefulWidget {
   final String? lockedBranchId;
 
   const MemberApplicationScreen({super.key, this.lockedBranchId});
 
   @override
-  State<MemberApplicationScreen> createState() =>
+  ConsumerState<MemberApplicationScreen> createState() =>
       _MemberApplicationScreenState();
 }
 
-class _MemberApplicationScreenState extends State<MemberApplicationScreen> {
+class _MemberApplicationScreenState
+    extends ConsumerState<MemberApplicationScreen> {
   static const int _maxPhotoBytes = 5 * 1024 * 1024;
 
   int _step = 0;
@@ -105,20 +109,14 @@ class _MemberApplicationScreenState extends State<MemberApplicationScreen> {
   }
 
   Future<void> _submit() async {
-    if (_photoBytes == null || _nidFrontBytes == null) {
-      const msg = 'নিজের ছবি ও এনআইডির সামনের ছবি দুটোই দিন';
-      setState(() => _error = msg);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(msg)),
-      );
-      return;
-    }
+    // ছবি ঐচ্ছিক (M7) — ছবি ছাড়াই আবেদন জমা হয়।
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
       await ApplicationSubmitHandler.submit(
+        store: ref.read(firestoreServiceProvider),
         name: _name.text.trim(),
         phone: _phone.text.trim(),
         address: _address.text.trim(),
@@ -130,13 +128,25 @@ class _MemberApplicationScreenState extends State<MemberApplicationScreen> {
         needsAccount: _needsAccount,
         email: _email.text.trim(),
         password: _password.text,
-        photoBytes: _photoBytes!,
-        nidFrontBytes: _nidFrontBytes!,
+        photoBytes: _photoBytes,
+        nidFrontBytes: _nidFrontBytes,
         nidBackBytes: _nidBackBytes,
       );
       if (!mounted) return;
+      // ছবি দিয়েও Cloudinary সেট করা না থাকলে ছবি জমা হয়নি —
+      // ব্যবহারকারীকে জানিয়ে দিই, আবেদন তবুও জমা হয়েছে।
+      final photosSkipped = (_photoBytes != null ||
+              _nidFrontBytes != null ||
+              _nidBackBytes != null) &&
+          !CloudinaryConfig.isConfigured;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('আবেদন জমা হয়েছে — অ্যাডমিন দেখছেন')),
+        SnackBar(
+          content: Text(
+            photosSkipped
+                ? 'আবেদন জমা হয়েছে — তবে ছবি আপলোড হয়নি, কারণ ছবি আপলোড এখনো সেট করা হয়নি'
+                : 'আবেদন জমা হয়েছে — অ্যাডমিন দেখছেন',
+          ),
+        ),
       );
       context.go('/pending');
     } catch (e) {
@@ -177,14 +187,7 @@ class _MemberApplicationScreenState extends State<MemberApplicationScreen> {
         _step = 1;
       });
     } else if (_step == 1) {
-      if (_photoBytes == null || _nidFrontBytes == null) {
-        const msg = 'নিজের ছবি আর এনআইডির সামনের ছবি লাগবে';
-        setState(() => _error = msg);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(msg)),
-        );
-        return;
-      }
+      // ছবি ঐচ্ছিক (M7) — ছবি না দিলেও পরের ধাপে যাওয়া যায়।
       setState(() {
         _error = null;
         _step = 2;

@@ -60,9 +60,18 @@ class MemberRepository {
     });
   }
 
-  /// ব্যবহারকারীর সব সমিতির সদস্যপদ পর্যবেক্ষণ (অ্যান্ড্রয়েড ও ফ্লাটার ডুয়াল সাপোর্ট)
+  /// ব্যবহারকারীর সব সমিতির সদস্যপদ পর্যবেক্ষণ (অ্যান্ড্রয়েড ও ফ্লাটার ডুয়াল সাপোর্ট)।
+  /// members থেকে পাওয়া সদস্যপদ শুধু মেমরিতেই থাকে —
+  /// পড়ার পথ থেকে আর Firestore-এ লেখা হয় না। আগের কোড
+  /// প্রতিবার approved সদস্যপদ লিখতে চাইত, নিয়মে
+  /// (rules) সেটা বাধা পেত, আর প্রতিটি snapshot-এ আবার
+  /// একই ব্যর্থ লেখা চলত।
   Stream<List<Membership>> watchMyMemberships(String userId) {
     if (userId.isEmpty) return const Stream.empty();
+    // members খোঁজা একবার করে রাখা হয় — সদস্যপদের
+    // সমিতি-সেট না বদলালে আবার পড়া হয় না।
+    List<Member>? cachedMembers;
+    Set<String>? cachedBranchIds;
     return _db
         .collection(Collections.memberships)
         .where('userId', isEqualTo: userId)
@@ -71,16 +80,26 @@ class MemberRepository {
       final explicitMemberships = snap.docs
           .map((d) => Membership.fromMap(d.id, d.data()))
           .toList();
+      final branchIds =
+          explicitMemberships.map((m) => m.branchId).toSet();
 
-      // অ্যান্ড্রয়েড অ্যাপের সাথে সামঞ্জস্য: members কালেকশনে লিঙ্কড থাকা সদস্যপদ রিড ও সিঙ্ক করা
+      // অ্যান্ড্রয়েড অ্যাপের সাথে সামঞ্জস্য: members কালেকশনে লিঙ্কড থাকা সদস্যপদ রিড করা
       try {
-        final memberDocs = await _db
-            .collection(Collections.members)
-            .where('linkedUserId', isEqualTo: userId)
-            .get();
+        if (cachedMembers == null ||
+            cachedBranchIds == null ||
+            cachedBranchIds!.length != branchIds.length ||
+            !cachedBranchIds!.containsAll(branchIds)) {
+          final memberDocs = await _db
+              .collection(Collections.members)
+              .where('linkedUserId', isEqualTo: userId)
+              .get();
+          cachedMembers = memberDocs.docs
+              .map((d) => Member.fromMap(d.id, d.data()))
+              .toList();
+          cachedBranchIds = branchIds;
+        }
 
-        for (final doc in memberDocs.docs) {
-          final member = Member.fromMap(doc.id, doc.data());
+        for (final member in cachedMembers!) {
           if (member.branchId.isEmpty) continue;
 
           final alreadyExists = explicitMemberships.any(
@@ -91,7 +110,7 @@ class MemberRepository {
             final status = member.active
                 ? MembershipStatus.approved
                 : MembershipStatus.rejected;
-            final synthetic = Membership(
+            explicitMemberships.add(Membership(
               id: Membership.docId(userId, member.branchId),
               userId: userId,
               branchId: member.branchId,
@@ -99,15 +118,7 @@ class MemberRepository {
               memberId: member.id,
               appliedAt: member.joinDate,
               approvedAt: member.joinDate,
-            );
-            explicitMemberships.add(synthetic);
-
-            // ফায়ারস্টোর সিকিউরিটি রুলসের সাথে সামঞ্জস্যের জন্য ব্যাকগ্রাউন্ডে ডক তৈরি
-            _db
-                .collection(Collections.memberships)
-                .doc(synthetic.id)
-                .set(synthetic.toMap(), SetOptions(merge: true))
-                .catchError((_) {});
+            ));
           }
         }
       } catch (_) {}
@@ -144,7 +155,8 @@ class MemberRepository {
           final status = member.active
               ? MembershipStatus.approved
               : MembershipStatus.rejected;
-          final synthetic = Membership(
+          // মেমরিতেই থাকে — পড়ার পথ থেকে লেখা হয় না।
+          return Membership(
             id: Membership.docId(userId, branchId),
             userId: userId,
             branchId: branchId,
@@ -153,12 +165,6 @@ class MemberRepository {
             appliedAt: member.joinDate,
             approvedAt: member.joinDate,
           );
-          _db
-              .collection(Collections.memberships)
-              .doc(synthetic.id)
-              .set(synthetic.toMap(), SetOptions(merge: true))
-              .catchError((_) {});
-          return synthetic;
         }
       } catch (_) {}
       return null;
@@ -209,9 +215,10 @@ class MemberRepository {
         );
   }
 
-  /// সদস্য তালিকা দেখা (সমিতি অনুযায়ী ফিল্টারসহ)
+  /// সদস্য তালিকা দেখা (সমিতি অনুযায়ী ফিল্টারসহ, সর্বোচ্চ ৫০০ জন)।
   Stream<List<Member>> watchMembers({String? branchId}) {
-    Query<Map<String, dynamic>> query = _db.collection(Collections.members);
+    Query<Map<String, dynamic>> query =
+        _db.collection(Collections.members).limit(500);
     if (branchId != null) {
       query = query.where('branchId', isEqualTo: branchId);
     }
@@ -222,6 +229,27 @@ class MemberRepository {
             return list;
           },
         );
+  }
+
+  /// কয়েকজন সদস্যের রেকর্ড একবারে আনা (কমিটি স্ক্রিনে
+  /// নাম-ফোন দেখানোর জন্য)। যে ডকুমেন্ট পড়ার অনুমতি নেই
+  /// (অন্য সমিতির সদস্য) সেটা চুপচাপ বাদ যায় — পুরো
+  /// তালিকা ভাঙে না।
+  Future<Map<String, Member>> fetchMembersByIds(List<String> ids) async {
+    final result = <String, Member>{};
+    final unique = ids.where((id) => id.isNotEmpty).toSet();
+    await Future.wait(unique.map((id) async {
+      try {
+        final doc =
+            await _db.collection(Collections.members).doc(id).get();
+        if (doc.exists && doc.data() != null) {
+          result[id] = Member.fromMap(doc.id, doc.data()!);
+        }
+      } catch (_) {
+        // পড়ার অনুমতি নেই বা ডকুমেন্ট নেই — বাদ যায়।
+      }
+    }));
+    return result;
   }
 
   /// একজন একক সদস্যের রেকর্ড পর্যবেক্ষণ

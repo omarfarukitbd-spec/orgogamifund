@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../utils/date_parser.dart';
 
 /// একজন ব্যবহারকারীর একটি সমিতির সদস্যপদ।
@@ -73,9 +75,10 @@ class Membership {
       'applicationId': applicationId,
       'memberId': memberId,
       'memberNumber': memberNumber,
-      'appliedAt': appliedAt.toIso8601String(),
+      'appliedAt': Timestamp.fromDate(appliedAt),
       'approvedBy': approvedBy,
-      'approvedAt': approvedAt?.toIso8601String(),
+      'approvedAt':
+          approvedAt == null ? null : Timestamp.fromDate(approvedAt!),
       'rejectReason': rejectReason,
     };
   }

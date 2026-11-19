@@ -35,11 +35,7 @@ class SamitiDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final branchAsync = ref.watch(
-      StreamProvider.autoDispose<Branch?>(
-        (ref) => ref.watch(firestoreServiceProvider).watchBranch(branchId),
-      ),
-    );
+    final branchAsync = ref.watch(branchStreamProvider(branchId));
     final userAsync = ref.watch(currentUserProvider);
     final membershipsAsync = ref.watch(myMembershipsProvider);
 
@@ -48,10 +44,12 @@ class SamitiDetailScreen extends ConsumerWidget {
         padding: EdgeInsets.all(16),
         child: SkeletonCardList(),
       ),
-      error: (e, _) => const EmptyState(
+      error: (e, _) => EmptyState(
         icon: Icons.error_outline,
         title: 'তথ্য আনা যায়নি',
         message: 'নেট দেখে আবার চেষ্টা করুন।',
+        actionLabel: AppStrings.tryAgain,
+        onAction: () => ref.invalidate(branchStreamProvider(branchId)),
       ),
       data: (branch) {
         if (branch == null) {
@@ -110,7 +108,9 @@ class SamitiDetailScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                samitiPurposeText(branch.purpose),
+                                branch.code == null
+                                    ? samitiPurposeText(branch.purpose)
+                                    : '${samitiPurposeText(branch.purpose)} • কোড: ${branch.code}',
                                 style: TextStyle(
                                   fontSize: 13.5,
                                   color: theme.colorScheme.onSurface
@@ -155,7 +155,7 @@ class SamitiDetailScreen extends ConsumerWidget {
                     Row(
                       children: [
                         Text(
-                          '${AppStrings.monthlyDonation}: ৳${branch.monthlyDonation}',
+                          '${AppStrings.monthlyDonation}: ৳${branch.monthlyDepositAmount}',
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -173,9 +173,104 @@ class SamitiDetailScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      [
+                        if (branch.admissionFee > 0)
+                          'ভর্তি ফি ৳${branch.admissionFee}',
+                        'মাসের ${branch.monthlyDueDay} তারিখের মধ্যে জমা',
+                        if (branch.lateFineAmount > 0)
+                          'বিলম্ব জরিমানা ৳${branch.lateFineAmount}',
+                        if (branch.optionalDepositEnabled)
+                          'ঐচ্ছিক জমা (ন্যূনতম ৳${branch.minOptionalDeposit})',
+                      ].join(' • '),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.65),
+                      ),
+                    ),
                   ],
                 ),
               ),
+              // ব্যাংক তথ্য — জমা দেওয়ার আগে সদস্য দেখে নেয়।
+              if (branch.bankDetails != null) ...[
+                const SizedBox(height: 16),
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'ব্যাংক তথ্য',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (branch.bankDetails!.bankName != null)
+                        _DetailRow(
+                          'ব্যাংক',
+                          branch.bankDetails!.bankName!,
+                        ),
+                      if (branch.bankDetails!.branchName != null)
+                        _DetailRow(
+                          'শাখা',
+                          branch.bankDetails!.branchName!,
+                        ),
+                      if (branch.bankDetails!.accountNumber != null)
+                        _DetailRow(
+                          'অ্যাকাউন্ট নম্বর',
+                          branch.bankDetails!.accountNumber!,
+                        ),
+                      if (branch.bankDetails!.accountHolderName != null)
+                        _DetailRow(
+                          'অ্যাকাউন্টের নাম',
+                          branch.bankDetails!.accountHolderName!,
+                        ),
+                      if (branch.bankDetails!.bkashNumber != null)
+                        _DetailRow(
+                          'বিকাশ',
+                          branch.bankDetails!.bkashNumber!,
+                        ),
+                      if (branch.bankDetails!.nagadNumber != null)
+                        _DetailRow(
+                          'নগদ',
+                          branch.bankDetails!.nagadNumber!,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+              // শর্তাবলি — আবেদন করার আগেই দেখা যায়।
+              if (branch.termsAndConditions.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'শর্তাবলি',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      for (int i = 0;
+                          i < branch.termsAndConditions.length;
+                          i++)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(
+                            '${i + 1}. ${branch.termsAndConditions[i]}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
 
               // যদি সদস্য না হয় — লক বক্স ও আবেদন বাটন
@@ -251,6 +346,42 @@ class SamitiDetailScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// লেবেল আর মানের এক লাইন — ব্যাংক তথ্যের জন্য।
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 14, color: AppColors.muted),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

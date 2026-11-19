@@ -21,10 +21,13 @@ class ExpenseRepository {
   })  : _db = db ?? FirebaseService.instance.db,
         _storage = storageService ?? StorageService();
 
-  /// সমস্ত ব্যয়ের লাইভ স্ট্রিম
+  /// সমস্ত ব্যয়ের লাইভ স্ট্রিম (সর্বোচ্চ ২০০টি — সংখ্যা
+  /// বাড়লে পেজিনেশন লাগবে)।
   Stream<List<Expense>> watchExpenses({String? branchId}) {
-    var query =
-        _db.collection(Collections.expenses).orderBy('date', descending: true);
+    var query = _db
+        .collection(Collections.expenses)
+        .orderBy('date', descending: true)
+        .limit(200);
     if (branchId != null) {
       query = query.where('branchId', isEqualTo: branchId);
     }
@@ -32,6 +35,23 @@ class ExpenseRepository {
           (snap) =>
               snap.docs.map((d) => Expense.fromMap(d.id, d.data())).toList(),
         );
+  }
+
+  /// সাম্প্রতিক খরচ — তারিখ অনুযায়ী নতুন থেকে পুরোনো।
+  /// হোমের "সাম্প্রতিক লেনদেন" এটাই দেখায়।
+  Future<List<Expense>> fetchRecentExpenses({
+    String? branchId,
+    int limit = 2,
+  }) async {
+    var query = _db
+        .collection(Collections.expenses)
+        .orderBy('date', descending: true)
+        .limit(limit);
+    if (branchId != null) {
+      query = query.where('branchId', isEqualTo: branchId);
+    }
+    final snap = await query.get();
+    return snap.docs.map((d) => Expense.fromMap(d.id, d.data())).toList();
   }
 
   /// নতুন ব্যয় লিপিবদ্ধ করা (ভাউচার ছবি আপলোডসহ)
@@ -53,20 +73,28 @@ class ExpenseRepository {
     return doc.id;
   }
 
-  /// নির্দিষ্ট মাস ও বছরের ব্যয় আনা (রিপোর্টের জন্য)
+  /// নির্দিষ্ট মাস ও বছরের ব্যয় আনা (রিপোর্টের জন্য)।
+  /// মাসের তারিখ-সীমা সার্ভারেই ফিল্টার করা হয় —
+  /// (branchId, date) ইনডেক্স আছে, তাই পুরো কালেকশন
+  /// নামিয়ে ক্লায়েন্টে ছাঁকতে হয় না।
   Future<List<Expense>> fetchExpensesForMonth({
     required int year,
     required int month,
     String? branchId,
   }) async {
-    Query<Map<String, dynamic>> query = _db.collection(Collections.expenses);
+    final start = Timestamp.fromDate(DateTime(year, month, 1));
+    final end = Timestamp.fromDate(
+      month == 12 ? DateTime(year + 1, 1, 1) : DateTime(year, month + 1, 1),
+    );
+    Query<Map<String, dynamic>> query = _db
+        .collection(Collections.expenses)
+        .where('date', isGreaterThanOrEqualTo: start)
+        .where('date', isLessThan: end)
+        .orderBy('date', descending: true);
     if (branchId != null) {
       query = query.where('branchId', isEqualTo: branchId);
     }
     final snap = await query.get();
-    return snap.docs
-        .map((d) => Expense.fromMap(d.id, d.data()))
-        .where((e) => e.date.year == year && e.date.month == month)
-        .toList();
+    return snap.docs.map((d) => Expense.fromMap(d.id, d.data())).toList();
   }
 }

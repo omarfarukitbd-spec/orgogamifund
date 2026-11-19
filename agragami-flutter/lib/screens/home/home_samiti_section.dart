@@ -16,6 +16,27 @@ class MySamitiTotalsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final branchesAsync = ref.watch(branchesStreamProvider);
+    // ভুল হলে সেকশনটা চুপচাপ উধাও হয় না — ভুল দেখানো হয়।
+    if (branchesAsync.hasError) {
+      return AppCard(
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'সমিতির তালিকা আনা যায়নি — নেট দেখে আবার চেষ্টা করুন।',
+                style: TextStyle(fontSize: 14.5),
+              ),
+            ),
+            TextButton(
+              onPressed: () => ref.invalidate(branchesStreamProvider),
+              child: Text(AppStrings.tryAgain),
+            ),
+          ],
+        ),
+      );
+    }
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
     final mine = branches.where((b) => branchIds.contains(b.id)).toList();
     if (mine.isEmpty) return const SizedBox.shrink();
@@ -47,11 +68,9 @@ class _OneSamitiCard extends ConsumerWidget {
       return money ? formatTaka(amount) : '$amount';
     }
 
-    final totalBalance = totals == null ||
-            totals.approvedTotal == null ||
-            totals.expenseTotal == null
-        ? '—'
-        : formatTaka(totals.approvedTotal! - totals.expenseTotal!);
+    // তহবিল = জমা − খরচ − বকেয়া ঋণ (রিপোর্টের সাথে মিলিয়ে)।
+    final totalBalance =
+        totals == null ? '—' : formatTaka(totals.fund);
 
     return AppCard(
       onTap: () => context.go('/samiti/${branch.id}'),
@@ -63,47 +82,68 @@ class _OneSamitiCard extends ConsumerWidget {
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: StatCard(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'মোট জমা',
-                  value: value(totals?.approvedTotal),
+          if (totalsAsync.hasError) ...[
+            Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'হিসাব আনা যায়নি — নেট দেখে আবার চেষ্টা করুন।',
+                    style: TextStyle(fontSize: 14.5),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  icon: Icons.receipt_long_outlined,
-                  label: 'মোট খরচ',
-                  value: value(totals?.expenseTotal),
-                  isGold: true,
+                TextButton(
+                  onPressed: () => ref.invalidate(
+                    homeTotalsByBranchProvider(branch.id),
+                  ),
+                  child: Text(AppStrings.tryAgain),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: StatCard(
-                  icon: Icons.groups_outlined,
-                  label: 'সক্রিয় সদস্য',
-                  value: value(totals?.activeMembers, money: false),
-                  isGold: true,
+              ],
+            ),
+          ] else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: StatCard(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: 'মোট জমা',
+                    value: value(totals?.approvedTotal),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'তহবিলে আছে',
-                  value: totalBalance,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: StatCard(
+                    icon: Icons.receipt_long_outlined,
+                    label: 'মোট খরচ',
+                    value: value(totals?.expenseTotal),
+                    isGold: true,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: StatCard(
+                    icon: Icons.groups_outlined,
+                    label: 'সক্রিয় সদস্য',
+                    value: value(totals?.activeMembers, money: false),
+                    isGold: true,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: StatCard(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: 'তহবিলে আছে',
+                    value: totalBalance,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

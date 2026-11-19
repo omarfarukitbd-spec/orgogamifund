@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../utils/date_parser.dart';
 
 /// একজন সদস্য।
@@ -65,7 +67,7 @@ class Member {
       'nid': nidNumber,
       'nidPhotoUrl': nidPhotoUrl,
       'branchId': branchId,
-      'joinDate': joinDate.toIso8601String(),
+      'joinDate': Timestamp.fromDate(joinDate),
       'emergencyContact': {
         'name': emergencyContactName,
         'phone': emergencyContactPhone,

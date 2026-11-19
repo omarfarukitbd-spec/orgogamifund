@@ -37,15 +37,33 @@ class SamitiMemberDetail extends ConsumerWidget {
       return money ? formatTaka(amount) : '$amount';
     }
 
-    final fund = totals == null ||
-            totals.approvedTotal == null ||
-            totals.expenseTotal == null
-        ? null
-        : totals.approvedTotal! - totals.expenseTotal!;
+    // তহবিল = জমা − খরচ − বকেয়া ঋণ (রিপোর্টের সাথে মিলিয়ে)।
+    final fund = totals?.fund;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (totalsAsync.hasError) ...[
+          Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'হিসাব আনা যায়নি — নেট দেখে আবার চেষ্টা করুন।',
+                  style: TextStyle(fontSize: 14.5),
+                ),
+              ),
+              TextButton(
+                onPressed: () => ref.invalidate(
+                  homeTotalsByBranchProvider(branch.id),
+                ),
+                child: Text(AppStrings.tryAgain),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         Row(
           children: [
             Expanded(
@@ -117,6 +135,16 @@ class SamitiMemberDetail extends ConsumerWidget {
         const SizedBox(height: 8),
         if (membersAsync.isLoading)
           const SkeletonCardList()
+        else if (membersAsync.hasError)
+          EmptyState(
+            icon: Icons.error_outline,
+            title: 'তথ্য আনা যায়নি',
+            message: 'নেট দেখে আবার চেষ্টা করুন।',
+            actionLabel: AppStrings.tryAgain,
+            onAction: () => ref.invalidate(
+              membersByBranchProvider(branch.id),
+            ),
+          )
         else if (members.isEmpty)
           const EmptyState(
             icon: Icons.groups_outlined,

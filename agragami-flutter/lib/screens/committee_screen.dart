@@ -28,25 +28,33 @@ class CommitteeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final committeeAsync = ref.watch(committeeStreamProvider);
-    final membersAsync = ref.watch(membersStreamProvider);
-    if (committeeAsync.isLoading || membersAsync.isLoading) {
+    if (committeeAsync.isLoading) {
       return const Padding(
         padding: EdgeInsets.all(16),
         child: SkeletonCardList(),
       );
     }
+    if (committeeAsync.hasError) {
+      return EmptyState(
+        icon: Icons.error_outline,
+        title: 'তথ্য আনা যায়নি',
+        message: 'নেট দেখে আবার চেষ্টা করুন।',
+        actionLabel: 'আবার চেষ্টা করুন',
+        onAction: () => ref.invalidate(committeeStreamProvider),
+      );
+    }
     final committee = committeeAsync.valueOrNull ?? const <CommitteeMember>[];
-    final members = membersAsync.valueOrNull ?? const <Member>[];
+    // সদস্যের নাম-ফোন শুধু কমিটিতে থাকা সদস্যদেরই আনা হয় —
+    // ফিল্টার ছাড়া পুরো members পড়লে সদস্যদের জন্য
+    // নিয়মে (rules) বাধা পায়।
+    final memberIds =
+        committee.map((c) => c.memberId).toSet().join(',');
+    final membersAsync = ref.watch(membersByIdsProvider(memberIds));
+    final members = membersAsync.valueOrNull ?? const <String, Member>{};
 
-    String memberName(String id) {
-      final found = members.where((m) => m.id == id).toList();
-      return found.isEmpty ? '—' : found.first.name;
-    }
+    String memberName(String id) => members[id]?.name ?? '—';
 
-    String memberPhone(String id) {
-      final found = members.where((m) => m.id == id).toList();
-      return found.isEmpty ? '' : found.first.phone;
-    }
+    String memberPhone(String id) => members[id]?.phone ?? '';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -68,10 +76,7 @@ class CommitteeScreen extends ConsumerWidget {
             ...committee.map(
               (c) {
                 final phone = memberPhone(c.memberId);
-                final photoUrl = members
-                    .where((m) => m.id == c.memberId)
-                    .map((m) => m.photoUrl)
-                    .firstOrNull;
+                final photoUrl = members[c.memberId]?.photoUrl;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: AppCard(

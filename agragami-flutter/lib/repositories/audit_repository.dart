@@ -23,7 +23,7 @@ class AuditRepository {
         'action': action,
         'by': by,
         'detail': detail,
-        'at': DateTime.now().toIso8601String(),
+        'at': FieldValue.serverTimestamp(),
       });
     } catch (_) {
       // লগ ব্যর্থ হলেও মূল অপারেশন বাধাগ্রস্ত হবে না

@@ -1,3 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../utils/date_parser.dart';
+
 /// কমিটির একজন — সভাপতি, সম্পাদক, কোষাধ্যক্ষ বা অন্য দায়িত্ব।
 /// Firestore কালেকশন: committee
 /// প্রত্যেকেই একজন সদস্যের সাথে যুক্ত থাকেন, যাতে নাম আর ফোন
@@ -25,12 +29,8 @@ class CommitteeMember {
       memberId: (data['memberId'] as String?) ?? '',
       designation: (data['designation'] as String?) ?? '',
       branchId: data['branchId'] as String?,
-      termStart: data['termStart'] == null
-          ? null
-          : DateTime.tryParse(data['termStart'] as String),
-      termEnd: data['termEnd'] == null
-          ? null
-          : DateTime.tryParse(data['termEnd'] as String),
+      termStart: parseFirestoreDateOrNull(data['termStart']),
+      termEnd: parseFirestoreDateOrNull(data['termEnd']),
     );
   }
 
@@ -39,8 +39,8 @@ class CommitteeMember {
       'memberId': memberId,
       'designation': designation,
       'branchId': branchId,
-      'termStart': termStart?.toIso8601String(),
-      'termEnd': termEnd?.toIso8601String(),
+      'termStart': termStart == null ? null : Timestamp.fromDate(termStart!),
+      'termEnd': termEnd == null ? null : Timestamp.fromDate(termEnd!),
     };
   }
 }

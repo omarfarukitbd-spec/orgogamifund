@@ -1,12 +1,14 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../l10n/app_strings.dart';
 import '../models/loan.dart';
 import '../models/member.dart';
 import '../models/membership.dart';
 import '../models/payment_method.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../utils/date_parser.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
@@ -24,11 +26,7 @@ class LoanDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final loanAsync = ref.watch(
-      StreamProvider.autoDispose<Loan?>(
-        (ref) => ref.watch(firestoreServiceProvider).watchLoan(loanId),
-      ),
-    );
+    final loanAsync = ref.watch(loanStreamProvider(loanId));
     final userAsync = ref.watch(currentUserProvider);
     final membershipsAsync = ref.watch(myMembershipsProvider);
     final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
@@ -45,10 +43,12 @@ class LoanDetailScreen extends ConsumerWidget {
         if (e is FirebaseException && e.code == 'permission-denied') {
           return const NotMemberGate();
         }
-        return const EmptyState(
+        return EmptyState(
           icon: Icons.error_outline,
           title: 'তথ্য আনা যায়নি',
           message: 'নেট দেখে আবার চেষ্টা করুন।',
+          actionLabel: AppStrings.tryAgain,
+          onAction: () => ref.invalidate(loanStreamProvider(loanId)),
         );
       },
       data: (loan) {
@@ -62,23 +62,15 @@ class LoanDetailScreen extends ConsumerWidget {
         if (!isAdmin && !myBranchIds.contains(loan.branchId)) {
           return NotMemberGate(branchId: loan.branchId);
         }
-        final membersAsync = ref.watch(
-          StreamProvider<List<Member>>(
-            (ref) => FirestoreService().watchMembers(branchId: loan.branchId),
-          ),
-        );
+        final membersAsync =
+            ref.watch(membersByBranchProvider(loan.branchId));
         final members = membersAsync.valueOrNull ?? const <Member>[];
         final found = members.where((m) => m.id == loan.memberId).toList();
         final name = found.isEmpty ? '—' : found.first.name;
         final isRepaid = loan.status == LoanStatus.repaid;
 
-        final methodsAsync = ref.watch(
-          StreamProvider<List<PaymentMethodConfig>>(
-            (ref) => FirestoreService().watchActivePaymentMethods(
-              branchId: loan.branchId,
-            ),
-          ),
-        );
+        final methodsAsync =
+            ref.watch(activePaymentMethodsProvider(loan.branchId));
         final methods =
             methodsAsync.valueOrNull ?? const <PaymentMethodConfig>[];
         final loadingMethods = methodsAsync is AsyncLoading;
@@ -120,7 +112,7 @@ class LoanDetailScreen extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      'তারিখ: ${loan.dateIssued.day}/${loan.dateIssued.month}/${loan.dateIssued.year}',
+                      'তারিখ: ${isMissingDate(loan.dateIssued) ? "তারিখ নেই" : "${loan.dateIssued.day}/${loan.dateIssued.month}/${loan.dateIssued.year}"}',
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.muted,

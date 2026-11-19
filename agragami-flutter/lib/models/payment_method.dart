@@ -1,3 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../utils/date_parser.dart';
+
 /// টাকা জমা দেওয়ার মাধ্যম — অ্যাডমিন নিজে যোগ করেন।
 /// Firestore কালেকশন: paymentMethods
 /// কোডে কোনো নম্বর লেখা থাকে না — সব মাধ্যম এখান থেকে আসে।
@@ -58,10 +62,8 @@ class PaymentMethodConfig {
       sortOrder: (data['sortOrder'] as num?)?.toInt() ?? 0,
       instructions: data['instructions'] as String?,
       createdBy: (data['createdBy'] as String?) ?? '',
-      createdAt:
-          DateTime.tryParse((data['createdAt'] as String?) ?? '') ??
-              DateTime.now(),
-      updatedAt: DateTime.tryParse((data['updatedAt'] as String?) ?? ''),
+      createdAt: parseFirestoreDate(data['createdAt']),
+      updatedAt: parseFirestoreDateOrNull(data['updatedAt']),
     );
   }
 
@@ -76,8 +78,8 @@ class PaymentMethodConfig {
       'sortOrder': sortOrder,
       'instructions': instructions,
       'createdBy': createdBy,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': updatedAt == null ? null : Timestamp.fromDate(updatedAt!),
     };
   }
 }

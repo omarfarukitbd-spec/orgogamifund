@@ -18,7 +18,8 @@ dependencies:
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.4
-  firebase_storage: ^12.3.4
+  # ছবি আপলোড — Cloudinary unsigned upload (Firebase Storage নেই)
+  http: ^1.4.0
   # গুগল দিয়ে ঢোকা — বেশিরভাগ ব্যবহারকারী এটাই ব্যবহার করবে
   google_sign_in: ^7.0.0
   # গুগল দিয়ে ঢোকার ওয়েব বোতাম (GIS বোতাম) — শুধু ওয়েবে ব্যবহার হয়

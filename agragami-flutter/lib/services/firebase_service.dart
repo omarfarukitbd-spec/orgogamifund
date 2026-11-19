@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 import '../firebase_options.dart';
 
@@ -18,7 +17,6 @@ class FirebaseService {
 
   FirebaseAuth get auth => FirebaseAuth.instance;
   FirebaseFirestore get db => FirebaseFirestore.instance;
-  FirebaseStorage get storage => FirebaseStorage.instance;
 
   /// অ্যাপ চালুর সময় একবার ডাকতে হবে।
   /// কনফিগ না থাকলে বা নেট না থাকলে ব্যর্থ হবে — তখন অ্যাপ
@@ -27,7 +25,12 @@ class FirebaseService {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    db.settings = const Settings(persistenceEnabled: true);
+    // সেটিংস ঠিক একবারই বসানো যায় — এখানেই চূড়ান্ত।
+    // অফলাইন ক্যাশ সীমাহীন, যাতে পুরোনো ডেটা হারিয়ে না যায়।
+    db.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
     _ready = true;
   }
 }

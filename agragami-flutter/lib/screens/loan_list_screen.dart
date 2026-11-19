@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../l10n/app_strings.dart';
 import '../models/branch.dart';
 import '../models/loan.dart';
 import '../models/member.dart';
 import '../models/membership.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../utils/date_parser.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
@@ -35,6 +37,15 @@ class _LoanListScreenState extends ConsumerState<LoanListScreen> {
     if (membershipsAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+    if (membershipsAsync.hasError) {
+      return EmptyState(
+        icon: Icons.error_outline,
+        title: 'তথ্য আনা যায়নি',
+        message: 'নেট দেখে আবার চেষ্টা করুন।',
+        actionLabel: AppStrings.tryAgain,
+        onAction: () => ref.invalidate(myMembershipsProvider),
+      );
+    }
     final memberships = membershipsAsync.valueOrNull ?? const <Membership>[];
     final allowedIds = isAdmin ? null : approvedBranchIds(memberships);
     if (!isAdmin && (allowedIds == null || allowedIds.isEmpty)) {
@@ -50,17 +61,11 @@ class _LoanListScreenState extends ConsumerState<LoanListScreen> {
         : (_branchId != null && branches.any((b) => b.id == _branchId)
             ? _branchId
             : (branches.isEmpty ? null : branches.first.id));
-    final loansAsync = ref.watch(
-      StreamProvider.autoDispose<List<Loan>>(
-        (ref) => ref.watch(firestoreServiceProvider).watchLoans(branchId: effectiveBranchId),
-      ),
-    );
+    final loansAsync =
+        ref.watch(loansByBranchProvider(effectiveBranchId ?? ''));
     // সদস্যের নাম শুধু ওই সমিতির সদস্যদের মধ্যেই খোঁজা হয়।
-    final membersAsync = ref.watch(
-      StreamProvider.autoDispose<List<Member>>(
-        (ref) => ref.watch(firestoreServiceProvider).watchMembers(branchId: effectiveBranchId),
-      ),
-    );
+    final membersAsync =
+        ref.watch(membersByBranchProvider(effectiveBranchId ?? ''));
     final loans = loansAsync.valueOrNull ?? const <Loan>[];
     final members = membersAsync.valueOrNull ?? const <Member>[];
     final active = loans.where((l) => l.status == LoanStatus.active).toList();
@@ -96,8 +101,12 @@ class _LoanListScreenState extends ConsumerState<LoanListScreen> {
           StatCard(
             icon: Icons.handshake_outlined,
             label: 'মোট বাকি ঋণ',
-            value: loansAsync.isLoading ? '—' : formatTaka(outstandingTotal),
-            note: '${active.length}টি চলতি ঋণ',
+            value: loansAsync.isLoading || loansAsync.hasError
+                ? '—'
+                : formatTaka(outstandingTotal),
+            note: loansAsync.hasError
+                ? 'তথ্য আনা যায়নি'
+                : '${active.length}টি চলতি ঋণ',
           ),
           const SizedBox(height: 12),
           if (isAdmin)
@@ -109,6 +118,16 @@ class _LoanListScreenState extends ConsumerState<LoanListScreen> {
           const SizedBox(height: 16),
           if (loansAsync.isLoading)
             const SkeletonCardList()
+          else if (loansAsync.hasError)
+            EmptyState(
+              icon: Icons.error_outline,
+              title: 'তথ্য আনা যায়নি',
+              message: 'নেট দেখে আবার চেষ্টা করুন।',
+              actionLabel: AppStrings.tryAgain,
+              onAction: () => ref.invalidate(
+                loansByBranchProvider(effectiveBranchId ?? ''),
+              ),
+            )
           else if (loans.isEmpty)
             const EmptyState(
               icon: Icons.handshake_outlined,
@@ -138,7 +157,7 @@ class _LoanListScreenState extends ConsumerState<LoanListScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${loan.reason} • ${loan.dateIssued.day}/${loan.dateIssued.month}/${loan.dateIssued.year}'
+                              '${loan.reason} • ${isMissingDate(loan.dateIssued) ? "তারিখ নেই" : "${loan.dateIssued.day}/${loan.dateIssued.month}/${loan.dateIssued.year}"}'
                               ' • ${loan.status == LoanStatus.repaid ? 'ফেরত দেওয়া হয়েছে' : 'চলছে'}',
                               style: const TextStyle(
                                 fontSize: 12.5,

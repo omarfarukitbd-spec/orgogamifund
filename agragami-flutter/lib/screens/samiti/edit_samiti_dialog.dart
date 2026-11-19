@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/branch.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 
 /// বিদ্যমান সমিতির তথ্য সম্পাদনের ডায়ালগ — শুধুমাত্র অ্যাডমিন ব্যবহার করতে পারবে।
-class EditSamitiDialog extends StatefulWidget {
+class EditSamitiDialog extends ConsumerStatefulWidget {
   final Branch branch;
 
   const EditSamitiDialog({super.key, required this.branch});
 
   @override
-  State<EditSamitiDialog> createState() => _EditSamitiDialogState();
+  ConsumerState<EditSamitiDialog> createState() => _EditSamitiDialogState();
 }
 
-class _EditSamitiDialogState extends State<EditSamitiDialog> {
+class _EditSamitiDialogState extends ConsumerState<EditSamitiDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
@@ -30,7 +31,7 @@ class _EditSamitiDialogState extends State<EditSamitiDialog> {
     _descriptionController =
         TextEditingController(text: widget.branch.description);
     _donationController = TextEditingController(
-      text: widget.branch.monthlyDonation.toString(),
+      text: widget.branch.monthlyDepositAmount.toString(),
     );
     _purpose = widget.branch.purpose;
   }
@@ -48,12 +49,12 @@ class _EditSamitiDialogState extends State<EditSamitiDialog> {
     setState(() => _saving = true);
     final isBn = AppStrings.isBangla;
     try {
-      await FirestoreService().updateBranch(
+      await ref.read(firestoreServiceProvider).updateBranch(
         branchId: widget.branch.id,
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
         purpose: _purpose,
-        monthlyDonation: int.parse(_donationController.text.trim()),
+        monthlyDepositAmount: int.parse(_donationController.text.trim()),
         by: AuthService().uidOrEmpty,
       );
       if (!mounted) return;

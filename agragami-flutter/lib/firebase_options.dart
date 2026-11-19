@@ -16,6 +16,8 @@ import 'package:flutter/foundation.dart'
 
 /// Firebase-এর ডিফল্ট অপশন — প্ল্যাটফর্ম অনুযায়ী বেছে নেওয়া হয়।
 class DefaultFirebaseOptions {
+  // databaseURL নেই — এই প্রজেক্টে Realtime Database নেই,
+  // শুধু Firestore ব্যবহার হয়।
   /// গুগল সাইন-ইনের serverClientId — Android-এর google-services.json-এর
   /// type-3 (web) OAuth ক্লায়েন্ট। auth_service.dart এখান থেকে নেয়,
   /// যাতে ওয়েব আর মোবাইলের কনফিগ আলাদা হয়ে না যায় (M7)।
@@ -52,7 +54,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1063848074047',
     projectId: 'ogrogami-fund',
     storageBucket: 'ogrogami-fund.firebasestorage.app',
-    databaseURL: 'https://ogrogami-fund-default-rtdb.asia-southeast1.firebasedatabase.app',
   );
 
   static const FirebaseOptions web = FirebaseOptions(
@@ -62,6 +63,5 @@ class DefaultFirebaseOptions {
     projectId: 'ogrogami-fund',
     authDomain: 'ogrogami-fund.firebaseapp.com',
     storageBucket: 'ogrogami-fund.firebasestorage.app',
-    databaseURL: 'https://ogrogami-fund-default-rtdb.asia-southeast1.firebasedatabase.app',
   );
 }

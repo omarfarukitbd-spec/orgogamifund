@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/loan.dart';
 import '../../models/payment_method.dart';
 import '../../services/auth_service.dart';
@@ -9,7 +10,7 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/payment_method_card.dart';
 
 /// কিস্তি পরিশোধের ফরম
-class LoanRepaymentForm extends StatefulWidget {
+class LoanRepaymentForm extends ConsumerStatefulWidget {
   final Loan loan;
   final List<PaymentMethodConfig> methods;
   final bool loadingMethods;
@@ -22,10 +23,10 @@ class LoanRepaymentForm extends StatefulWidget {
   });
 
   @override
-  State<LoanRepaymentForm> createState() => _LoanRepaymentFormState();
+  ConsumerState<LoanRepaymentForm> createState() => _LoanRepaymentFormState();
 }
 
-class _LoanRepaymentFormState extends State<LoanRepaymentForm> {
+class _LoanRepaymentFormState extends ConsumerState<LoanRepaymentForm> {
   final _amount = TextEditingController();
   final _trxId = TextEditingController();
   final _senderMobile = TextEditingController();
@@ -93,7 +94,7 @@ class _LoanRepaymentFormState extends State<LoanRepaymentForm> {
       _error = null;
     });
     try {
-      final store = FirestoreService();
+      final store = ref.read(firestoreServiceProvider);
       if (trxId.isNotEmpty) {
         final usedInLoan = widget.loan.repayments.any(
           (r) => r.trxId == trxId && r.paymentMethodId == chosen.id,

@@ -26,72 +26,64 @@ class DefaultersListView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final store = ref.watch(firestoreServiceProvider);
     final membersAsync = ref.watch(membersByBranchProvider(branchId ?? ''));
     final branchesAsync = ref.watch(branchesStreamProvider);
-    if (membersAsync.isLoading || branchesAsync.isLoading) {
+    final paymentsAsync = ref.watch(approvedPaymentsProvider(branchId ?? ''));
+    if (membersAsync.isLoading ||
+        branchesAsync.isLoading ||
+        paymentsAsync.isLoading) {
       return const SkeletonCardList();
     }
-    if (membersAsync.hasError || branchesAsync.hasError) {
-      return const EmptyState(
+    if (membersAsync.hasError ||
+        branchesAsync.hasError ||
+        paymentsAsync.hasError) {
+      return EmptyState(
         icon: Icons.error_outline,
         title: 'তথ্য আনা যায়নি',
         message: 'নেট দেখে আবার চেষ্টা করুন।',
+        actionLabel: 'আবার চেষ্টা করুন',
+        onAction: () {
+          ref.invalidate(membersByBranchProvider(branchId ?? ''));
+          ref.invalidate(branchesStreamProvider);
+          ref.invalidate(approvedPaymentsProvider(branchId ?? ''));
+        },
       );
     }
     final members = (membersAsync.valueOrNull ?? const <Member>[])
         .where((m) => m.active)
         .toList();
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
+    final approved = paymentsAsync.valueOrNull ?? const <Payment>[];
+    final defaulters =
+        <({Member member, Branch branch, int dueMonths, int dueAmount})>[];
 
-    return FutureBuilder<List<Payment>>(
-      future: store.fetchApprovedPayments(branchId: branchId),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const SkeletonCardList();
-        }
-        if (snap.hasError || !snap.hasData) {
-          return const EmptyState(
-            icon: Icons.error_outline,
-            title: 'তথ্য আনা যায়নি',
-            message: 'নেট দেখে আবার চেষ্টা করুন।',
-          );
-        }
-        final approved = snap.data!;
-        final now = DateTime.now();
-        final defaulters =
-            <({Member member, Branch branch, int dueMonths, int dueAmount})>[];
+    for (final member in members) {
+      final found = branches.where((b) => b.id == member.branchId).toList();
+      if (found.isEmpty) continue;
+      final branch = found.first;
+      if (branch.monthlyDepositAmount <= 0) continue;
+      // পাসবইয়ের সাথে একই মাসভিত্তিক হিসাব — আংশিক জমা
+      // পুরো মাস ধরা হয় না।
+      final dues = memberDuesPerMonth(
+        joinDate: member.joinDate,
+        branchStart: branch.startDate,
+        monthlyAmount: branch.monthlyDepositAmount,
+        payments: approved.where((p) => p.memberId == member.id).toList(),
+        dueDay: branch.monthlyDueDay,
+        lateFineAmount: branch.lateFineAmount,
+      );
+      if (dues == null || dues.dueMonths <= 0) continue;
+      defaulters.add(
+        (
+          member: member,
+          branch: branch,
+          dueMonths: dues.dueMonths,
+          dueAmount: dues.totalDue,
+        ),
+      );
+    }
 
-        for (final member in members) {
-          final found =
-              branches.where((b) => b.id == member.branchId).toList();
-          if (found.isEmpty) continue;
-          final branch = found.first;
-          if (branch.monthlyDonation <= 0) continue;
-          final start = effectiveStart(member.joinDate, branch.startDate);
-          final expected = monthsBetweenInclusive(start, now);
-          final paidMonths = approved
-              .where(
-                (p) =>
-                    p.memberId == member.id && p.type == PaymentType.monthly,
-              )
-              .map((p) => '${p.forYear}-${p.forMonth}')
-              .toSet()
-              .length;
-          final dueMonths = expected - paidMonths;
-          if (dueMonths > 0) {
-            defaulters.add(
-              (
-                member: member,
-                branch: branch,
-                dueMonths: dueMonths,
-                dueAmount: dueMonths * branch.monthlyDonation,
-              ),
-            );
-          }
-        }
-
-        return Column(
+    return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
@@ -176,7 +168,5 @@ class DefaultersListView extends ConsumerWidget {
               ),
           ],
         );
-      },
-    );
   }
 }

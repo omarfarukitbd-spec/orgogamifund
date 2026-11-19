@@ -1,23 +1,47 @@
 import 'package:flutter/material.dart';
 import '../../models/payment.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/date_parser.dart';
+import '../../utils/dues.dart';
 import '../passbook_screen.dart';
 
 /// ১২ মাসের ছক — এইচটিএমএল প্রিভিউয়ের হুবহু ৩ কলামের গ্রিড।
 /// পরিশোধিত (সবুজ), বকেয়া (লাল), এবং ভবিষ্যৎ (হালকা ধূসর)।
+/// যোগদানের আগের মাস নিরপেক্ষ দেখায় — বকেয়া নয়।
 class PassbookMonthGrid extends StatelessWidget {
   final List<Payment> payments;
   final int year;
+  final DateTime? joinDate;
+  final DateTime? branchStart;
+  final int monthlyAmount;
 
   const PassbookMonthGrid({
     super.key,
     required this.payments,
     required this.year,
+    this.joinDate,
+    this.branchStart,
+    this.monthlyAmount = 0,
   });
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
+    // বকেয়া গোনা শুরুর মাস — যোগদান আর সমিতি শুরুর
+    // মধ্যে যেটা পরে। এর আগের মাস বকেয়া নয়।
+    DateTime? startMonth;
+    final join = joinDate != null && !isMissingDate(joinDate!)
+        ? joinDate
+        : null;
+    final branch = branchStart != null && !isMissingDate(branchStart!)
+        ? branchStart
+        : null;
+    if (join != null) startMonth = join;
+    if (branch != null &&
+        (startMonth == null || branch.isAfter(startMonth))) {
+      startMonth = branch;
+    }
+    final paidByMonth = paidAmountByMonth(payments: payments, year: year);
 
     return GridView.builder(
       shrinkWrap: true,
@@ -32,12 +56,18 @@ class PassbookMonthGrid extends StatelessWidget {
       itemBuilder: (context, i) {
         final month = i + 1;
         final isFuture = (year > now.year) || (year == now.year && month > now.month);
-        final approved = payments.any(
-          (p) =>
-              p.forMonth == month &&
-              p.forYear == year &&
-              p.status == PaymentStatus.approved,
-        );
+        final isPreJoin = startMonth != null &&
+            (year < startMonth.year ||
+                (year == startMonth.year && month < startMonth.month));
+        // মাস পরিশোধিত ধরা হয় শুধু অনুমোদিত জমা মাসিক
+        // পরিমাণের সমান বা বেশি হলে — আংশিক জমা আলাদা দেখায়।
+        final paidAmount = paidByMonth[month] ?? 0;
+        final approved = monthlyAmount > 0
+            ? paidAmount >= monthlyAmount
+            : paidAmount > 0;
+        final partial = monthlyAmount > 0 &&
+            paidAmount > 0 &&
+            paidAmount < monthlyAmount;
         final pending = payments.any(
           (p) =>
               p.forMonth == month &&
@@ -50,7 +80,7 @@ class PassbookMonthGrid extends StatelessWidget {
         final Color text;
         final String statusLabel;
 
-        if (isFuture) {
+        if (isFuture || isPreJoin) {
           bg = AppColors.background;
           border = AppColors.line;
           text = AppColors.muted;
@@ -65,6 +95,11 @@ class PassbookMonthGrid extends StatelessWidget {
           border = const Color(0xFFE8D7A3);
           text = AppColors.goldDark;
           statusLabel = 'যাচাইাধীন';
+        } else if (partial) {
+          bg = AppColors.goldSoft;
+          border = const Color(0xFFE8D7A3);
+          text = AppColors.goldDark;
+          statusLabel = 'আংশিক জমা';
         } else {
           bg = const Color(0xFFFDF1F0);
           border = const Color(0xFFF3C2BE);

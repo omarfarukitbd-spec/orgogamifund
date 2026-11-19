@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../core/cloudinary_config.dart';
 import '../models/branch.dart';
 import '../models/expense.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 
@@ -71,6 +73,30 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     if (picked != null) setState(() => _date = picked);
   }
 
+  Future<void> _submitExpense(Expense expense, Uint8List? receiptBytes) {
+    return ref.read(firestoreServiceProvider).submitExpense(
+      expense: expense,
+      receiptBytes: receiptBytes,
+    );
+  }
+
+  void _onExpenseSaved() {
+    // রসিদ দিয়েও Cloudinary সেট করা না থাকলে ছবি জমা হয়নি —
+    // ব্যবহারকারীকে জানিয়ে দিই, খরচ তবুও লেখা হয়েছে।
+    final receiptSkipped =
+        _receiptBytes != null && !CloudinaryConfig.isConfigured;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          receiptSkipped
+              ? 'খরচ লেখা হয়েছে — তবে রসিদের ছবি আপলোড হয়নি, কারণ ছবি আপলোড এখনো সেট করা হয়নি'
+              : 'খরচ লেখা হয়েছে',
+        ),
+      ),
+    );
+    context.go('/expenses');
+  }
+
   Future<void> _submit() async {
     final amount = int.tryParse(_amount.text.trim());
     if (_branchId == null) {
@@ -89,25 +115,53 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       _busy = true;
       _error = null;
     });
+    final expense = Expense(
+      id: '',
+      branchId: _branchId!,
+      category: _category,
+      amount: amount,
+      date: _date,
+      description: _description.text.trim(),
+      recordedBy: AuthService().uidOrEmpty,
+    );
     try {
-      final expense = Expense(
-        id: '',
-        branchId: _branchId!,
-        category: _category,
-        amount: amount,
-        date: _date,
-        description: _description.text.trim(),
-        recordedBy: AuthService().uidOrEmpty,
-      );
-      await FirestoreService().submitExpense(
-        expense: expense,
-        receiptBytes: _receiptBytes,
-      );
+      await _submitExpense(expense, _receiptBytes);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('খরচ লেখা হয়েছে')),
+      _onExpenseSaved();
+    } on UploadFailedException catch (_) {
+      // রসিদের ছবি আপলোড হয়নি — নিঃশব্দে ছবি ছাড়া লেখা হয় না।
+      // ব্যবহারকারী চাইলে ছবি ছাড়াই লিখতে পারে।
+      if (!mounted) return;
+      final saveWithout = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('ছবি আপলোড হয়নি'),
+          content: const Text(
+            'রসিদের ছবিটা আপলোড করা যায়নি। ছবি ছাড়াই খরচ লিখবেন?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('বাতিল'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('ছবি ছাড়াই লিখুন'),
+            ),
+          ],
+        ),
       );
-      context.go('/expenses');
+      if (saveWithout != true) {
+        setState(() => _error = 'ছবি আপলোড হয়নি — আবার চেষ্টা করুন');
+        return;
+      }
+      try {
+        await _submitExpense(expense, null);
+        if (!mounted) return;
+        _onExpenseSaved();
+      } catch (_) {
+        setState(() => _error = 'খরচ লেখা যায়নি — নেট দেখে আবার চেষ্টা করুন');
+      }
     } catch (_) {
       setState(() => _error = 'খরচ লেখা যায়নি — নেট দেখে আবার চেষ্টা করুন');
     } finally {

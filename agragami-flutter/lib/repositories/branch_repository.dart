@@ -21,9 +21,13 @@ class BranchRepository {
   })  : _db = db ?? FirebaseService.instance.db,
         _audit = auditRepository ?? AuditRepository(db: db);
 
-  /// সমস্ত সমিতির লাইভ স্ট্রিম
+  /// সমস্ত সমিতির লাইভ স্ট্রিম — নামের ক্রমে সাজানো।
   Stream<List<Branch>> watchBranches() {
-    return _db.collection(Collections.branches).snapshots().map(
+    return _db
+        .collection(Collections.branches)
+        .orderBy('name')
+        .snapshots()
+        .map(
           (snap) => snap.docs
               .map((d) => Branch.fromMap(d.id, d.data()))
               .toList(),
@@ -40,12 +44,14 @@ class BranchRepository {
         );
   }
 
-  /// নতুন সমিতি তৈরি করা
+  /// নতুন সমিতি তৈরি করা — Branch.toMap() লাইভ স্কিমা
+  /// অনুযায়ী লেখে, তাই নতুন সমিতিতেও পুরোনো সমিতির
+  /// মতো একই ক্ষেত্র থাকে।
   Future<String> createBranch({
     required String name,
     required String description,
     required SamitiPurpose purpose,
-    required int monthlyDonation,
+    required int monthlyDepositAmount,
     required String by,
   }) async {
     final branch = Branch(
@@ -53,11 +59,11 @@ class BranchRepository {
       name: name,
       description: description,
       purpose: purpose,
-      monthlyDonation: monthlyDonation,
+      monthlyDepositAmount: monthlyDepositAmount,
       startDate: DateTime.now(),
     );
     final data = branch.toMap()
-      ..['createdAt'] = DateTime.now().toIso8601String();
+      ..['createdAt'] = FieldValue.serverTimestamp();
     final ref = await _db.collection(Collections.branches).add(data);
     await _audit.logAudit(
       action: 'create_branch',
@@ -73,7 +79,7 @@ class BranchRepository {
     required String name,
     required String description,
     required SamitiPurpose purpose,
-    required int monthlyDonation,
+    required int monthlyDepositAmount,
     required String by,
   }) async {
     if (branchId.isEmpty) return;
@@ -81,7 +87,7 @@ class BranchRepository {
       'name': name,
       'description': description,
       'purpose': purpose.name,
-      'monthlyDonation': monthlyDonation,
+      'monthlyDepositAmount': monthlyDepositAmount,
       'updatedAt': FieldValue.serverTimestamp(),
     });
     await _audit.logAudit(

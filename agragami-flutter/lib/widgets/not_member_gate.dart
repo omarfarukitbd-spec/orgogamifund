@@ -15,7 +15,7 @@ final myMembershipsProvider = StreamProvider<List<Membership>>((ref) {
   final user = ref.watch(currentUserProvider).valueOrNull;
   final uid = user?.id ?? '';
   if (uid.isEmpty) return const Stream<List<Membership>>.empty();
-  return FirestoreService().watchMyMemberships(uid);
+  return ref.watch(firestoreServiceProvider).watchMyMemberships(uid);
 });
 
 /// সদস্যপদের তালিকা থেকে অনুমোদিত সমিতিগুলোর id —

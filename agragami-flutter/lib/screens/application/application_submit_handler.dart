@@ -5,6 +5,7 @@ import '../../models/member_application.dart';
 import '../../routes/app_router.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/storage_service.dart';
 
 class ApplicationValidator {
   static bool isEmail(String value) {
@@ -51,6 +52,7 @@ class ApplicationValidator {
 
 class ApplicationSubmitHandler {
   static Future<void> submit({
+    required FirestoreService store,
     required String name,
     required String phone,
     required String address,
@@ -62,14 +64,14 @@ class ApplicationSubmitHandler {
     required bool needsAccount,
     required String email,
     required String password,
-    required Uint8List photoBytes,
-    required Uint8List nidFrontBytes,
+    // ছবি ঐচ্ছিক (M7) — ছবি ছাড়াই আবেদন জমা হয়।
+    required Uint8List? photoBytes,
+    required Uint8List? nidFrontBytes,
     required Uint8List? nidBackBytes,
   }) async {
     final loggedInUid = AuthService().uidOrEmpty;
     if (loggedInUid.isNotEmpty) {
-      final existing =
-          await FirestoreService().getMembership(loggedInUid, branchId);
+      final existing = await store.getMembership(loggedInUid, branchId);
       if (existing?.isApproved ?? false) {
         throw Exception(AppStrings.alreadyMemberOfBranch);
       }
@@ -113,12 +115,18 @@ class ApplicationSubmitHandler {
     );
 
     try {
-      await FirestoreService().submitMemberApplication(
+      await store.submitMemberApplication(
         application: application,
         photoBytes: photoBytes,
         nidFrontBytes: nidFrontBytes,
         nidBackBytes: nidBackBytes,
       );
+    } on UploadFailedException {
+      // ছবি আপলোড ব্যর্থ — তৈরি হওয়া অ্যাকাউন্ট মুছব না, যাতে
+      // ব্যবহারকারী ছবি ছাড়া বা আবার চেষ্টা করে জমা দিতে পারে (M7)।
+      // (অন্য ব্যর্থতায় নিচের catch-এ অ্যাকাউন্ট মুছে ফেলা হয় —
+      // পুরো আবেদন-প্রবাহের সংস্কার Phase 3-এর কাজ।)
+      rethrow;
     } catch (_) {
       if (createdAccount) {
         try {

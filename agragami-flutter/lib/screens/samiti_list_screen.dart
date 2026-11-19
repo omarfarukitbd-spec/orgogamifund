@@ -199,7 +199,7 @@ class _SamitiCardItem extends StatelessWidget {
           Row(
             children: [
               Text(
-                'মাসিক দান: ৳${branch.monthlyDonation}',
+                'মাসিক দান: ৳${branch.monthlyDepositAmount}',
                 style: const TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w700,

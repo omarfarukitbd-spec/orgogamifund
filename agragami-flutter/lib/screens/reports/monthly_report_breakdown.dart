@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/payment.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_card.dart';
@@ -8,8 +8,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../passbook_screen.dart';
 
 /// মাসিক রিপোর্ট ব্রেকডাউন — আয়, ব্যয়, ঋণ ও নিট অবস্থা
-class MonthlyReportBreakdown extends StatelessWidget {
-  final FirestoreService store;
+class MonthlyReportBreakdown extends ConsumerWidget {
   final String? branchId;
   final String branchName;
   final int month;
@@ -20,7 +19,6 @@ class MonthlyReportBreakdown extends StatelessWidget {
 
   const MonthlyReportBreakdown({
     super.key,
-    required this.store,
     required this.branchId,
     required this.branchName,
     required this.month,
@@ -31,26 +29,32 @@ class MonthlyReportBreakdown extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, int>>(
-      future: _load(),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const SkeletonCardList();
-        }
-        if (snap.hasError || !snap.hasData) {
-          return const EmptyState(
-            icon: Icons.bar_chart_outlined,
-            title: 'হিসাব আনা যায়নি',
-            message: 'নেট দেখে আবার চেষ্টা করুন।',
-          );
-        }
-        final data = snap.data!;
-        final income = data['income']!;
-        final expenses = data['expenses']!;
-        final loansGiven = data['loansGiven']!;
-        final repayments = data['repayments']!;
-        final net = income - expenses - loansGiven + repayments;
+  Widget build(BuildContext context, WidgetRef ref) {
+    // মাসের হিসাব টপ-লেভেল প্রোভাইডার থেকে আসে — আগে
+    // FutureBuilder-এ build()-এর ভেতরে _load() ডাকা হতো,
+    // প্রতিটি rebuild-এ ৩টা কোয়েরি আবার চলত।
+    final totalsAsync = ref.watch(
+      monthReportProvider((year: year, month: month, branchId: branchId)),
+    );
+    return totalsAsync.when(
+      loading: () => const SkeletonCardList(),
+      error: (e, _) => EmptyState(
+        icon: Icons.bar_chart_outlined,
+        title: 'হিসাব আনা যায়নি',
+        message: 'নেট দেখে আবার চেষ্টা করুন।',
+        actionLabel: 'আবার চেষ্টা করুন',
+        onAction: () => ref.invalidate(
+          monthReportProvider(
+            (year: year, month: month, branchId: branchId),
+          ),
+        ),
+      ),
+      data: (totals) {
+        final income = totals.income;
+        final expenses = totals.expenses;
+        final loansGiven = totals.loansGiven;
+        final repayments = totals.repayments;
+        final net = totals.net;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -121,38 +125,5 @@ class MonthlyReportBreakdown extends StatelessWidget {
         );
       },
     );
-  }
-
-  Future<Map<String, int>> _load() async {
-    final payments = await store.fetchPaymentsForMonth(
-      year: year,
-      month: month,
-      branchId: branchId,
-    );
-    final expenses = await store.fetchExpensesForMonth(
-      year: year,
-      month: month,
-      branchId: branchId,
-    );
-    final loans = await store.fetchLoans(branchId: branchId);
-    final income = payments
-        .where((p) => p.status == PaymentStatus.approved)
-        .fold(0, (sum, p) => sum + p.amount);
-    final expenseTotal = expenses.fold(0, (sum, e) => sum + e.amount);
-    final loansGiven = loans
-        .where((l) => l.dateIssued.year == year && l.dateIssued.month == month)
-        .fold(0, (sum, l) => sum + l.amount);
-    final repayments = loans.fold(0, (sum, l) {
-      return sum +
-          l.repayments
-              .where((r) => r.date.year == year && r.date.month == month)
-              .fold(0, (s, r) => s + r.amount);
-    });
-    return {
-      'income': income,
-      'expenses': expenseTotal,
-      'loansGiven': loansGiven,
-      'repayments': repayments,
-    };
   }
 }

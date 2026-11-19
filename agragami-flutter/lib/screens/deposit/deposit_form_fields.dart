@@ -12,6 +12,7 @@ class DepositFormFields extends StatelessWidget {
   final List<Branch> branches;
   final String? effectiveBranchId;
   final ValueChanged<String?> onBranchChanged;
+  final BankDetails? bankDetails;
   final List<PaymentMethodConfig> methods;
   final bool loadingMethods;
   final String? methodId;
@@ -32,6 +33,7 @@ class DepositFormFields extends StatelessWidget {
     required this.branches,
     required this.effectiveBranchId,
     required this.onBranchChanged,
+    this.bankDetails,
     required this.methods,
     required this.loadingMethods,
     required this.methodId,
@@ -90,6 +92,44 @@ class DepositFormFields extends StatelessWidget {
                 onTap: () => onMethodSelected(m.id),
               ),
             ),
+          // সমিতির ব্যাংক তথ্য — মাধ্যম না থাকলেও সদস্য
+          // কোথায় পাঠাবে জানতে পারে।
+          if (bankDetails != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.greenSoft.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.green.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'সমিতির ব্যাংক তথ্য',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (bankDetails!.bankName != null)
+                    Text('ব্যাংক: ${bankDetails!.bankName}'),
+                  if (bankDetails!.branchName != null)
+                    Text('শাখা: ${bankDetails!.branchName}'),
+                  if (bankDetails!.accountNumber != null)
+                    Text('অ্যাকাউন্ট নম্বর: ${bankDetails!.accountNumber}'),
+                  if (bankDetails!.bkashNumber != null)
+                    Text('বিকাশ: ${bankDetails!.bkashNumber}'),
+                  if (bankDetails!.nagadNumber != null)
+                    Text('নগদ: ${bankDetails!.nagadNumber}'),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [

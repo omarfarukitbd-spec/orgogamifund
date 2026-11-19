@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../utils/date_parser.dart';
 
 /// কর্জে হাসানা — সুদমুক্ত ঋণ।
@@ -59,7 +61,7 @@ class LoanRepayment {
 
   Map<String, dynamic> toMap() => {
         'amount': amount,
-        'date': date.toIso8601String(),
+        'date': Timestamp.fromDate(date),
         'method': method,
         'paymentMethodId': paymentMethodId,
         'paymentMethodName': paymentMethodName,
@@ -116,8 +118,13 @@ class Loan {
       dateIssued: parseFirestoreDate(data['dateIssued']),
       reason: (data['reason'] as String?) ?? '',
       status: status,
+      // নষ্ট কিস্তি থাকলে সেটা বাদ যায় — একটা ভুল এন্ট্রিতে
+      // পুরো ঋণের ডকুমেন্ট পড়া ভাঙে না।
       repayments: list
-          .map((e) => LoanRepayment.fromMap(e as Map<String, dynamic>))
+          .map((e) => e is Map
+              ? LoanRepayment.fromMap(Map<String, dynamic>.from(e))
+              : null)
+          .whereType<LoanRepayment>()
           .toList(),
       monthlyInstallment: (data['monthlyInstallment'] as num?)?.toInt(),
       installmentMonths: (data['installmentMonths'] as num?)?.toInt(),
@@ -129,7 +136,7 @@ class Loan {
       'memberId': memberId,
       'branchId': branchId,
       'amount': amount,
-      'dateIssued': dateIssued.toIso8601String(),
+      'dateIssued': Timestamp.fromDate(dateIssued),
       'reason': reason,
       'status': status.name,
       'repayments': repayments.map((r) => r.toMap()).toList(),

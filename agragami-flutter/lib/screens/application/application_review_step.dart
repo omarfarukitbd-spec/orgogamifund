@@ -1,11 +1,12 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/branch.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
 
 /// সদস্য আবেদনের তৃতীয় ধাপ — দেখে নিয়ে জমা দিন
-class ApplicationReviewStep extends StatelessWidget {
+class ApplicationReviewStep extends ConsumerWidget {
   final String name;
   final String phone;
   final String email;
@@ -38,49 +39,49 @@ class ApplicationReviewStep extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<List<Branch>>(
-      stream: FirestoreService().watchBranches(),
-      builder: (context, snapshot) {
-        final branches = snapshot.data ?? const <Branch>[];
-        final branchName = branches
-            .where((b) => b.id == branchId)
-            .map((b) => b.name)
-            .firstOrNull;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final branches =
+        ref.watch(branchesStreamProvider).valueOrNull ?? const <Branch>[];
+    final branch =
+        branches.where((b) => b.id == branchId).firstOrNull;
+    final branchName = branch?.name;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'দেখে নিন, তারপর জমা দিন',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 16),
-            _ReviewRow('নাম', name),
-            _ReviewRow('মোবাইল', phone),
-            if (needsAccount && email.isNotEmpty) _ReviewRow('ইমেইল', email),
-            if (branchName != null) _ReviewRow('সমিতি', branchName),
-            _ReviewRow('ঠিকানা', address),
-            _ReviewRow('জরুরি যোগাযোগ', '$emergencyName — $emergencyPhone'),
-            _ReviewRow('এনআইডি', nid),
-            _ReviewRow(
-              'ভর্তির তারিখ',
-              '${joinDate.day}/${joinDate.month}/${joinDate.year}',
-            ),
-            const SizedBox(height: 8),
-            if (photoBytes != null) _ReviewPhoto('নিজের ছবি', photoBytes!),
-            if (nidFrontBytes != null)
-              _ReviewPhoto('এনআইডির সামনে', nidFrontBytes!),
-            if (nidBackBytes != null)
-              _ReviewPhoto('এনআইডির পেছনে', nidBackBytes!),
-            const SizedBox(height: 12),
-            const Text(
-              'জমা দিলে অ্যাডমিন আপনার আবেদন দেখে অনুমোদন দেবেন। অনুমোদন হলে তবেই সদস্য হিসেবে ঢুকতে পারবেন।',
-              style: TextStyle(fontSize: 13.5, color: AppColors.muted),
-            ),
-          ],
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'দেখে নিন, তারপর জমা দিন',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 16),
+        _ReviewRow('নাম', name),
+        _ReviewRow('মোবাইল', phone),
+        if (needsAccount && email.isNotEmpty) _ReviewRow('ইমেইল', email),
+        if (branchName != null) _ReviewRow('সমিতি', branchName),
+        if (branch != null && branch.admissionFee > 0)
+          _ReviewRow(
+            'ভর্তি ফি',
+            '৳${branch.admissionFee} — অনুমোদনের পর দিতে হবে',
+          ),
+        _ReviewRow('ঠিকানা', address),
+        _ReviewRow('জরুরি যোগাযোগ', '$emergencyName — $emergencyPhone'),
+        _ReviewRow('এনআইডি', nid),
+        _ReviewRow(
+          'ভর্তির তারিখ',
+          '${joinDate.day}/${joinDate.month}/${joinDate.year}',
+        ),
+        const SizedBox(height: 8),
+        if (photoBytes != null) _ReviewPhoto('নিজের ছবি', photoBytes!),
+        if (nidFrontBytes != null)
+          _ReviewPhoto('এনআইডির সামনে', nidFrontBytes!),
+        if (nidBackBytes != null)
+          _ReviewPhoto('এনআইডির পেছনে', nidBackBytes!),
+        const SizedBox(height: 12),
+        const Text(
+          'জমা দিলে অ্যাডমিন আপনার আবেদন দেখে অনুমোদন দেবেন। অনুমোদন হলে তবেই সদস্য হিসেবে ঢুকতে পারবেন।',
+          style: TextStyle(fontSize: 13.5, color: AppColors.muted),
+        ),
+      ],
     );
   }
 }

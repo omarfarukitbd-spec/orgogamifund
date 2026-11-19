@@ -1,3 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../utils/date_parser.dart';
 import 'app_user.dart';
 
 /// সদস্য হওয়ার আবেদন।
@@ -61,8 +64,9 @@ class MemberApplication {
       emergencyContactPhone:
           (data['emergencyContact'] as Map?)?['phone'] as String? ?? '',
       branchId: (data['branchId'] as String?) ?? '',
-      joinDate: DateTime.tryParse((data['joinDate'] as String?) ?? '') ??
-          DateTime.now(),
+      // Timestamp তারিখেও চলে — আগের `as String` কাস্টে
+      // Timestamp ডকুমেন্টে পুরো স্ট্রিম ভেঙে যেত।
+      joinDate: parseFirestoreDate(data['joinDate']),
       nidNumber: (data['nid'] as String?) ?? '',
       photoUrl: data['photoUrl'] as String?,
       nidFrontUrl: data['nidFrontUrl'] as String?,
@@ -73,13 +77,9 @@ class MemberApplication {
         (s) => s.name == data['status'],
         orElse: () => ApplicationStatus.pending,
       ),
-      requestedAt:
-          DateTime.tryParse((data['requestedAt'] as String?) ?? '') ??
-              DateTime.now(),
+      requestedAt: parseFirestoreDate(data['requestedAt']),
       reviewedBy: data['reviewedBy'] as String?,
-      reviewedAt: data['reviewedAt'] == null
-          ? null
-          : DateTime.tryParse(data['reviewedAt'] as String),
+      reviewedAt: parseFirestoreDateOrNull(data['reviewedAt']),
       rejectReason: data['rejectReason'] as String?,
     );
   }
@@ -94,7 +94,7 @@ class MemberApplication {
         'phone': emergencyContactPhone,
       },
       'branchId': branchId,
-      'joinDate': joinDate.toIso8601String(),
+      'joinDate': Timestamp.fromDate(joinDate),
       'nid': nidNumber,
       'photoUrl': photoUrl,
       'nidFrontUrl': nidFrontUrl,
@@ -102,9 +102,10 @@ class MemberApplication {
       'applicantUid': applicantUid,
       'email': email,
       'status': status.name,
-      'requestedAt': requestedAt.toIso8601String(),
+      'requestedAt': Timestamp.fromDate(requestedAt),
       'reviewedBy': reviewedBy,
-      'reviewedAt': reviewedAt?.toIso8601String(),
+      'reviewedAt':
+          reviewedAt == null ? null : Timestamp.fromDate(reviewedAt!),
       'rejectReason': rejectReason,
     };
   }
@@ -119,7 +120,7 @@ class MemberApplication {
       'nid': nidNumber,
       'nidPhotoUrl': nidFrontUrl,
       'branchId': branchId,
-      'joinDate': joinDate.toIso8601String(),
+      'joinDate': Timestamp.fromDate(joinDate),
       'emergencyContact': {
         'name': emergencyContactName,
         'phone': emergencyContactPhone,

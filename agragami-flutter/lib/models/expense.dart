@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../utils/date_parser.dart';
 
 /// খরচের ধরন — এই পাঁচটার বাইরে আর কিছু লেখা হয় না।
@@ -50,7 +52,7 @@ class Expense {
       'branchId': branchId,
       'category': category,
       'amount': amount,
-      'date': date.toIso8601String(),
+      'date': Timestamp.fromDate(date),
       'description': description,
       'attachmentUrl': attachmentUrl,
       'recordedBy': recordedBy,

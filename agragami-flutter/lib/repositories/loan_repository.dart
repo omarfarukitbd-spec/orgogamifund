@@ -21,11 +21,13 @@ class LoanRepository {
   })  : _db = db ?? FirebaseService.instance.db,
         _audit = auditRepository ?? AuditRepository(db: db);
 
-  /// সমস্ত ঋণের লাইভ স্ট্রিম
+  /// সমস্ত ঋণের লাইভ স্ট্রিম (সর্বোচ্চ ২০০টি — সংখ্যা
+  /// বাড়লে পেজিনেশন লাগবে)।
   Stream<List<Loan>> watchLoans({String? branchId}) {
     var query = _db
         .collection(Collections.loans)
-        .orderBy('dateIssued', descending: true);
+        .orderBy('dateIssued', descending: true)
+        .limit(200);
     if (branchId != null) {
       query = query.where('branchId', isEqualTo: branchId);
     }
@@ -96,7 +98,8 @@ class LoanRepository {
   Future<List<Loan>> fetchLoans({String? branchId}) async {
     var query = _db
         .collection(Collections.loans)
-        .orderBy('dateIssued', descending: true);
+        .orderBy('dateIssued', descending: true)
+        .limit(200);
     if (branchId != null) {
       query = query.where('branchId', isEqualTo: branchId);
     }

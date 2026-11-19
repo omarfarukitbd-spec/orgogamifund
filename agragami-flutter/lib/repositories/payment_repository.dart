@@ -76,7 +76,7 @@ class PaymentRepository {
       'status': PaymentStatus.approved.name,
       'receiptNumber': receipt,
       'reviewedBy': reviewedBy,
-      'reviewedAt': now.toIso8601String(),
+      'reviewedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -90,7 +90,7 @@ class PaymentRepository {
       'status': PaymentStatus.rejected.name,
       'rejectReason': reason,
       'reviewedBy': reviewedBy,
-      'reviewedAt': DateTime.now().toIso8601String(),
+      'reviewedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -153,7 +153,7 @@ class PaymentRepository {
     required String updatedBy,
   }) async {
     final data = method.toMap();
-    data['updatedAt'] = DateTime.now().toIso8601String();
+    data['updatedAt'] = FieldValue.serverTimestamp();
     await _db
         .collection(Collections.paymentMethods)
         .doc(method.id)
@@ -174,7 +174,7 @@ class PaymentRepository {
   }) async {
     await _db.collection(Collections.paymentMethods).doc(methodId).update({
       'isActive': active,
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': FieldValue.serverTimestamp(),
     });
     await _audit.logAudit(
       action: active
@@ -201,11 +201,36 @@ class PaymentRepository {
     );
   }
 
-  /// সমস্ত অনুমোদিত জমা একবারে ফেচ করা (বকেয়া গণনার জন্য)
+  /// সমস্ত অনুমোদিত জমা একবারে ফেচ করা (বকেয়া গণনার জন্য)।
+  /// স্ট্যাটাস সার্ভারে ফিল্টার করা হয় না — পুরোনো ডকুমেন্টে
+  /// শুধু `approvalStatus` (যেমন "APPROVED") থাকতে পারে, সেগুলো
+  /// সার্ভার-ফিল্টারে বাদ পড়ে যেত। ক্লায়েন্টে পার্স করে
+  /// ছাঁকা হয়, যাতে পুরোনো জমাও বকেয়া হিসাবে ধরা পড়ে।
   Future<List<Payment>> fetchApprovedPayments({String? branchId}) async {
+    Query<Map<String, dynamic>> query = _db.collection(Collections.payments);
+    if (branchId != null) {
+      query = query.where('branchId', isEqualTo: branchId);
+    }
+    final snap = await query.get();
+    return snap.docs
+        .map((d) => Payment.fromMap(d.id, d.data()))
+        .where((p) => p.status == PaymentStatus.approved)
+        .toList();
+  }
+
+  /// সাম্প্রতিক অনুমোদিত জমা — তারিখ অনুযায়ী নতুন থেকে পুরোনো।
+  /// হোমের "সাম্প্রতিক লেনদেন" এটাই দেখায়। আগের কোডে কোনো
+  /// orderBy ছিল না, ফলে দেখানো দুটো জমা ছিল এলোমেলো।
+  /// (branchId, status, date) ইনডেক্স আগেই আছে।
+  Future<List<Payment>> fetchRecentApprovedPayments({
+    String? branchId,
+    int limit = 2,
+  }) async {
     var query = _db
         .collection(Collections.payments)
-        .where('status', isEqualTo: PaymentStatus.approved.name);
+        .where('status', isEqualTo: PaymentStatus.approved.name)
+        .orderBy('date', descending: true)
+        .limit(limit);
     if (branchId != null) {
       query = query.where('branchId', isEqualTo: branchId);
     }
