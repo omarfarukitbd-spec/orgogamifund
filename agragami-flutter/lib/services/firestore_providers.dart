@@ -30,11 +30,14 @@ final membersByBranchProvider =
   return service.watchMembers(branchId: branchId.isEmpty ? null : branchId);
 });
 
-/// অপেক্ষমাণ সদস্য আবেদনের শেয়ার্ড লাইভ স্ট্রিম
-final pendingApplicationsProvider =
-    StreamProvider<List<MemberApplication>>((ref) {
+/// অপেক্ষমাণ সদস্য আবেদনের শেয়ার্ড লাইভ স্ট্রিম (M4)।
+/// সমিতি অনুযায়ী ফিল্টার করা যায় — branchId null মানে সব সমিতি।
+/// টপ-লেভেল family প্রোভাইডার, যাতে build()-এর ভেতরে নতুন
+/// প্রোভাইডার বানিয়ে প্রতিবার rebuild-এ Firestore আবার না পড়ে।
+final pendingApplicationsProvider = StreamProvider.autoDispose
+    .family<List<MemberApplication>, String?>((ref, branchId) {
   final service = ref.watch(firestoreServiceProvider);
-  return service.watchPendingApplications();
+  return service.watchPendingApplications(branchId: branchId);
 });
 
 /// অপেক্ষমাণ জমার শেয়ার্ড লাইভ স্ট্রিম

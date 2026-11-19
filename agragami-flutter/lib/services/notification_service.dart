@@ -35,7 +35,8 @@ class AppNotificationItem {
 final notificationsListProvider =
     Provider.autoDispose<List<AppNotificationItem>>((ref) {
   final isBn = AppStrings.isBangla;
-  final pendingApps = ref.watch(pendingApplicationsProvider).valueOrNull ?? [];
+  final pendingApps =
+      ref.watch(pendingApplicationsProvider(null)).valueOrNull ?? [];
   final pendingPayments = ref.watch(pendingPaymentsProvider).valueOrNull ?? [];
   final notices = ref.watch(noticesStreamProvider).valueOrNull ?? [];
 

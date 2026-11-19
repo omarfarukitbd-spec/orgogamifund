@@ -16,6 +16,12 @@ import 'package:flutter/foundation.dart'
 
 /// Firebase-এর ডিফল্ট অপশন — প্ল্যাটফর্ম অনুযায়ী বেছে নেওয়া হয়।
 class DefaultFirebaseOptions {
+  /// গুগল সাইন-ইনের serverClientId — Android-এর google-services.json-এর
+  /// type-3 (web) OAuth ক্লায়েন্ট। auth_service.dart এখান থেকে নেয়,
+  /// যাতে ওয়েব আর মোবাইলের কনফিগ আলাদা হয়ে না যায় (M7)।
+  static const String googleServerClientId =
+      '1063848074047-ksr0cpftlh74bd30tqioj4blgm6vhst5.apps.googleusercontent.com';
+
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       return web;

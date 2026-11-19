@@ -146,19 +146,24 @@ class ProfileSettingsSection extends ConsumerWidget {
               IconButton(
                 icon: const Icon(Icons.security_outlined),
                 onPressed: () async {
-                  final ok = await ref
+                  // M8: আসল ফলাফল দেখানো হয় — "যন্ত্রে নেই" আর
+                  // "বাতিল" আলাদা বার্তা পায়, আগের মতো সব false নয়।
+                  final result = await ref
                       .read(biometricServiceProvider)
                       .authenticate();
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(ok
-                            ? (AppStrings.isBangla
-                                ? 'বায়োমেট্রিক সফল হয়েছে'
-                                : 'Biometric verified')
-                            : (AppStrings.isBangla
-                                ? 'বায়োমেট্রিক বাতিল'
-                                : 'Verification cancelled')),
+                        content: Text(switch (result) {
+                          BiometricResult.success =>
+                            AppStrings.biometricSuccess,
+                          BiometricResult.unavailable =>
+                            AppStrings.biometricUnavailable,
+                          BiometricResult.cancelled =>
+                            AppStrings.biometricCancelled,
+                          BiometricResult.failed =>
+                            AppStrings.biometricFailed,
+                        }),
                       ),
                     );
                   }

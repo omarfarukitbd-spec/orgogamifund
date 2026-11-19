@@ -16,19 +16,19 @@ class MemberRepository {
   MemberRepository({FirebaseFirestore? db})
       : _db = db ?? FirebaseService.instance.db;
 
-  /// নতুন ইউজারের ডকুমেন্ট তৈরি করা
+  /// নতুন ইউজারের ডকুমেন্ট তৈরি করা — সবসময় pending।
+  /// Firestore rules শুধু role == 'pending' দিয়ে users ডকুমেন্ট
+  /// বানাতে দেয়; অ্যাডমিন অনুমোদন দিলে পরে রোল বদলায়।
+  /// ইমেইল দেখে কাউকে অ্যাডমিন বানানো হয় না (M6) — আগে এখানে
+  /// hardcode করা ইমেইলে (বানান ভুলসহ) superAdmin বসানো হতো।
   Future<void> createUserDoc({
     required String uid,
     required String email,
   }) async {
-    final isRootAdmin = email.toLowerCase() == 'omarfaruktitbd@gmail.com' ||
-        email.toLowerCase() == 'omarfarukitbd@gmail.com';
     await _db.collection(Collections.users).doc(uid).set({
       'email': email,
-      'role': isRootAdmin ? UserRole.superAdmin.name : UserRole.pending.name,
-      'approvalStatus': isRootAdmin
-          ? ApprovalStatus.approved.name
-          : ApprovalStatus.pending.name,
+      'role': UserRole.pending.name,
+      'approvalStatus': ApprovalStatus.pending.name,
     });
   }
 
@@ -42,7 +42,11 @@ class MemberRepository {
     }
   }
 
-  /// প্রথম সুপার অ্যাডমিনের ইউজার ডকুমেন্ট সেটআপ
+  /// প্রথম সুপার অ্যাডমিনের ইউজার ডকুমেন্ট সেটআপ।
+  /// সতর্কতা: শক্ত করা Firestore rules-এ (role == 'pending' ছাড়া
+  /// users create নিষেধ) এই লেখা ক্লায়েন্ট থেকে ব্যর্থ হবে —
+  /// প্রথম অ্যাডমিন Firebase Console / Admin SDK দিয়ে বানাতে হয়।
+  /// /setup রাউট এখন fail-closed (B1)।
   Future<void> createFirstAdminDoc({
     required String uid,
     required String name,

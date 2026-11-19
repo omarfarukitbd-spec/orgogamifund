@@ -7,6 +7,7 @@ enum ApprovalStatus { pending, approved, rejected }
 class AppUser {
   final String id;
   final String email;
+  final String? name;
   final UserRole role;
   final String? branchId;
   final String? linkedMemberId;
@@ -15,6 +16,7 @@ class AppUser {
   const AppUser({
     required this.id,
     required this.email,
+    this.name,
     required this.role,
     this.branchId,
     this.linkedMemberId,
@@ -23,12 +25,14 @@ class AppUser {
 
   factory AppUser.fromMap(String id, Map<String, dynamic> data) {
     final userEmail = (data['email'] as String?) ?? '';
-    final isRootAdmin = userEmail.toLowerCase() == 'omarfaruktitbd@gmail.com' ||
-        userEmail.toLowerCase() == 'omarfarukitbd@gmail.com';
 
+    // রোল আর অনুমোদন আসে শুধু Firestore ডকুমেন্ট থেকে —
+    // ইমেইল দেখে ক্লায়েন্ট কখনো রোল বদলায় না (M6)।
+    // আগে এখানে hardcode করা ইমেইল দেখে superAdmin বসানো হতো,
+    // যাতে Console থেকে রুট অ্যাকাউন্ট demote করাও যেত না।
     final rawRole = ((data['role'] as String?) ?? '').toLowerCase().replaceAll('_', '');
     final UserRole role;
-    if (isRootAdmin || rawRole == 'superadmin') {
+    if (rawRole == 'superadmin') {
       role = UserRole.superAdmin;
     } else if (rawRole == 'branchadmin') {
       role = UserRole.branchAdmin;
@@ -40,7 +44,7 @@ class AppUser {
 
     final rawStatus = ((data['approvalStatus'] as String?) ?? '').toLowerCase().replaceAll('_', '');
     final ApprovalStatus approvalStatus;
-    if (isRootAdmin || rawStatus == 'approved') {
+    if (rawStatus == 'approved') {
       approvalStatus = ApprovalStatus.approved;
     } else if (rawStatus == 'rejected') {
       approvalStatus = ApprovalStatus.rejected;
@@ -51,6 +55,7 @@ class AppUser {
     return AppUser(
       id: id,
       email: userEmail,
+      name: data['name'] as String?,
       role: role,
       branchId: data['branchId'] as String?,
       linkedMemberId: data['linkedMemberId'] as String?,
@@ -61,6 +66,7 @@ class AppUser {
   Map<String, dynamic> toMap() {
     return {
       'email': email,
+      'name': name,
       'role': role.name,
       'branchId': branchId,
       'linkedMemberId': linkedMemberId,

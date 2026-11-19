@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -5,6 +6,23 @@ import '../l10n/app_strings.dart';
 
 final biometricServiceProvider =
     Provider<BiometricService>((ref) => BiometricService());
+
+/// বায়োমেট্রিক যাচাইয়ের ফল — bool নয়, যাতে বাতিল আর
+/// "যন্ত্রে নেই" আলাদা করে বোঝা যায় (M8)। আগে তিন রকম
+/// ফলই false ফিরত, সেটিংস বোতাম সবসময় "বাতিল" বলত।
+enum BiometricResult {
+  /// যাচাই সফল হয়েছে।
+  success,
+
+  /// এই যন্ত্রে বায়োমেট্রিক নেই বা নিবন্ধিত হয়নি।
+  unavailable,
+
+  /// ব্যবহারকারী নিজে বাতিল করেছে।
+  cancelled,
+
+  /// যাচাই ব্যর্থ হয়েছে বা ভুল হয়েছে।
+  failed,
+}
 
 /// বায়োমেট্রিক নিরাপত্তা (ফিঙ্গারপ্রিন্ট / ফেস আইডি) প্রমাণীকরণ সার্ভিস
 class BiometricService {
@@ -33,8 +51,11 @@ class BiometricService {
     }
   }
 
-  /// বায়োমেট্রিক অথেনটিকেশন প্রম্পট চালু করা
-  Future<bool> authenticate({String? customPrompt}) async {
+  /// বায়োমেট্রিক অথেনটিকেশন প্রম্পট চালু করা।
+  /// ফলাফল আলাদা করে জানানো হয় (M8) — সফল / যন্ত্রে নেই /
+  /// বাতিল / ব্যর্থ। ফিঙ্গারপ্রিন্ট লগইন এখনো বানানো হয়নি;
+  /// সেটা ব্যবহারকারীর সিদ্ধান্তের অপেক্ষায় আছে।
+  Future<BiometricResult> authenticate({String? customPrompt}) async {
     final isBn = AppStrings.isBangla;
     final reason = customPrompt ??
         (isBn
@@ -43,9 +64,9 @@ class BiometricService {
 
     try {
       final available = await isBiometricAvailable();
-      if (!available) return false;
+      if (!available) return BiometricResult.unavailable;
 
-      return await _auth.authenticate(
+      final ok = await _auth.authenticate(
         localizedReason: reason,
         options: const AuthenticationOptions(
           stickyAuth: true,
@@ -53,8 +74,16 @@ class BiometricService {
           useErrorDialogs: true,
         ),
       );
+      return ok ? BiometricResult.success : BiometricResult.cancelled;
+    } on PlatformException catch (e) {
+      // local_auth হার্ডওয়্যার না থাকা / নিবন্ধন না থাকাকে
+      // PlatformException দিয়ে জানায়।
+      if (e.code == 'NotAvailable' || e.code == 'NotEnrolled') {
+        return BiometricResult.unavailable;
+      }
+      return BiometricResult.failed;
     } catch (_) {
-      return false;
+      return BiometricResult.failed;
     }
   }
 

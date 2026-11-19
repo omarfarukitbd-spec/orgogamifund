@@ -32,11 +32,38 @@ Future<void> main() async {
   runApp(const ProviderScope(child: AgragamiFundApp()));
 }
 
-class AgragamiFundApp extends ConsumerWidget {
+class AgragamiFundApp extends ConsumerStatefulWidget {
   const AgragamiFundApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AgragamiFundApp> createState() => _AgragamiFundAppState();
+}
+
+class _AgragamiFundAppState extends ConsumerState<AgragamiFundApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // ব্যাকগ্রাউন্ড থেকে ফিরলে অনুমোদনের অবস্থা আবার পড়া (B3) —
+    // অ্যাডমিন এর মধ্যে অনুমোদন দিলে অ্যাপ তা জেনে যাবে।
+    if (state == AppLifecycleState.resumed) {
+      AppRouter.refreshAuth();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
     AppStrings.currentLocale = locale;

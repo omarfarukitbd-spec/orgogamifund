@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../l10n/app_strings.dart';
 import '../models/branch.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_providers.dart';
 import '../services/firestore_service.dart';
 import '../widgets/empty_state.dart';
 import 'approval/pending_applications_tab.dart';
@@ -75,9 +76,16 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
   @override
   Widget build(BuildContext context) {
     final store = ref.watch(firestoreServiceProvider);
-    final reviewer = AuthService().uidOrEmpty;
-    final isAdmin =
-        ref.watch(currentUserProvider).valueOrNull?.isAdmin ?? false;
+    final reviewer = ref.read(authServiceProvider).uidOrEmpty;
+    // m8: লোড হওয়ার সময় অ্যাডমিনকেও "শুধু অ্যাডমিন" বার্তা
+    // দেখানো হয় না — আগে স্পিনার, তারপর সিদ্ধান্ত।
+    final userAsync = ref.watch(currentUserProvider);
+    if (userAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
     if (!isAdmin) {
       return Scaffold(
         body: EmptyState(
@@ -87,11 +95,9 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
         ),
       );
     }
-    final applications = ref.watch(
-      StreamProvider.autoDispose(
-        (ref) => store.watchPendingApplications(branchId: _branchFilter),
-      ),
-    );
+    // M4: টপ-লেভেল family প্রোভাইডার — build()-এর ভেতরে নতুন
+    // প্রোভাইডার বানানো হয় না, rebuild-এ স্ট্রিম বাঁচে।
+    final applications = ref.watch(pendingApplicationsProvider(_branchFilter));
     final payments = ref.watch(pendingPaymentsProvider);
     final branchesAsync = ref.watch(branchesStreamProvider);
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];

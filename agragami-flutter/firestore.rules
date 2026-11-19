@@ -1,165 +1,291 @@
 rules_version = '2';
-
-// অগ্রগামী ফান্ড — Firestore-এর নিয়ম।
-// নিয়মটা এই রকম: লগইন করা যে কেউ সমিতির তালিকা দেখতে পায়
-// (নাম, উদ্দেশ্য, মাসিক দান, সদস্য সংখ্যা), কিন্তু সমিতির
-// ভেতরের তথ্য — সদস্য কে কে, কত টাকা আছে, কে জমা দিলো,
-// কার বকেয়া আছে — শুধু ওই সমিতির অনুমোদিত সদস্য বা
-// অ্যাডমিন দেখতে পায়। সদস্যপদ memberships কালেকশনে থাকে,
-// একজনের এক সমিতিতে একটাই সদস্যপদ (id: userId_branchId)।
-//
-// বসানোর উপায়:
-//   firebase deploy --only firestore:rules
-// অথবা এই ফাইলটা রিপোর firestore.rules-এ কপি করে Firebase
-// Console থেকে Firestore > Rules-এ বসান। অ্যাপ একা এই
-// নিয়ম চালু করতে পারে না — না বসালে শুধু অ্যাপের পাতাগুলোই
-// আটকাবে, সরাসরি ডেটাবেসে ঢুকলে আটকাবে না।
-//
-// প্রথম অ্যাডমিনের কথা: /setup থেকে প্রথম অ্যাডমিন বানাতে
-// নিজের users ডকুমেন্ট বানাতে হয়। তাই users-এ create
-// খোলা রাখা হয়েছে। অ্যাডমিন তৈরি হয়ে গেলে নিরাপত্তার জন্য
-// নিচের users create নিয়মটা শক্ত করুন — শুধু role
-// 'pending' দিয়ে বানাতে দিন (কমেন্ট করা লাইনটা দেখুন)।
-// নইলে যে কেউ নিজের ডকুমেন্টে সুপার অ্যাডমিন লিখে নিতে পারবে।
+// অগ্রগামী ফান্ড — লাইভ Firestore নিয়ম (HARDENED, 2026-11-19)।
+// এটাই console-এ বসানো নিয়মের শক্ত করা সংস্করণ — রেপোর
+// firestore.rules (রুট) আর agragami-flutter/firestore.rules
+// দুই জায়গাতেই এই একই ফাইল থাকে, যাতে ভুল করে অন্য নিয়ম
+// বসে না যায়। আগের Flutter-খসড়া নিয়ম (signedIn/isAdmin
+// মডেল) কখনো লাইভে বসেনি — সেটা audit ফোল্ডারে ব্যাকআপ আছে।
+// বদল (2026-11-19): ১) users create শুধু role+approvalStatus
+// 'pending' দিয়ে — /setup দিয়ে নিজেকে সুপার অ্যাডমিন বানানো
+// বন্ধ; ২) memberships get/list আলাদা — না থাকা ডকুমেন্ট পড়তে
+// গিয়ে আবেদন আটকায় না; নিজে সদস্যপদ বানাতে পারে শুধু pending
+// অবস্থায়; ৩) isMasterAdmin থেকে বানান-ভুল ইমেইল বাদ;
+// ৪) memberApplications পড়ায় applicantUid যোগ (Flutter অ্যাপ
+// এই ফিল্ড লেখে); ৫) সাধারণ সদস্যের জমা শুধু status pending
+// দিয়ে — নিজে approved জমা বানানো বন্ধ; ৬) অনুমোদিত সদস্য
+// নিজের সমিতির খরচ আর ঋণের তালিকা পড়তে পারে (অ্যাপের ডিজাইন
+// অনুযায়ী; আগে শুধু অ্যাডমিন পড়তে পারতো)। branches পড়া
+// ইচ্ছা করে সাইন-ইন ব্যবহারকারীর মধ্যে সীমিত রাখা হয়েছে —
+// branch ডকুমেন্টে ব্যাংক অ্যাকাউন্ট নম্বর থাকে, তাই পাবলিক
+// পড়া দেওয়া যাবে না।
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    function myUid() {
-      return request.auth.uid;
-    }
-
-    function myUserDoc() {
-      return get(/databases/$(database)/documents/users/$(myUid()));
-    }
-
     function isMasterAdmin() {
-      return signedIn() && (
-        request.auth.token.email in ['omarfaruktitbd@gmail.com', 'omarfarukitbd@gmail.com']
+      return isAuthenticated() &&
+             request.auth.token.email != null &&
+             request.auth.token.email.lower() == 'omarfarukitbd@gmail.com';
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isApproved() {
+      return isMasterAdmin() || (
+        isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        'approvalStatus' in getUserData() &&
+        getUserData().approvalStatus is string &&
+        getUserData().approvalStatus.lower() == 'approved'
       );
     }
 
-    function isAdmin() {
-      return signedIn()
-        && (isMasterAdmin() || myUserDoc().data.role in ['superAdmin', 'branchAdmin']);
-    }
-
-    // ওই সমিতির অনুমোদিত সদস্য কি না।
-    function isMemberOf(branchId) {
-      return signedIn() && (
-        isMasterAdmin()
-        || get(/databases/$(database)/documents/memberships/$(myUid() + '_' + branchId)).data.status == 'approved'
+    function isSuperAdmin() {
+      return isMasterAdmin() || (
+        isApproved() && 
+        'role' in getUserData() &&
+        getUserData().role is string && (
+          getUserData().role.lower() == 'superadmin' ||
+          getUserData().role.lower() == 'super_admin'
+        )
       );
     }
 
-    // সমিতি — নাম, উদ্দেশ্য, মাসিক দান, সদস্য সংখ্যা:
-    // লগইন করা সবাই পড়তে পারে। লেখা শুধু অ্যাডমিন।
+    function isBranchAdmin(branchId) {
+      return isApproved() && 
+             'role' in getUserData() &&
+             getUserData().role is string && (
+               getUserData().role.lower() == 'branchadmin' ||
+               getUserData().role.lower() == 'branch_admin'
+             ) && 
+             'branchId' in getUserData() &&
+             getUserData().branchId == branchId;
+    }
+
+    function isBranchAdminAny() {
+      return isApproved() && 
+             'role' in getUserData() &&
+             getUserData().role is string && (
+               getUserData().role.lower() == 'branchadmin' ||
+               getUserData().role.lower() == 'branch_admin'
+             );
+    }
+
+    function isMemberUser(memberId) {
+      return isApproved() && 
+             'role' in getUserData() &&
+             getUserData().role is string &&
+             getUserData().role.lower() == 'member' && 
+             'linkedMemberId' in getUserData() &&
+             getUserData().linkedMemberId == memberId;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // --- 1. Organizations (সংগঠন তথ্য) ---
+    match /organizations/{orgId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // --- 2. Branches (সমিতিসমূহ - সাধারণ তথ্য যে কেউ সাইন-ইন করে দেখতে পারবে) ---
+    // সতর্কতা: branch ডকুমেন্টে ব্যাংক অ্যাকাউন্ট/বিকাশ/নগদ নম্বর
+    // থাকে — কখনো allow read: if true করা যাবে না।
     match /branches/{branchId} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
     }
 
-    // সদস্যপদ — নিজেরটা নিজে পড়তে পারে, অ্যাডমিন সব পড়ে।
-    // নতুন সদস্যপদ নিজে বানাতে পারে শুধু pending অবস্থায়;
-    // অনুমোদন বা বাতিল শুধু অ্যাডমিন করে।
-    match /memberships/{membershipId} {
-      allow read: if isAdmin()
-        || (signedIn() && resource.data.userId == myUid());
-      allow create: if signedIn()
-        && request.resource.data.userId == myUid()
-        && request.resource.data.status == 'pending';
-      allow update, delete: if isAdmin();
-    }
-
-    // সদস্যের রেকর্ড — ওই সমিতির সদস্য, নিজের রেকর্ডের
-    // মালিক, বা অ্যাডমিন পড়তে পারে। লেখা শুধু অ্যাডমিন।
-    match /members/{memberId} {
-      allow read: if isAdmin()
-        || (signedIn() && resource.data.linkedUserId == myUid())
-        || isMemberOf(resource.data.branchId);
-      allow write: if isAdmin();
-    }
-
-    // সদস্য হওয়ার আবেদন — নিজের আবেদন নিজে বানাতে ও পড়তে
-    // পারে; অনুমোদন বা বাতিল শুধু অ্যাডমিন।
-    match /memberApplications/{applicationId} {
-      allow create: if signedIn()
-        && request.resource.data.applicantUid == myUid();
-      allow read: if isAdmin()
-        || (signedIn() && resource.data.applicantUid == myUid());
-      allow update, delete: if isAdmin();
-    }
-
-    // জমা — ওই সমিতির সদস্য বা অ্যাডমিন পড়তে পারে।
-    // নতুন জমা দিতে পারে শুধু ওই সমিতির সদস্য বা সুপার অ্যাডমিন।
-    match /payments/{paymentId} {
-      allow read: if isAdmin()
-        || isMemberOf(resource.data.branchId)
-        || (signedIn() && resource.data.memberId == myUserDoc().data.linkedMemberId);
-      allow create: if signedIn()
-        && (isAdmin() || isMemberOf(request.resource.data.branchId));
-      allow update, delete: if isAdmin();
-    }
-
-    // খরচ — জমার মতোই: ওই সমিতির সদস্য বা অ্যাডমিন।
-    match /expenses/{expenseId} {
-      allow read: if isAdmin()
-        || isMemberOf(resource.data.branchId);
-      allow create, update, delete: if isAdmin();
-    }
-
-    // কর্জে হাসানা ঋণ — জমার মতোই।
-    match /loans/{loanId} {
-      allow read: if isAdmin()
-        || isMemberOf(resource.data.branchId);
-      allow create, update, delete: if isAdmin();
-    }
-
-    // পেমেন্ট মাধ্যম — লগইন করা সবাই পড়তে পারে
-    // (জমা দেওয়ার সময় মাধ্যম দেখতে হয়), লেখা শুধু অ্যাডমিন।
-    match /paymentMethods/{methodId} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
-    }
-
-    // নোটিশ আর কমিটি — লগইন করা সবাই পড়তে পারে,
-    // লেখা শুধু অ্যাডমিন।
-    match /notices/{noticeId} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
-    }
-
-    match /committee/{memberId} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
-    }
-
-    // ব্যবহারকারীর ডকুমেন্ট — নিজেরটা নিজে পড়তে পারে,
-    // অ্যাডমিন সব পড়ে। নতুন ডকুমেন্ট নিজে বানাতে পারে
-    // (লগইন আর /setup-এর জন্য)।
-    // অ্যাডমিন তৈরি হয়ে গেলে নিচের শক্ত নিয়মটা ব্যবহার
-    // করুন (এখনকার লাইনটার বদলে):
-    //   allow create: if signedIn() && myUid() == userId
-    //     && request.resource.data.role == 'pending';
-    // নিজের রোল বা অনুমোদন নিজে বদলাতে পারে না —
-    // সেটা শুধু অ্যাডমিনের কাজ।
+    // --- 3. Users (ইউজার প্রোফাইল ও অনুমোদন স্ট্যাটাস) ---
     match /users/{userId} {
-      allow read: if isAdmin()
-        || (signedIn() && myUid() == userId);
-      allow create: if signedIn() && myUid() == userId;
-      allow update: if isAdmin()
-        || (signedIn() && myUid() == userId
-          && !request.resource.data.diff(resource.data)
-            .affectedKeys().hasAny(['role', 'approvalStatus']));
-      allow delete: if isAdmin();
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      // সাইন-আপ করার সময় পেন্ডিং প্রোফাইল তৈরি করার অনুমতি —
+      // শুধু role 'pending' আর approvalStatus 'pending' দিয়ে
+      // বানানো যাবে। নইলে যে কেউ নিজের ডকুমেন্টে সুপার অ্যাডমিন
+      // লিখে নিতে পারতো (/setup ছিদ্র)। অ্যাডমিনের নিজের ডকুমেন্ট
+      // আগেই আছে, তাই এতে তার কিছু আটকাবে না।
+      allow create: if isAuthenticated() && request.auth.uid == userId
+        && request.resource.data.role == 'pending'
+        && request.resource.data.approvalStatus == 'pending';
+      // শুধুমাত্র সুপার অ্যাডমিন রোল বা অনুমোদন পরিবর্তন করতে পারবে
+      allow update: if isSuperAdmin() || 
+                       (isAuthenticated() && request.auth.uid == userId && 
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approvalStatus', 'branchId', 'linkedMemberId']));
+      allow delete: if isSuperAdmin();
     }
 
-    // অডিট লগ — শুধু অ্যাডমিন।
+    // --- 4. Memberships (সমিতি ও ব্যবহারকারীর সদস্যপদ সম্পর্ক) ---
+    match /memberships/{membershipId} {
+      // সদস্য নিজের সদস্যপদ দেখতে পারবে, অ্যাডমিনরা সব দেখতে পারবে।
+      // get: ডকুমেন্ট না থাকলেও পড়তে দেওয়া হয় (তাতে কোনো তথ্য
+      // ফাঁস হয় না) — নইলে প্রথমবারের আবেদনকারী নিজের
+      // (অস্তিত্বহীন) সদস্যপদ দেখতে গিয়ে permission-denied খেয়ে
+      // আবেদন জমাই দিতে পারতো না।
+      allow get: if isSuperAdmin() ||
+                     isBranchAdminAny() ||
+                     (isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid));
+      allow list: if isSuperAdmin() ||
+                     isBranchAdminAny() ||
+                     (isAuthenticated() && resource.data.userId == request.auth.uid);
+      // নতুন সদস্যপদ নিজে বানাতে পারে শুধু pending অবস্থায় —
+      // নইলে যে কেউ নিজেকে approved সদস্য লিখে নিতে পারতো।
+      // অনুমোদন বা বাতিল শুধু অ্যাডমিন করে।
+      allow create: if isSuperAdmin() ||
+                       isBranchAdminAny() ||
+                       (isAuthenticated() && request.resource.data.userId == request.auth.uid
+                         && request.resource.data.status == 'pending');
+      allow update: if isSuperAdmin() || isBranchAdminAny();
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 5. Member Applications (সদস্যপদের আবেদন ও অ্যাডমিন অনুমোদন) ---
+    match /memberApplications/{appId} {
+      // আবেদনকারী নিজের আবেদন এবং অ্যাডমিনরা সকল আবেদন দেখতে পারবে।
+      // Flutter অ্যাপ applicantUid লেখে, পুরনো অ্যাপ applicantId —
+      // দুইটাই দেখা হয়।
+      allow read: if isSuperAdmin() || isBranchAdminAny() ||
+                     (isAuthenticated() && (
+                       resource.data.email == request.auth.token.email ||
+                       ('applicantUid' in resource.data && resource.data.applicantUid == request.auth.uid) ||
+                       ('applicantId' in resource.data && resource.data.applicantId == request.auth.uid)));
+      // যেকোনো সাইন-ইন করা ইউজার সদস্যপদের জন্য নতুন আবেদন জমা দিতে পারবে
+      allow create: if isAuthenticated();
+      // শুধুমাত্র সুপার অ্যাডমিন বা শাখা অ্যাডমিন আবেদন অনুমোদন বা বাতিল করতে পারবে
+      allow update: if isSuperAdmin() || isBranchAdminAny();
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 6. Members (সদস্য তালিকা ও ডিজিটাল আইডি কার্ড) ---
+    match /members/{memberId} {
+      // সুপার অ্যাডমিন সব দেখতে পারবে; শাখা অ্যাডমিন তার শাখার সদস্য দেখতে পারবে;
+      // ব্যবহারকারী নিজের লিঙ্কড প্রোফাইল (পাসবই, আইডি কার্ড) দেখতে পারবে;
+      // অনুমোদিত সদস্য শুধুমাত্র তার নিজস্ব শাখার সক্রিয় তালিকা দেখতে পারবে
+      allow read: if isSuperAdmin() || 
+                     (isBranchAdminAny() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId) ||
+                     (isAuthenticated() && resource.data.linkedUserId == request.auth.uid) ||
+                     isMemberUser(memberId) ||
+                     (isApproved() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId && resource.data.status == 'active');
+      allow create, update: if isSuperAdmin() || (isBranchAdmin(request.resource.data.branchId));
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 7. Sessions (ডিভাইস সেশন ম্যানেজমেন্ট) ---
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+    }
+
+    // --- 8. Edit Requests (সদস্য তথ্য সংশোধন আবেদন) ---
+    match /editRequests/{requestId} {
+      allow read: if isSuperAdmin() || isBranchAdminAny() || 
+                     (isApproved() && 'linkedMemberId' in getUserData() && resource.data.memberId == getUserData().linkedMemberId);
+      allow create: if isApproved() && 'linkedMemberId' in getUserData() && request.resource.data.memberId == getUserData().linkedMemberId;
+      allow update: if isSuperAdmin() || isBranchAdminAny();
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 9. Payments / Contributions (চাঁদা ও আর্থিক লেনদেন) ---
+    match /payments/{paymentId} {
+      // শুধুমাত্র সুপার অ্যাডমিন, সংশ্লিষ্ট শাখা অ্যাডমিন এবং সংশ্লিষ্ট সদস্য নিজের পেমেন্ট দেখতে পারবে
+      allow read: if isSuperAdmin() || 
+                     (isBranchAdminAny() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId) ||
+                     (isAuthenticated() && (
+                       (resource.data.recordedBy == request.auth.uid) ||
+                       (isApproved() && 'linkedMemberId' in getUserData() && resource.data.memberId == getUserData().linkedMemberId)
+                     ));
+      // সাধারণ সদস্যের জমা শুধু status 'pending' দিয়ে বানানো যাবে —
+      // নইলে যে কেউ নিজের জমা approved লিখে তহবিল ফুলিয়ে নিতে
+      // পারতো। অ্যাডমিন যেকোনো অবস্থায় বানাতে পারে।
+      allow create: if isSuperAdmin() || 
+                       isBranchAdmin(request.resource.data.branchId) ||
+                       (isAuthenticated() && request.resource.data.status == 'pending' && (
+                         (request.resource.data.recordedBy == request.auth.uid) ||
+                         (isApproved() && 'linkedMemberId' in getUserData() && request.resource.data.memberId == getUserData().linkedMemberId)
+                       ));
+      allow update: if isSuperAdmin() || isBranchAdmin(resource.data.branchId);
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 10. Expenses (সমিতির খরচের হিসাব) ---
+    match /expenses/{expenseId} {
+      // অ্যাডমিন আর ওই সমিতির অনুমোদিত সদস্য পড়তে পারে
+      // (অ্যাপের খরচের তালিকা সদস্যদের দেখায়)।
+      allow read: if isSuperAdmin() ||
+                     (isBranchAdminAny() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId) ||
+                     (isApproved() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId);
+      allow create, update: if isSuperAdmin() || isBranchAdmin(request.resource.data.branchId);
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 11. Loans & Repayments (ঋণ ও কিস্তি) ---
+    match /loans/{loanId} {
+      // অ্যাডমিন, ঋণগ্রহীতা সদস্য, আর ওই সমিতির অনুমোদিত সদস্য
+      // (অ্যাপের ঋণের তালিকা সদস্যদের দেখায়) পড়তে পারে।
+      allow read: if isSuperAdmin() || 
+                     (isBranchAdminAny() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId) ||
+                     (isApproved() && 'linkedMemberId' in getUserData() && resource.data.memberId == getUserData().linkedMemberId) ||
+                     (isApproved() && 'branchId' in getUserData() && resource.data.branchId == getUserData().branchId);
+      allow create, update: if isSuperAdmin() || isBranchAdmin(request.resource.data.branchId);
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 12. Committee (পরিচালনা পরিষদ) ---
+    match /committee/{committeeMemberId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // --- 13. Notices & Meeting Minutes (নোটিশ ও রেজুলেশন) ---
+    match /notices/{noticeId} {
+      allow read: if isApproved();
+      allow create, update: if isSuperAdmin() || isBranchAdminAny();
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- 14. Dividends (মুনাফা ও লভ্যাংশ বণ্টন) ---
+    match /dividends/{dividendRunId} {
+      allow read: if isApproved();
+      allow write: if isSuperAdmin();
+    }
+
+    // --- 15. Member Exits (সদস্যপদ প্রত্যাহার ও নিষ্পত্তি) ---
+    match /memberExits/{exitId} {
+      allow read: if isSuperAdmin() || (isApproved() && 'linkedMemberId' in getUserData() && resource.data.memberId == getUserData().linkedMemberId);
+      allow write: if isSuperAdmin();
+    }
+
+    // --- 16. Audit Logs (অডিট ট্রেইল) ---
     match /auditLogs/{logId} {
-      allow read, write: if isAdmin();
+      // অডিট লগ শুধুমাত্র সুপার অ্যাডমিন ও শাখা অ্যাডমিন পড়তে পারবে; অথেনটিকেটেড ইউজাররা শুধুমাত্র ইনসার্ট করতে পারবে (নো এডিট/ডিলিট)
+      allow read: if isSuperAdmin() || isBranchAdminAny();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; 
+    }
+
+    // --- 17. Notifications (নোটিফিকেশন) ---
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && 
+                     (resource.data.toUserId == request.auth.uid || 
+                      resource.data.broadcast == true || isSuperAdmin());
+      allow update: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
+      allow write: if isSuperAdmin() || isBranchAdminAny();
+    }
+
+    // --- 18. Payment Methods (পেমেন্ট পদ্ধতি ও মার্চেন্ট/অ্যাকাউন্ট কনফিগারেশন) ---
+    match /paymentMethods/{methodId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin() || isBranchAdminAny();
     }
   }
 }

@@ -6,4 +6,6 @@ import 'google_web_button_stub.dart'
 /// ওয়েবে গুগলের নিজের সাইন-ইন বোতাম (GIS বোতাম)।
 /// মোবাইলে এটা কিছু দেখায় না — ওখানে অ্যাপের নিজের
 /// গুগল বোতাম থেকে signInWithGoogle ডাকা হয়।
-Widget buildGoogleWebButton() => impl.buildGoogleWebButton();
+/// busy হলে ওয়েবে বোতামের বদলে লোডিং দেখানো হয় (m12)।
+Widget buildGoogleWebButton({bool busy = false}) =>
+    impl.buildGoogleWebButton(busy: busy);

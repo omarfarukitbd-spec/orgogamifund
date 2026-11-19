@@ -66,6 +66,14 @@ class AppStrings {
   static String get loginTooMany => _s(
       'অনেকবার ভুল হয়েছে — একটু পরে আবার চেষ্টা করুন',
       'Too many attempts - please try later');
+  static String get forgotPassword =>
+      _s('পাসওয়ার্ড ভুলে গেছেন?', 'Forgot password?');
+  static String get resetLinkSent => _s(
+      'পাসওয়ার্ড রিসেটের লিংক ইমেইলে পাঠানো হয়েছে',
+      'Password reset link sent to your email');
+  static String get resetLinkEnterEmail => _s(
+      'রিসেট লিংক পাঠাতে আগে সঠিক ইমেইল লিখুন',
+      'Enter a valid email first to receive a reset link');
 
   // প্রথম অ্যাডমিন সেটআপ
   static String get setupTitle => _s('প্রথমবার সেটআপ', 'Initial Setup');
@@ -104,6 +112,29 @@ class AppStrings {
       'Your application is under review by the Admin.');
   static String get pendingCompleteApplication =>
       _s('সদস্য হওয়ার আবেদন সম্পূর্ণ করুন', 'Complete Membership Application');
+  static String get checkAgain => _s('আবার দেখুন', 'Check again');
+  static String get rejectedTitle =>
+      _s('আবেদন বাতিল হয়েছে', 'Application rejected');
+  static String get rejectedBody => _s(
+      'আপনার আবেদনটি বাতিল হয়েছে — কারণ জানতে অ্যাডমিনের সাথে যোগাযোগ করুন।',
+      'Your application was rejected — contact the admin to know why.');
+  static String get profileNotFoundTitle =>
+      _s('প্রোফাইল পাওয়া যায়নি', 'Profile not found');
+  static String get profileNotFoundBody => _s(
+      'আপনার অ্যাকাউন্ট আছে, কিন্তু প্রোফাইলের তথ্য পাওয়া যাচ্ছে না — অ্যাডমিনের সাথে যোগাযোগ করুন।',
+      'Your account exists, but the profile could not be found — please contact the admin.');
+
+  // বায়োমেট্রিক
+  static String get biometricSuccess =>
+      _s('বায়োমেট্রিক সফল হয়েছে', 'Biometric verified');
+  static String get biometricUnavailable => _s(
+      'এই ফোনে বায়োমেট্রিক চালু নেই',
+      'Biometrics are not available on this device');
+  static String get biometricCancelled =>
+      _s('বায়োমেট্রিক বাতিল', 'Verification cancelled');
+  static String get biometricFailed => _s(
+      'বায়োমেট্রিক যাচাই হয়নি — আবার চেষ্টা করুন',
+      'Biometric verification failed — try again');
 
   // হোম
   static String get totalFund => _s('মোট তহবিল', 'Total Fund');

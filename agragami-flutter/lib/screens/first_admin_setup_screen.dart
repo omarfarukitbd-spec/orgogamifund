@@ -1,26 +1,31 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../l10n/app_strings.dart';
 import '../routes/app_router.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/validators.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_icon.dart';
 
 /// প্রথমবারের সেটআপ — অ্যাপের প্রথম অ্যাডমিনের অ্যাকাউন্ট।
 /// কেউ থাকলে এই পাতা খোলে না — রাউটার আর এই স্ক্রিন নিজে,
-/// দুই জায়গাতেই যাচাই করা হয়। অ্যাডমিন তৈরি হলে আর
+/// দুই জায়গাতেই যাচাই করা হয়। যাচাই করা না গেলেও খোলে না
+/// (B1: fail closed — অজানা মানেই বন্ধ)। অ্যাডমিন তৈরি হলে আর
 /// কখনো এই পাতায় আসা যাবে না।
-class FirstAdminSetupScreen extends StatefulWidget {
+class FirstAdminSetupScreen extends ConsumerStatefulWidget {
   const FirstAdminSetupScreen({super.key});
 
   @override
-  State<FirstAdminSetupScreen> createState() => _FirstAdminSetupScreenState();
+  ConsumerState<FirstAdminSetupScreen> createState() =>
+      _FirstAdminSetupScreenState();
 }
 
-class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
+class _FirstAdminSetupScreenState
+    extends ConsumerState<FirstAdminSetupScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -36,11 +41,12 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
   }
 
   Future<void> _checkAlreadyDone() async {
-    final hasUsers = await FirestoreService().hasAnyUser();
+    final hasUsers = await ref.read(firestoreServiceProvider).hasAnyUser();
     if (!mounted) return;
-    if (hasUsers == true) {
-      // অ্যাডমিন আগেই তৈরি হয়েছে — লগইন পাতায় পাঠানো হলো।
-      context.go('/login');
+    // B1 fail-closed: ফরম খুলবে শুধু প্রমাণিতভাবে কেউ না থাকলে।
+    // কেউ আছে বা যাচাই করা যায়নি — দুই ক্ষেত্রেই লগইনে ফেরত।
+    if (hasUsers != false) {
+      context.go('/login?notice=setup-blocked');
       return;
     }
     setState(() => _checking = false);
@@ -55,16 +61,12 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
     super.dispose();
   }
 
-  bool _isEmail(String value) {
-    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
-  }
-
   Future<void> _submit() async {
     if (_name.text.trim().isEmpty) {
       setState(() => _error = 'নাম লিখুন');
       return;
     }
-    if (!_isEmail(_email.text.trim())) {
+    if (!isValidEmail(_email.text.trim())) {
       setState(() => _error = AppStrings.validEmail);
       return;
     }
@@ -83,14 +85,16 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
     try {
       // জমা দেওয়ার ঠিক আগেও একবার দেখে নেওয়া — এর মধ্যে
       // কেউ অ্যাডমিন বানিয়ে ফেললে আর দ্বিতীয়জন বানানো যাবে না।
-      final hasUsers = await FirestoreService().hasAnyUser();
-      if (hasUsers == true) {
+      // যাচাই করা না গেলেও এগোনো হয় না (B1: fail closed)।
+      final hasUsers = await ref.read(firestoreServiceProvider).hasAnyUser();
+      if (hasUsers != false) {
         if (!mounted) return;
-        setState(() => _error = AppStrings.setupAlreadyExists);
-        context.go('/login');
+        // m13: এরর সেট করে নেভিগেট নয় — বার্তাটা লগইন
+        // স্ক্রিনে পাঠানো হয়, যাতে দেখা যায়।
+        context.go('/login?notice=setup-blocked');
         return;
       }
-      await AuthService().createFirstAdmin(
+      await ref.read(authServiceProvider).createFirstAdmin(
         name: _name.text.trim(),
         email: _email.text.trim(),
         password: _password.text,
@@ -102,8 +106,10 @@ class _FirstAdminSetupScreenState extends State<FirstAdminSetupScreen> {
       );
       context.go('/home');
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       setState(() => _error = bengaliAuthErrorMessage(e));
     } catch (_) {
+      if (!mounted) return;
       setState(
         () => _error = 'অ্যাডমিন অ্যাকাউন্ট বানানো যায়নি — নেট দেখে আবার চেষ্টা করুন',
       );
