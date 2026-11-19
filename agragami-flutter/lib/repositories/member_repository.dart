@@ -413,4 +413,131 @@ class MemberRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
+
+  /// একজন ব্যবহারকারীর users ডকুমেন্টের লাইভ স্ট্রিম (Phase 6) —
+  /// সদস্যের পরিচয় পাতায় তার বর্তমান রোল দেখানোর জন্য।
+  /// rules: users ডকুমেন্ট নিজে বা সুপার অ্যাডমিন পড়তে পারে।
+  /// ডকুমেন্ট না থাকলে null ফেরে।
+  Stream<AppUser?> watchUserDoc(String uid) {
+    if (uid.isEmpty) return Stream.value(null);
+    return _db.collection(Collections.users).doc(uid).snapshots().map(
+          (doc) => doc.exists && doc.data() != null
+              ? AppUser.fromMap(uid, doc.data()!)
+              : null,
+        );
+  }
+
+  /// একজন ব্যবহারকারীর users ডকুমেন্ট একবার পড়া (Phase 6) —
+  /// অ্যাডমিন বানানো/সরানোর রক্ষাগুলো যাচাইয়ের জন্য।
+  Future<AppUser?> getUserDoc(String uid) async {
+    if (uid.isEmpty) return null;
+    final doc = await _db.collection(Collections.users).doc(uid).get();
+    if (!doc.exists || doc.data() == null) return null;
+    return AppUser.fromMap(uid, doc.data()!);
+  }
+
+  /// সদস্যকে শাখা অ্যাডমিন বানানো (Phase 6) — শুধু সুপার
+  /// অ্যাডমিনের কাজ। rules-এ users update শুধু সুপার অ্যাডমিন
+  /// করতে পারে, তাই ডাকা ব্যক্তির অনুমতি সার্ভারেই যাচাই হয়;
+  /// এখানে যাচাই হয় লক্ষ্য-ব্যক্তির দিকের রক্ষাগুলো —
+  /// UI-এর ওপর ভরসা করে নয়, ট্রানজ্যাকশনের ভেতর পড়ে-তারপর-লিখে:
+  /// ডকুমেন্ট থাকতে হবে, অনুমোদিত হতে হবে, সুপার অ্যাডমিন
+  /// বা নিজের অ্যাকাউন্ট হওয়া যাবে না, আর অন্য সমিতির
+  /// অ্যাডমিনকে চুপচাপ এই সমিতিতে আনা যাবে না। রোল শুধু
+  /// 'branchAdmin' হয় — অ্যাপ থেকে কাউকে superAdmin বানানো
+  /// যায় না। সফল হলে অডিট লগে লেখা হয়।
+  Future<void> promoteToBranchAdmin({
+    required String targetUid,
+    required String branchId,
+    required String by,
+    String memberName = '',
+  }) async {
+    if (targetUid.isEmpty) {
+      throw StateError('user-not-found');
+    }
+    if (branchId.isEmpty) {
+      throw StateError('member-no-branch');
+    }
+    final ref = _db.collection(Collections.users).doc(targetUid);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists || snap.data() == null) {
+        throw StateError('user-not-found');
+      }
+      final target = AppUser.fromMap(targetUid, snap.data()!);
+      if (target.role == UserRole.superAdmin) {
+        throw StateError('cannot-change-super-admin');
+      }
+      if (targetUid == by) {
+        throw StateError('cannot-change-self');
+      }
+      if (!target.canEnter) {
+        throw StateError('user-not-approved');
+      }
+      if (target.role == UserRole.branchAdmin) {
+        if (target.branchId == branchId) {
+          throw StateError('already-branch-admin');
+        }
+        throw StateError('admin-of-other-branch');
+      }
+      tx.update(ref, {
+        'role': UserRole.branchAdmin.name,
+        'branchId': branchId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+    await _audit.logAudit(
+      action: 'admin_promoted',
+      by: by,
+      detail: '${memberName.isEmpty ? targetUid : memberName} '
+          '($targetUid) কে $branchId সমিতির অ্যাডমিন বানানো হয়েছে',
+    );
+  }
+
+  /// শাখা অ্যাডমিনকে সরিয়ে সাধারণ সদস্য করা (Phase 6) —
+  /// শুধু সুপার অ্যাডমিনের কাজ। রোল 'member' হয়, branchId
+  /// আগেরটাই থাকে (সদস্য হিসেবে ওই সমিতিতেই থাকে)।
+  /// রক্ষাগুলো [promoteToBranchAdmin]-এর মতোই, আর শুধু এই
+  /// সমিতির অ্যাডমিনকেই এখান থেকে সরানো যায়।
+  Future<void> demoteBranchAdmin({
+    required String targetUid,
+    required String branchId,
+    required String by,
+    String memberName = '',
+  }) async {
+    if (targetUid.isEmpty) {
+      throw StateError('user-not-found');
+    }
+    if (branchId.isEmpty) {
+      throw StateError('member-no-branch');
+    }
+    final ref = _db.collection(Collections.users).doc(targetUid);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists || snap.data() == null) {
+        throw StateError('user-not-found');
+      }
+      final target = AppUser.fromMap(targetUid, snap.data()!);
+      if (target.role == UserRole.superAdmin) {
+        throw StateError('cannot-change-super-admin');
+      }
+      if (targetUid == by) {
+        throw StateError('cannot-change-self');
+      }
+      if (target.role != UserRole.branchAdmin ||
+          (target.branchId != null && target.branchId != branchId)) {
+        throw StateError('not-branch-admin');
+      }
+      tx.update(ref, {
+        'role': UserRole.member.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+    await _audit.logAudit(
+      action: 'admin_demoted',
+      by: by,
+      detail: '${memberName.isEmpty ? targetUid : memberName} '
+          '($targetUid) কে $branchId সমিতির অ্যাডমিন থেকে সরানো হয়েছে',
+    );
+  }
 }

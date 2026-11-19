@@ -290,6 +290,22 @@ class _SamitiMemberDetailState extends ConsumerState<SamitiMemberDetail> {
                         ],
                       ),
                     ),
+                    // Phase 6: সুপার অ্যাডমিন কার্ডে ট্যাপ করলে
+                    // সম্পাদনা খোলে (B7) — পরিচয় পাতায় (অ্যাডমিন
+                    // বানানো/সরানো) যাওয়ার জন্য আলাদা বোতাম।
+                    if (isSuperAdmin)
+                      IconButton(
+                        tooltip: 'পরিচয় দেখুন',
+                        icon: const Icon(
+                          Icons.badge_outlined,
+                          size: 20,
+                          color: AppColors.muted,
+                        ),
+                        onPressed: () => context.goNamed(
+                          'memberDetail',
+                          pathParameters: {'id': m.id},
+                        ),
+                      ),
                     if (isAdmin)
                       const Icon(
                         Icons.edit_outlined,

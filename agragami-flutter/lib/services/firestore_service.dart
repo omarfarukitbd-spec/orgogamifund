@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/app_user.dart';
 import '../models/branch.dart';
 import '../models/committee_member.dart';
 import '../models/expense.dart';
@@ -97,6 +98,33 @@ class FirestoreService {
     required String email,
   }) =>
       member.createFirstAdminDoc(uid: uid, name: name, email: email);
+
+  // শাখা অ্যাডমিন বানানো/সরানো (Phase 6) — শুধু সুপার অ্যাডমিন।
+  Stream<AppUser?> watchUserDoc(String uid) => member.watchUserDoc(uid);
+  Future<void> promoteToBranchAdmin({
+    required String targetUid,
+    required String branchId,
+    required String by,
+    String memberName = '',
+  }) =>
+      member.promoteToBranchAdmin(
+        targetUid: targetUid,
+        branchId: branchId,
+        by: by,
+        memberName: memberName,
+      );
+  Future<void> demoteBranchAdmin({
+    required String targetUid,
+    required String branchId,
+    required String by,
+    String memberName = '',
+  }) =>
+      member.demoteBranchAdmin(
+        targetUid: targetUid,
+        branchId: branchId,
+        by: by,
+        memberName: memberName,
+      );
 
   // সমিতি মেথড
   Stream<List<Branch>> watchBranches() => branch.watchBranches();

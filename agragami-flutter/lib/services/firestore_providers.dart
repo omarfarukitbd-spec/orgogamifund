@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/app_user.dart';
 import '../models/branch.dart';
 import '../models/committee_member.dart';
 import '../models/expense.dart';
@@ -75,6 +76,15 @@ final memberStreamProvider =
     StreamProvider.autoDispose.family<Member?, String>((ref, memberId) {
   final service = ref.watch(firestoreServiceProvider);
   return service.watchMember(memberId);
+});
+
+/// একজন ব্যবহারকারীর প্রোফাইলের লাইভ স্ট্রিম (Phase 6) —
+/// সদস্যের পরিচয় পাতায় তার বর্তমান রোল দেখানোর জন্য।
+/// rules: users ডকুমেন্ট নিজে বা সুপার অ্যাডমিন পড়তে পারে।
+final userDocProvider =
+    StreamProvider.autoDispose.family<AppUser?, String>((ref, uid) {
+  final service = ref.watch(firestoreServiceProvider);
+  return service.watchUserDoc(uid);
 });
 
 /// একজন ব্যবহারকারীর সাথে যুক্ত সদস্য প্রোফাইলগুলো —
