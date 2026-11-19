@@ -3,13 +3,18 @@ import '../../theme/app_theme.dart';
 
 /// আবেদনের ধাপের নির্দেশক
 class ApplicationStepBar extends StatelessWidget {
-  final int step; // 0, 1, 2
+  final int step;
+  final List<String> labels;
 
-  const ApplicationStepBar({super.key, required this.step});
+  const ApplicationStepBar({
+    super.key,
+    required this.step,
+    this.labels = const ['তথ্য', 'ছবি', 'যাচাই'],
+  });
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['তথ্য', 'ছবি', 'যাচাই'];
+    final labels = this.labels;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),

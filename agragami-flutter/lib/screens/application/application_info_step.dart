@@ -4,9 +4,12 @@ import '../../l10n/app_strings.dart';
 import '../../models/branch.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/bn_digits.dart';
 import '../../widgets/app_card.dart';
 
-/// সদস্য আবেদনের প্রথম ধাপ — ব্যক্তিগত তথ্য ফরম
+/// সদস্য আবেদনের প্রথম ধাপ — ব্যক্তিগত তথ্য ফরম।
+/// অ্যাকাউন্টের ঘর এখানে নেই — অ্যাকাউন্ট আগের ধাপে খোলা
+/// হয় (B1), যাতে সমিতির তালিকা দেখা যায়।
 class ApplicationInfoStep extends ConsumerWidget {
   final TextEditingController name;
   final TextEditingController phone;
@@ -14,15 +17,11 @@ class ApplicationInfoStep extends ConsumerWidget {
   final TextEditingController emergencyName;
   final TextEditingController emergencyPhone;
   final TextEditingController nid;
-  final TextEditingController email;
-  final TextEditingController password;
-  final TextEditingController confirmPassword;
   final String? branchId;
   final String? lockedBranchId;
   final ValueChanged<String?> onBranchChanged;
   final DateTime joinDate;
   final ValueChanged<DateTime> onJoinDateChanged;
-  final bool needsAccount;
 
   const ApplicationInfoStep({
     super.key,
@@ -32,15 +31,11 @@ class ApplicationInfoStep extends ConsumerWidget {
     required this.emergencyName,
     required this.emergencyPhone,
     required this.nid,
-    required this.email,
-    required this.password,
-    required this.confirmPassword,
     required this.branchId,
     required this.lockedBranchId,
     required this.onBranchChanged,
     required this.joinDate,
     required this.onJoinDateChanged,
-    required this.needsAccount,
   });
 
   @override
@@ -67,6 +62,7 @@ class ApplicationInfoStep extends ConsumerWidget {
         TextField(
           controller: phone,
           keyboardType: TextInputType.phone,
+          inputFormatters: const [BnDigitsInputFormatter()],
           decoration: const InputDecoration(
             labelText: 'মোবাইল নম্বর',
             hintText: '01XXXXXXXXX',
@@ -94,6 +90,7 @@ class ApplicationInfoStep extends ConsumerWidget {
         TextField(
           controller: emergencyPhone,
           keyboardType: TextInputType.phone,
+          inputFormatters: const [BnDigitsInputFormatter()],
           decoration: const InputDecoration(
             labelText: 'জরুরি যোগাযোগের মোবাইল',
             prefixIcon: Icon(Icons.phone_outlined),
@@ -125,45 +122,12 @@ class ApplicationInfoStep extends ConsumerWidget {
         TextField(
           controller: nid,
           keyboardType: TextInputType.number,
+          inputFormatters: const [BnDigitsInputFormatter()],
           decoration: const InputDecoration(
             labelText: 'এনআইডি নম্বর',
             prefixIcon: Icon(Icons.badge_outlined),
           ),
         ),
-        if (needsAccount) ...[
-          const SizedBox(height: 16),
-          const Text(
-            'এই ইমেইল আর পাসওয়ার্ড দিয়ে পরে ঢুকতে পারবেন। অ্যাডমিন অনুমোদন দিলে তবেই ঢোকা যাবে।',
-            style: TextStyle(fontSize: 13.5, color: AppColors.muted),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: email,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              labelText: 'ইমেইল',
-              prefixIcon: Icon(Icons.mail_outlined),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: password,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)',
-              prefixIcon: Icon(Icons.lock_outlined),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: confirmPassword,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'পাসওয়ার্ড আবার লিখুন',
-              prefixIcon: Icon(Icons.lock_outlined),
-            ),
-          ),
-        ],
         const SizedBox(height: 12),
         AppCard(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

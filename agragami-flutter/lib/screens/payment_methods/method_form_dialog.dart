@@ -5,6 +5,8 @@ import '../../models/branch.dart';
 import '../../models/payment_method.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
+import '../../utils/bn_digits.dart';
+import '../../utils/firebase_errors.dart';
 import '../../widgets/app_button.dart';
 
 /// মাধ্যম যোগ/বদলানোর ফরম — ডায়ালগে খোলে।
@@ -58,11 +60,14 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
       setState(() => _error = 'মাধ্যমের নাম লিখুন (যেমন: বিকাশ)');
       return;
     }
-    if (_accountNumber.text.trim().isEmpty) {
+    // M15: নগদ টাকার কোনো অ্যাকাউন্ট নম্বর বা অ্যাকাউন্টের
+    // নাম থাকে না — এই দুই ঘর শুধু অন্য ধরনের জন্য।
+    final isCash = _type == PaymentMethodType.cash;
+    if (!isCash && _accountNumber.text.trim().isEmpty) {
       setState(() => _error = 'অ্যাকাউন্ট নম্বর লিখুন');
       return;
     }
-    if (_type != PaymentMethodType.cash && _holderName.text.trim().isEmpty) {
+    if (!isCash && _holderName.text.trim().isEmpty) {
       setState(() => _error = 'অ্যাকাউন্টের নাম লিখুন');
       return;
     }
@@ -74,16 +79,21 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
       final store = ref.read(firestoreServiceProvider);
       final by = AuthService().uidOrEmpty;
       final existing = widget.existing;
+      // M3: অ্যাকাউন্ট নম্বর ASCII-তে স্বাভাবিক করে রাখা হয়।
+      final accountNumber =
+          isCash ? '' : toAsciiDigits(_accountNumber.text.trim());
+      final holderName = isCash ? '' : _holderName.text.trim();
+      final sortOrder = parseAmount(_sortOrder.text) ?? 0;
       if (existing == null) {
         final method = PaymentMethodConfig(
           id: '',
           name: _name.text.trim(),
           type: _type,
-          accountNumber: _accountNumber.text.trim(),
-          accountHolderName: _holderName.text.trim(),
+          accountNumber: accountNumber,
+          accountHolderName: holderName,
           branchId: _branchId,
           isActive: true,
-          sortOrder: int.tryParse(_sortOrder.text.trim()) ?? 0,
+          sortOrder: sortOrder,
           instructions: _instructions.text.trim().isEmpty
               ? null
               : _instructions.text.trim(),
@@ -96,11 +106,11 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
           id: existing.id,
           name: _name.text.trim(),
           type: _type,
-          accountNumber: _accountNumber.text.trim(),
-          accountHolderName: _holderName.text.trim(),
+          accountNumber: accountNumber,
+          accountHolderName: holderName,
           branchId: _branchId,
           isActive: existing.isActive,
-          sortOrder: int.tryParse(_sortOrder.text.trim()) ?? 0,
+          sortOrder: sortOrder,
           instructions: _instructions.text.trim().isEmpty
               ? null
               : _instructions.text.trim(),
@@ -120,8 +130,13 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
           ),
         ),
       );
-    } catch (_) {
-      setState(() => _error = 'সংরক্ষণ করা যায়নি — আবার চেষ্টা করুন');
+    } catch (e) {
+      setState(
+        () => _error = firebaseErrorMessage(
+          e,
+          fallback: 'সংরক্ষণ করা যায়নি — আবার চেষ্টা করুন',
+        ),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -165,23 +180,27 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
               onChanged: (v) => setState(() => _type = v ?? _type),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _accountNumber,
-              keyboardType: TextInputType.text,
-              decoration: const InputDecoration(
-                labelText: 'অ্যাকাউন্ট নম্বর',
-                prefixIcon: Icon(Icons.numbers_outlined),
+            // M15: নগদ টাকার ক্ষেত্রে অ্যাকাউন্টের ঘর দেখানো হয় না।
+            if (_type != PaymentMethodType.cash) ...[
+              TextField(
+                controller: _accountNumber,
+                keyboardType: TextInputType.text,
+                inputFormatters: const [BnDigitsInputFormatter()],
+                decoration: const InputDecoration(
+                  labelText: 'অ্যাকাউন্ট নম্বর',
+                  prefixIcon: Icon(Icons.numbers_outlined),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _holderName,
-              decoration: const InputDecoration(
-                labelText: 'অ্যাকাউন্টের নাম',
-                prefixIcon: Icon(Icons.person_outlined),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _holderName,
+                decoration: const InputDecoration(
+                  labelText: 'অ্যাকাউন্টের নাম',
+                  prefixIcon: Icon(Icons.person_outlined),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
+            ],
             DropdownButtonFormField<String?>(
               initialValue: _branchId,
               decoration: const InputDecoration(
@@ -213,6 +232,7 @@ class _MethodFormDialogState extends ConsumerState<MethodFormDialog> {
             TextField(
               controller: _sortOrder,
               keyboardType: TextInputType.number,
+              inputFormatters: const [BnDigitsOnlyFormatter()],
               decoration: const InputDecoration(
                 labelText: 'দেখানোর ক্রম (ছোট সংখ্যা আগে দেখাবে)',
               ),

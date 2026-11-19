@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../l10n/app_strings.dart';
 import '../models/loan.dart';
 import '../models/member.dart';
@@ -9,11 +10,14 @@ import '../models/payment_method.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../utils/date_parser.dart';
+import '../utils/firebase_errors.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
 import '../widgets/skeleton_loader.dart';
+import 'loans/edit_loan_dialog.dart';
 import 'loans/loan_repayment_form.dart';
 import 'loans/loan_repayments_ledger.dart';
 import 'passbook_screen.dart';
@@ -23,6 +27,54 @@ class LoanDetailScreen extends ConsumerWidget {
   final String loanId;
 
   const LoanDetailScreen({super.key, required this.loanId});
+
+  Future<void> _deleteLoan(
+    BuildContext context,
+    WidgetRef ref,
+    Loan loan,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ঋণ মুছবেন?'),
+        content: Text(
+          '${formatTaka(loan.amount)}-এর এই ঋণটি মুছে যাবে। এই কাজ ফিরিয়ে নেওয়া যাবে না।',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(AppStrings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('মুছুন', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await ref.read(firestoreServiceProvider).deleteLoan(
+            loan.id,
+            by: AuthService().uidOrEmpty,
+          );
+      if (!context.mounted) return;
+      invalidateTotals(ref);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ঋণ মুছা হয়েছে')),
+      );
+      context.go('/loans');
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            firebaseErrorMessage(e, fallback: 'ঋণ মুছা যায়নি — আবার চেষ্টা করুন'),
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -153,6 +205,42 @@ class LoanDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 18),
               if (isAdmin) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: SecondaryButton(
+                        label: 'ঋণ বদলান',
+                        onPressed: () => showDialog(
+                          context: context,
+                          builder: (_) => EditLoanDialog(loan: loan),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.danger,
+                          side: const BorderSide(color: AppColors.danger),
+                        ),
+                        // কিস্তি জমা আছে এমন ঋণ মুছা যায় না।
+                        onPressed: loan.repayments.isEmpty
+                            ? () => _deleteLoan(context, ref, loan)
+                            : null,
+                        icon: const Icon(Icons.delete_outlined, size: 18),
+                        label: const Text('ঋণ মুছুন'),
+                      ),
+                    ),
+                  ],
+                ),
+                if (loan.repayments.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  const Text(
+                    'কিস্তি জমা আছে — এই ঋণ মুছা যাবে না।',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                ],
+                const SizedBox(height: 18),
                 const SectionTitle('কিস্তি জমা নিন'),
                 if (isRepaid)
                   const EmptyState(

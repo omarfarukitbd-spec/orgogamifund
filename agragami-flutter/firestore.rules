@@ -14,7 +14,10 @@ rules_version = '2';
 // এই ফিল্ড লেখে); ৫) সাধারণ সদস্যের জমা শুধু status pending
 // দিয়ে — নিজে approved জমা বানানো বন্ধ; ৬) অনুমোদিত সদস্য
 // নিজের সমিতির খরচ আর ঋণের তালিকা পড়তে পারে (অ্যাপের ডিজাইন
-// অনুযায়ী; আগে শুধু অ্যাডমিন পড়তে পারতো)। branches পড়া
+// অনুযায়ী; আগে শুধু অ্যাডমিন পড়তে পারতো)। ৭) Phase 3 (M1):
+// বাতিল হওয়া সদস্য নিজের সদস্যপদ rejected থেকে pending-এ
+// ফেরাতে পারে — শুধু এই পরিবর্তন, শুধু চার ক্ষেত্রে — যাতে
+// আবার আবেদন করা যায়। branches পড়া
 // ইচ্ছা করে সাইন-ইন ব্যবহারকারীর মধ্যে সীমিত রাখা হয়েছে —
 // branch ডকুমেন্টে ব্যাংক অ্যাকাউন্ট নম্বর থাকে, তাই পাবলিক
 // পড়া দেওয়া যাবে না।
@@ -144,7 +147,17 @@ service cloud.firestore {
                        isBranchAdminAny() ||
                        (isAuthenticated() && request.resource.data.userId == request.auth.uid
                          && request.resource.data.status == 'pending');
-      allow update: if isSuperAdmin() || isBranchAdminAny();
+      // বাতিলের পর আবার আবেদন (M1): নিজের সদস্যপদ rejected
+      // থেকে pending-এ ফেরানো যায় — শুধু এই পরিবর্তনটুকু,
+      // শুধু এই চার ক্ষেত্রে। approved নিজে বানানো যায় না।
+      allow update: if isSuperAdmin() || isBranchAdminAny() ||
+                       (isAuthenticated() &&
+                        resource.data.userId == request.auth.uid &&
+                        resource.data.status == 'rejected' &&
+                        request.resource.data.status == 'pending' &&
+                        request.resource.data.diff(resource.data)
+                          .affectedKeys().hasOnly(['status', 'applicationId',
+                            'appliedAt', 'rejectReason']));
       allow delete: if isSuperAdmin();
     }
 

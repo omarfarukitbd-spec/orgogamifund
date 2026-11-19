@@ -7,6 +7,7 @@ import '../models/payment_method.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/firebase_errors.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/skeleton_loader.dart';
@@ -28,13 +29,54 @@ class PaymentMethodsScreen extends ConsumerWidget {
           SnackBar(content: Text(doneMessage)),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('কাজটি হয়নি — আবার চেষ্টা করুন')),
+          SnackBar(
+            content: Text(
+              firebaseErrorMessage(e, fallback: 'কাজটি হয়নি — আবার চেষ্টা করুন'),
+            ),
+          ),
         );
       }
     }
+  }
+
+  Future<void> _deleteMethod(
+    BuildContext context,
+    WidgetRef ref,
+    PaymentMethodConfig m,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('মাধ্যম মুছবেন?'),
+        content: Text(
+          '${m.name} মাধ্যমটি মুছে যাবে। এই মাধ্যম দিয়ে জমা থাকলে মুছা যাবে না।',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(AppStrings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('মুছুন', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    if (!context.mounted) return;
+    await _run(
+      context,
+      () => ref.read(firestoreServiceProvider).deletePaymentMethod(
+            m.id,
+            by: AuthService().uidOrEmpty,
+            methodName: m.name,
+          ),
+      'পেমেন্ট মাধ্যম মুছা হয়েছে',
+    );
   }
 
   void _openForm(
@@ -86,6 +128,24 @@ class PaymentMethodsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final store = ref.watch(firestoreServiceProvider);
     final userAsync = ref.watch(currentUserProvider);
+    // m9: লোড হওয়ার সময় অ্যাডমিনকেও "শুধু অ্যাডমিন" বার্তা
+    // দেখানো হয় না — আগে স্পিনার, ভুল হলে আবার চেষ্টা।
+    if (userAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (userAsync.hasError) {
+      return Scaffold(
+        body: EmptyState(
+          icon: Icons.error_outline,
+          title: 'তথ্য আনা যায়নি',
+          message: 'নেট দেখে আবার চেষ্টা করুন।',
+          actionLabel: AppStrings.tryAgain,
+          onAction: () => ref.invalidate(currentUserProvider),
+        ),
+      );
+    }
     final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
     final methods = ref.watch(paymentMethodsProvider);
     final branches = ref.watch(branchesStreamProvider);
@@ -236,6 +296,18 @@ class PaymentMethodsScreen extends ConsumerWidget {
                               _openForm(context, branchList, existing: m),
                           icon: const Icon(Icons.edit_outlined, size: 16),
                           label: const Text('বদলান'),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _deleteMethod(context, ref, m),
+                          icon: const Icon(
+                            Icons.delete_outlined,
+                            size: 16,
+                            color: AppColors.danger,
+                          ),
+                          label: const Text(
+                            'মুছুন',
+                            style: TextStyle(color: AppColors.danger),
+                          ),
                         ),
                         const Spacer(),
                         IconButton(

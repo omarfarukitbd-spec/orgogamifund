@@ -10,6 +10,8 @@ import '../models/expense.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import '../utils/bn_digits.dart';
+import '../utils/firebase_errors.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 
@@ -85,6 +87,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     // ব্যবহারকারীকে জানিয়ে দিই, খরচ তবুও লেখা হয়েছে।
     final receiptSkipped =
         _receiptBytes != null && !CloudinaryConfig.isConfigured;
+    // M12: খরচ লেখার পর মোট হিসাব তাজা হয়।
+    invalidateTotals(ref);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -98,7 +102,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   }
 
   Future<void> _submit() async {
-    final amount = int.tryParse(_amount.text.trim());
+    final amount = parseAmount(_amount.text);
     if (_branchId == null) {
       setState(() => _error = 'কোন সমিতির খরচ, বেছে নিন');
       return;
@@ -159,11 +163,21 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         await _submitExpense(expense, null);
         if (!mounted) return;
         _onExpenseSaved();
-      } catch (_) {
-        setState(() => _error = 'খরচ লেখা যায়নি — নেট দেখে আবার চেষ্টা করুন');
+      } catch (e) {
+        setState(
+          () => _error = firebaseErrorMessage(
+            e,
+            fallback: 'খরচ লেখা যায়নি — নেট দেখে আবার চেষ্টা করুন',
+          ),
+        );
       }
-    } catch (_) {
-      setState(() => _error = 'খরচ লেখা যায়নি — নেট দেখে আবার চেষ্টা করুন');
+    } catch (e) {
+      setState(
+        () => _error = firebaseErrorMessage(
+          e,
+          fallback: 'খরচ লেখা যায়নি — নেট দেখে আবার চেষ্টা করুন',
+        ),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -205,6 +219,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           TextField(
             controller: _amount,
             keyboardType: TextInputType.number,
+            inputFormatters: const [BnDigitsOnlyFormatter()],
             decoration: const InputDecoration(
               labelText: 'টাকার পরিমাণ',
               prefixText: '৳ ',

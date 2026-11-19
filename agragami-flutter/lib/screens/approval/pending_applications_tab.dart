@@ -39,9 +39,23 @@ class PendingApplicationsTab extends StatefulWidget {
 }
 
 class _PendingApplicationsTabState extends State<PendingApplicationsTab> {
+  // B5: যে আবেদনের যাচাই চলছে, তার বোতাম বন্ধ থাকে —
+  // ডাবল-ট্যাপে দুইবার অনুমোদন হয় না।
+  final _busyIds = <String>{};
+
   String _branchName(String id) {
     final found = widget.branches.where((b) => b.id == id).toList();
     return found.isEmpty ? '—' : found.first.name;
+  }
+
+  Future<void> _runFor(String id, Future<void> Function() work) async {
+    if (_busyIds.contains(id)) return;
+    setState(() => _busyIds.add(id));
+    try {
+      await work();
+    } finally {
+      if (mounted) setState(() => _busyIds.remove(id));
+    }
   }
 
   @override
@@ -134,15 +148,23 @@ class _PendingApplicationsTabState extends State<PendingApplicationsTab> {
                           children: [
                             Expanded(
                               child: PrimaryButton(
-                                label: AppStrings.approve,
-                                onPressed: () => widget.onRun(
-                                  context,
-                                  () => widget.store.approveApplication(
-                                    a,
-                                    reviewedBy: widget.reviewer,
-                                  ),
-                                  'সদস্য অনুমোদন হয়েছে',
-                                ),
+                                label: _busyIds.contains(a.id)
+                                    ? AppStrings.loading
+                                    : AppStrings.approve,
+                                onPressed: _busyIds.contains(a.id)
+                                    ? null
+                                    : () => _runFor(
+                                          a.id,
+                                          () => widget.onRun(
+                                            context,
+                                            () => widget.store
+                                                .approveApplication(
+                                              a,
+                                              reviewedBy: widget.reviewer,
+                                            ),
+                                            'সদস্য অনুমোদন হয়েছে',
+                                          ),
+                                        ),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -154,23 +176,32 @@ class _PendingApplicationsTabState extends State<PendingApplicationsTab> {
                                     color: AppColors.danger,
                                   ),
                                 ),
-                                onPressed: () async {
-                                  final reason = await widget.onAskReason(
-                                    context,
-                                    'আবেদন কেন বাতিল করছেন?',
-                                  );
-                                  if (reason == null || reason.isEmpty) return;
-                                  if (!context.mounted) return;
-                                  await widget.onRun(
-                                    context,
-                                    () => widget.store.rejectApplication(
-                                      a.id,
-                                      reason: reason,
-                                      reviewedBy: widget.reviewer,
-                                    ),
-                                    'আবেদন বাতিল হয়েছে',
-                                  );
-                                },
+                                onPressed: _busyIds.contains(a.id)
+                                    ? null
+                                    : () async {
+                                        final reason =
+                                            await widget.onAskReason(
+                                          context,
+                                          'আবেদন কেন বাতিল করছেন?',
+                                        );
+                                        if (reason == null || reason.isEmpty) {
+                                          return;
+                                        }
+                                        if (!context.mounted) return;
+                                        await _runFor(
+                                          a.id,
+                                          () => widget.onRun(
+                                            context,
+                                            () => widget.store
+                                                .rejectApplication(
+                                              a.id,
+                                              reason: reason,
+                                              reviewedBy: widget.reviewer,
+                                            ),
+                                            'আবেদন বাতিল হয়েছে',
+                                          ),
+                                        );
+                                      },
                                 child: Text(AppStrings.reject),
                               ),
                             ),

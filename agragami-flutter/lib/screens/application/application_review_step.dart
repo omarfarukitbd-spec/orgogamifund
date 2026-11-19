@@ -19,7 +19,6 @@ class ApplicationReviewStep extends ConsumerWidget {
   final Uint8List? photoBytes;
   final Uint8List? nidFrontBytes;
   final Uint8List? nidBackBytes;
-  final bool needsAccount;
 
   const ApplicationReviewStep({
     super.key,
@@ -35,7 +34,6 @@ class ApplicationReviewStep extends ConsumerWidget {
     required this.photoBytes,
     required this.nidFrontBytes,
     required this.nidBackBytes,
-    required this.needsAccount,
   });
 
   @override
@@ -56,7 +54,7 @@ class ApplicationReviewStep extends ConsumerWidget {
         const SizedBox(height: 16),
         _ReviewRow('নাম', name),
         _ReviewRow('মোবাইল', phone),
-        if (needsAccount && email.isNotEmpty) _ReviewRow('ইমেইল', email),
+        if (email.isNotEmpty) _ReviewRow('ইমেইল', email),
         if (branchName != null) _ReviewRow('সমিতি', branchName),
         if (branch != null && branch.admissionFee > 0)
           _ReviewRow(

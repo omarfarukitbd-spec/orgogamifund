@@ -9,10 +9,13 @@ import '../models/payment.dart';
 import '../models/payment_method.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../utils/bn_digits.dart';
+import '../utils/firebase_errors.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
 import 'deposit/deposit_components.dart';
 import 'deposit/deposit_form_fields.dart';
+import 'passbook_screen.dart';
 
 /// জমা দেওয়ার স্ক্রিন — ৩ ধাপের নির্দেশক, পেমেন্ট মাধ্যম ও নিশ্চিতকরণ।
 class DepositScreen extends ConsumerStatefulWidget {
@@ -28,6 +31,8 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
   final _senderMobile = TextEditingController();
   String? _branchId;
   String? _methodId;
+  // অ্যাডমিন অন্য সদস্যের হয়ে জমা দিলে সেই সদস্য (M2)।
+  String? _adminMemberId;
   int _month = DateTime.now().month;
   int _year = DateTime.now().year;
   bool _busy = false;
@@ -66,7 +71,8 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
   Future<void> _submit(
     List<PaymentMethodConfig> methods,
     String branchId,
-    String memberId,
+    String? memberId,
+    bool isAdmin,
   ) async {
     void showError(String msg) {
       setState(() => _error = msg);
@@ -75,8 +81,18 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
       );
     }
 
+    // M2: সদস্য রেকর্ড না পেলে আন্দাজে UID বা অন্য সমিতির
+    // সদস্য লেখা হয় না — জমা আটকে স্পষ্ট বার্তা দেওয়া হয়।
+    if (memberId == null) {
+      showError(
+        isAdmin
+            ? 'কোন সদস্যের হয়ে জমা দিচ্ছেন, বেছে নিন'
+            : 'এই সমিতিতে আপনার সদস্য রেকর্ড পাওয়া যায়নি — অ্যাডমিনের সাথে যোগাযোগ করুন',
+      );
+      return;
+    }
     final chosen = methods.where((m) => m.id == _methodId).firstOrNull;
-    final amount = int.tryParse(_amount.text.trim());
+    final amount = parseAmount(_amount.text);
     if (chosen == null) {
       showError('কীভাবে টাকা পাঠিয়েছেন, বেছে নিন');
       return;
@@ -118,6 +134,22 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
           }
         }
       }
+      // m7: একই মাসের জমা আগেই থাকলে নিশ্চিত করা হয় —
+      // ভুলে দুইবার মাসিক জমা দেওয়া আটকায়।
+      final duplicateMonth = await store.hasPaymentForMonth(
+        memberId: memberId,
+        forYear: _year,
+        forMonth: _month,
+      );
+      if (duplicateMonth && mounted) {
+        final proceed = await _askConfirm(
+          'এই সদস্যের ${bengaliMonths[_month - 1]} $_year মাসের জমা আগেই আছে। তবুও পাঠাবেন?',
+        );
+        if (!proceed) {
+          setState(() => _busy = false);
+          return;
+        }
+      }
       final payment = Payment(
         id: '',
         memberId: memberId,
@@ -135,7 +167,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
         paymentAccountNumber: chosen.accountNumber,
         senderMobile: _senderMobile.text.trim().isEmpty
             ? null
-            : _senderMobile.text.trim(),
+            : toAsciiDigits(_senderMobile.text.trim()),
         forMonth: _month,
         forYear: _year,
         date: DateTime.now(),
@@ -144,6 +176,8 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
       );
       await store.submitPayment(payment);
       if (!mounted) return;
+      // M12: জমা পাঠানোর পর মোট হিসাব তাজা হয়।
+      invalidateTotals(ref);
       setState(() {
         _submittedSuccess = true;
         _amount.clear();
@@ -151,8 +185,13 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
         _senderMobile.clear();
         _methodId = null;
       });
-    } catch (_) {
-      setState(() => _error = 'জমা পাঠানো যায়নি — নেট দেখে আবার চেষ্টা করুন');
+    } catch (e) {
+      setState(
+        () => _error = firebaseErrorMessage(
+          e,
+          fallback: 'জমা পাঠানো যায়নি — নেট দেখে আবার চেষ্টা করুন',
+        ),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -202,11 +241,25 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
 
     final myMembersAsync = ref.watch(membersForUserProvider(uid));
     final myMembers = myMembersAsync.valueOrNull ?? const <Member>[];
-    String memberIdFor(String branchId) {
+    // M2: এই সমিতিতে নিজের সদস্য রেকর্ড — না থাকলে null,
+    // আন্দাজে UID বা অন্য সমিতির সদস্য নয়।
+    String? memberIdFor(String branchId) {
+      if (isAdmin && _adminMemberId != null) return _adminMemberId;
       final found = myMembers.where((m) => m.branchId == branchId).toList();
       if (found.isNotEmpty) return found.first.id;
-      return user?.linkedMemberId ?? uid;
+      return null;
     }
+
+    final branchMembersAsync = effectiveBranchId == null || !isAdmin
+        ? const AsyncValue<List<Member>>.data([])
+        : ref.watch(membersByBranchProvider(effectiveBranchId));
+    final branchMembers =
+        branchMembersAsync.valueOrNull ?? const <Member>[];
+    final effectiveAdminMemberId =
+        _adminMemberId != null &&
+                branchMembers.any((m) => m.id == _adminMemberId)
+            ? _adminMemberId
+            : null;
 
     final methodsAsync = effectiveBranchId == null
         ? const AsyncValue<List<PaymentMethodConfig>>.data([])
@@ -234,12 +287,38 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
         children: [
           DepositStepsBar(currentStep: currentStep),
           const SizedBox(height: 14),
+          // অ্যাডমিন অন্য সদস্যের হয়ে জমা দিতে পারে (M2)।
+          if (isAdmin && effectiveBranchId != null) ...[
+            DropdownButtonFormField<String>(
+              initialValue: effectiveAdminMemberId,
+              decoration: const InputDecoration(
+                labelText: 'কোন সদস্যের হয়ে জমা দিচ্ছেন',
+                prefixIcon: Icon(Icons.person_outlined),
+              ),
+              items: branchMembers
+                  .map(
+                    (m) => DropdownMenuItem(value: m.id, child: Text(m.name)),
+                  )
+                  .toList(),
+              onChanged: (v) => setState(() => _adminMemberId = v),
+            ),
+            if (branchMembers.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'এই সমিতিতে এখনো কোনো সদস্য নেই — আগে সদস্য অনুমোদন করুন',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+              ),
+            const SizedBox(height: 12),
+          ],
           DepositFormFields(
             branches: branches,
             effectiveBranchId: effectiveBranchId,
             onBranchChanged: (v) => setState(() {
               _branchId = v;
               _methodId = null;
+              _adminMemberId = null;
             }),
             bankDetails: effectiveBranch?.bankDetails,
             methods: methods,
@@ -261,6 +340,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                   methods,
                   effectiveBranchId,
                   memberIdFor(effectiveBranchId),
+                  isAdmin,
                 );
               }
             },

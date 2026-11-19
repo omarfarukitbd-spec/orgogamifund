@@ -4,17 +4,80 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_strings.dart';
 import '../../main.dart';
 import '../../services/biometric_service.dart';
+import '../../services/settings_service.dart';
 import '../../widgets/app_card.dart';
 
 /// প্রোফাইল স্ক্রিনের ভাষা, থিম এবং বায়োমেট্রিক নিরাপত্তা সেটিংস কম্পোনেন্ট
-class ProfileSettingsSection extends ConsumerWidget {
+class ProfileSettingsSection extends ConsumerStatefulWidget {
   const ProfileSettingsSection({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileSettingsSection> createState() =>
+      _ProfileSettingsSectionState();
+}
+
+class _ProfileSettingsSectionState
+    extends ConsumerState<ProfileSettingsSection> {
+  bool _biometricBusy = false;
+
+  /// M11: অ্যাপ-লক চালু/বন্ধ — দুই দিকেই আগে বায়োমেট্রিক
+  /// যাচাই লাগে, যাতে অন্য কেউ লক বন্ধ করে দিতে না পারে।
+  Future<void> _toggleBiometricLock(bool enable) async {
+    if (_biometricBusy) return;
+    setState(() => _biometricBusy = true);
+    try {
+      final service = ref.read(biometricServiceProvider);
+      if (enable && !await service.isBiometricAvailable()) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppStrings.biometricUnavailable)),
+        );
+        return;
+      }
+      final result = await service.authenticate();
+      if (!mounted) return;
+      switch (result) {
+        case BiometricResult.success:
+          ref.read(biometricLockEnabledProvider.notifier).state = enable;
+          await SettingsService.saveBiometricLock(enable);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                enable
+                    ? (AppStrings.isBangla
+                        ? 'অ্যাপ-লক চালু হয়েছে — এখন থেকে অ্যাপ খুলতে ফিঙ্গারপ্রিন্ট লাগবে'
+                        : 'App lock is on — unlocking will need your fingerprint')
+                    : (AppStrings.isBangla
+                        ? 'অ্যাপ-লক বন্ধ হয়েছে'
+                        : 'App lock is off'),
+              ),
+            ),
+          );
+        case BiometricResult.unavailable:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppStrings.biometricUnavailable)),
+          );
+        case BiometricResult.cancelled:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppStrings.biometricCancelled)),
+          );
+        case BiometricResult.failed:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppStrings.biometricFailed)),
+          );
+      }
+    } finally {
+      if (mounted) setState(() => _biometricBusy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final currentTheme = ref.watch(themeModeProvider);
     final currentLocale = ref.watch(localeProvider);
+    final lockEnabled = ref.watch(biometricLockEnabledProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -52,8 +115,11 @@ class ProfileSettingsSection extends ConsumerWidget {
                 selected: {currentLocale.languageCode},
                 onSelectionChanged: (selected) {
                   final code = selected.first;
-                  ref.read(localeProvider.notifier).state =
+                  final locale =
                       Locale(code, code == 'bn' ? 'BD' : 'US');
+                  ref.read(localeProvider.notifier).state = locale;
+                  // M6: ভাষার পছন্দ ডিভাইসে সংরক্ষিত হয়।
+                  SettingsService.saveLocale(locale);
                 },
               ),
             ],
@@ -100,8 +166,10 @@ class ProfileSettingsSection extends ConsumerWidget {
                 ],
                 selected: {currentTheme},
                 onSelectionChanged: (selected) {
-                  ref.read(themeModeProvider.notifier).state =
-                      selected.first;
+                  final mode = selected.first;
+                  ref.read(themeModeProvider.notifier).state = mode;
+                  // M6: থিমের পছন্দ ডিভাইসে সংরক্ষিত হয়।
+                  SettingsService.saveThemeMode(mode);
                 },
               ),
             ],
@@ -109,7 +177,8 @@ class ProfileSettingsSection extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
 
-        // বায়োমেট্রিক নিরাপত্তা কার্ড
+        // বায়োমেট্রিক অ্যাপ-লক কার্ড (M11) — আগের ডেমো বোতামের
+        // বদলে আসল টগল: চালু থাকলে অ্যাপ খুলতে ফিঙ্গারপ্রিন্ট লাগে।
         AppCard(
           child: Row(
             children: [
@@ -125,16 +194,20 @@ class ProfileSettingsSection extends ConsumerWidget {
                   children: [
                     Text(
                       AppStrings.isBangla
-                          ? 'বায়োমেট্রিক নিরাপত্তা'
-                          : 'Biometric Security',
+                          ? 'বায়োমেট্রিক অ্যাপ-লক'
+                          : 'Biometric App Lock',
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
-                      AppStrings.isBangla
-                          ? 'ফিঙ্গারপ্রিন্ট বা ফেস আনলক'
-                          : 'Fingerprint or Face Unlock',
+                      lockEnabled
+                          ? (AppStrings.isBangla
+                              ? 'চালু আছে — অ্যাপ খুলতে ফিঙ্গারপ্রিন্ট লাগবে'
+                              : 'On — fingerprint needed to open the app')
+                          : (AppStrings.isBangla
+                              ? 'ফিঙ্গারপ্রিন্ট বা ফেস আনলক দিয়ে অ্যাপ লক করুন'
+                              : 'Lock the app with fingerprint or face unlock'),
                       style: TextStyle(
                         fontSize: 13,
                         color: theme.colorScheme.onSurfaceVariant,
@@ -143,32 +216,17 @@ class ProfileSettingsSection extends ConsumerWidget {
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.security_outlined),
-                onPressed: () async {
-                  // M8: আসল ফলাফল দেখানো হয় — "যন্ত্রে নেই" আর
-                  // "বাতিল" আলাদা বার্তা পায়, আগের মতো সব false নয়।
-                  final result = await ref
-                      .read(biometricServiceProvider)
-                      .authenticate();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(switch (result) {
-                          BiometricResult.success =>
-                            AppStrings.biometricSuccess,
-                          BiometricResult.unavailable =>
-                            AppStrings.biometricUnavailable,
-                          BiometricResult.cancelled =>
-                            AppStrings.biometricCancelled,
-                          BiometricResult.failed =>
-                            AppStrings.biometricFailed,
-                        }),
-                      ),
-                    );
-                  }
-                },
-              ),
+              if (_biometricBusy)
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Switch(
+                  value: lockEnabled,
+                  onChanged: _toggleBiometricLock,
+                ),
             ],
           ),
         ),

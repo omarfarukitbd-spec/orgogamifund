@@ -5,6 +5,8 @@ import '../models/branch.dart';
 import '../models/loan.dart';
 import '../models/member.dart';
 import '../services/firestore_service.dart';
+import '../utils/bn_digits.dart';
+import '../utils/firebase_errors.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 
@@ -49,9 +51,12 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
   }
 
   Future<void> _submit() async {
-    final amount = int.tryParse(_amount.text.trim());
-    final installment = int.tryParse(_installment.text.trim());
-    final months = int.tryParse(_months.text.trim());
+    final amount = parseAmount(_amount.text);
+    final installment = _installment.text.trim().isEmpty
+        ? null
+        : parseAmount(_installment.text);
+    final months =
+        _months.text.trim().isEmpty ? null : parseAmount(_months.text);
     if (_branchId == null) {
       setState(() => _error = 'কোন সমিতি থেকে ঋণ দিচ্ছেন, বেছে নিন');
       return;
@@ -94,12 +99,18 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
       );
       await ref.read(firestoreServiceProvider).issueLoan(loan);
       if (!mounted) return;
+      invalidateTotals(ref);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('ঋণ দেওয়া হয়েছে')),
       );
       context.go('/loans');
-    } catch (_) {
-      setState(() => _error = 'ঋণ দেওয়া যায়নি — নেট দেখে আবার চেষ্টা করুন');
+    } catch (e) {
+      setState(
+        () => _error = firebaseErrorMessage(
+          e,
+          fallback: 'ঋণ দেওয়া যায়নি — নেট দেখে আবার চেষ্টা করুন',
+        ),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -138,19 +149,35 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _memberId,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'কাকে ঋণ দিচ্ছেন',
-              prefixIcon: Icon(Icons.person_outlined),
+              prefixIcon: const Icon(Icons.person_outlined),
+              hintText: _branchId == null ? 'আগে সমিতি বেছে নিন' : null,
             ),
             items: members
                 .map((m) => DropdownMenuItem(value: m.id, child: Text(m.name)))
                 .toList(),
-            onChanged: (v) => setState(() => _memberId = v),
+            // m8: সমিতি না বাছলে সদস্যের ড্রপডাউন বন্ধ — নইলে
+            // সব সমিতির সদস্য দেখাত, আর সমিতি বাছলে বাছাই
+            // মুছে যেত।
+            onChanged: _branchId == null
+                ? null
+                : (v) => setState(() => _memberId = v),
           ),
+          // M14: সমিতিতে সদস্য না থাকলে খালি ড্রপডাউনের
+          // বদলে বোঝার মতো বার্তা।
+          if (_branchId != null && members.isEmpty) ...[
+            const SizedBox(height: 6),
+            const Text(
+              'এই সমিতিতে এখনো কোনো সদস্য নেই — আগে সদস্য অনুমোদন করুন',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+          ],
           const SizedBox(height: 12),
           TextField(
             controller: _amount,
             keyboardType: TextInputType.number,
+            inputFormatters: const [BnDigitsOnlyFormatter()],
             decoration: const InputDecoration(
               labelText: 'টাকার পরিমাণ',
               prefixText: '৳ ',
@@ -189,6 +216,7 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
                 child: TextField(
                   controller: _installment,
                   keyboardType: TextInputType.number,
+                  inputFormatters: const [BnDigitsOnlyFormatter()],
                   decoration: const InputDecoration(
                     labelText: 'মাসে কত করে',
                     prefixText: '৳ ',
@@ -200,6 +228,7 @@ class _IssueLoanScreenState extends ConsumerState<IssueLoanScreen> {
                 child: TextField(
                   controller: _months,
                   keyboardType: TextInputType.number,
+                  inputFormatters: const [BnDigitsOnlyFormatter()],
                   decoration: const InputDecoration(
                     labelText: 'কত মাসে',
                     suffixText: 'মাস',

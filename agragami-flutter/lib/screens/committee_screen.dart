@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n/app_strings.dart';
+import '../models/branch.dart';
 import '../models/committee_member.dart';
 import '../models/member.dart';
+import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../theme/app_theme.dart';
+import '../utils/firebase_errors.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/skeleton_loader.dart';
+import 'committee/committee_member_form_dialog.dart';
 
 /// কমিটি — সভাপতি, সম্পাদক, কোষাধ্যক্ষসহ দায়িত্বে
 /// যারা আছেন, তাদের নাম আর ফোন। নামে ট্যাপ করলে
-/// ফোন করা যায়।
+/// ফোন করা যায়। অ্যাডমিন কমিটি বসাতে, বদলাতে আর
+/// সরাতে পারে (M4)।
 class CommitteeScreen extends ConsumerWidget {
   const CommitteeScreen({super.key});
 
@@ -25,9 +32,75 @@ class CommitteeScreen extends ConsumerWidget {
     }
   }
 
+  void _openForm(
+    BuildContext context,
+    List<Branch> branches, {
+    CommitteeMember? existing,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => CommitteeMemberFormDialog(
+        branches: branches,
+        existing: existing,
+      ),
+    );
+  }
+
+  Future<void> _remove(
+    BuildContext context,
+    WidgetRef ref,
+    CommitteeMember c,
+    String memberName,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('কমিটি থেকে সরাবেন?'),
+        content: Text(
+          '$memberName-এর ${c.designation} পদটি সরিয়ে দেওয়া হবে। সদস্যের রেকর্ড থাকবে।',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(AppStrings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('সরান', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await ref.read(firestoreServiceProvider).removeCommitteeMember(
+            c.id,
+            by: AuthService().uidOrEmpty,
+            designation: c.designation,
+          );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('কমিটি থেকে সরানো হয়েছে')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            firebaseErrorMessage(e, fallback: 'সরানো যায়নি — আবার চেষ্টা করুন'),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final committeeAsync = ref.watch(committeeStreamProvider);
+    final userAsync = ref.watch(currentUserProvider);
+    final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;
+    final branchesAsync = ref.watch(branchesStreamProvider);
+    final branches = branchesAsync.valueOrNull ?? const <Branch>[];
     if (committeeAsync.isLoading) {
       return const Padding(
         padding: EdgeInsets.all(16),
@@ -66,6 +139,14 @@ class CommitteeScreen extends ConsumerWidget {
             style: TextStyle(fontSize: 14.5, color: Colors.grey),
           ),
           const SizedBox(height: 16),
+          if (isAdmin) ...[
+            ElevatedButton.icon(
+              onPressed: () => _openForm(context, branches),
+              icon: const Icon(Icons.add_outlined),
+              label: const Text('কমিটিতে যোগ করুন'),
+            ),
+            const SizedBox(height: 16),
+          ],
           if (committee.isEmpty)
             const EmptyState(
               icon: Icons.groups_outlined,
@@ -81,50 +162,86 @@ class CommitteeScreen extends ConsumerWidget {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: AppCard(
                     onTap: phone.isEmpty ? null : () => _call(context, phone),
-                    child: Row(
+                    child: Column(
                       children: [
-                        CircleAvatar(
-                          radius: 23,
-                          backgroundImage:
-                              photoUrl != null && photoUrl.isNotEmpty
-                                  ? NetworkImage(photoUrl)
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 23,
+                              backgroundImage:
+                                  photoUrl != null && photoUrl.isNotEmpty
+                                      ? NetworkImage(photoUrl)
+                                      : null,
+                              child: photoUrl == null || photoUrl.isEmpty
+                                  ? const Icon(Icons.person_outlined, size: 26)
                                   : null,
-                          child: photoUrl == null || photoUrl.isEmpty
-                              ? const Icon(Icons.person_outlined, size: 26)
-                              : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                memberName(c.memberId),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              Text(
-                                c.designation,
-                                style: const TextStyle(
-                                  fontSize: 14.5,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              if (phone.isNotEmpty)
-                                Text(
-                                  phone,
-                                  style: const TextStyle(
-                                    fontSize: 13.5,
-                                    color: Colors.grey,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    memberName(c.memberId),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
                                   ),
+                                  Text(
+                                    c.designation,
+                                    style: const TextStyle(
+                                      fontSize: 14.5,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  if (phone.isNotEmpty)
+                                    Text(
+                                      phone,
+                                      style: const TextStyle(
+                                        fontSize: 13.5,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (phone.isNotEmpty)
+                              const Icon(Icons.call_outlined, color: Colors.green),
+                          ],
+                        ),
+                        if (isAdmin)
+                          Row(
+                            children: [
+                              TextButton.icon(
+                                onPressed: () => _openForm(
+                                  context,
+                                  branches,
+                                  existing: c,
                                 ),
+                                icon: const Icon(Icons.edit_outlined, size: 16),
+                                label: const Text('বদলান'),
+                              ),
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: () => _remove(
+                                  context,
+                                  ref,
+                                  c,
+                                  memberName(c.memberId),
+                                ),
+                                icon: const Icon(
+                                  Icons.delete_outlined,
+                                  size: 16,
+                                  color: AppColors.danger,
+                                ),
+                                label: const Text(
+                                  'সরান',
+                                  style: TextStyle(color: AppColors.danger),
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                        if (phone.isNotEmpty)
-                          const Icon(Icons.call_outlined, color: Colors.green),
                       ],
                     ),
                   ),

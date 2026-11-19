@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../l10n/app_strings.dart';
 import '../models/branch.dart';
 import '../services/auth_service.dart';
-import '../services/firestore_providers.dart';
 import '../services/firestore_service.dart';
+import '../utils/firebase_errors.dart';
 import '../widgets/empty_state.dart';
 import 'approval/pending_applications_tab.dart';
 import 'approval/pending_payments_tab.dart';
@@ -59,15 +59,22 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
   ) async {
     try {
       await work();
+      // M12: অনুমোদন/বাতিলের পর মোট হিসাব তাজা হয় — নইলে
+      // হোম/সমিতির কার্ডে পুরোনো অঙ্ক দেখাত।
+      invalidateTotals(ref);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(doneMessage)),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('কাজটি হয়নি — আবার চেষ্টা করুন')),
+          SnackBar(
+            content: Text(
+              firebaseErrorMessage(e, fallback: 'কাজটি হয়নি — আবার চেষ্টা করুন'),
+            ),
+          ),
         );
       }
     }
@@ -83,6 +90,19 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
     if (userAsync.isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    // m9: ব্যবহারকারীর তথ্য আনতে ভুল হলে "শুধু অ্যাডমিন" বলে
+    // আটকে দেওয়া হয় না — ভুল দেখিয়ে আবার চেষ্টার সুযোগ।
+    if (userAsync.hasError) {
+      return Scaffold(
+        body: EmptyState(
+          icon: Icons.error_outline,
+          title: 'তথ্য আনা যায়নি',
+          message: 'নেট দেখে আবার চেষ্টা করুন।',
+          actionLabel: AppStrings.tryAgain,
+          onAction: () => ref.invalidate(currentUserProvider),
+        ),
       );
     }
     final isAdmin = userAsync.valueOrNull?.isAdmin ?? false;

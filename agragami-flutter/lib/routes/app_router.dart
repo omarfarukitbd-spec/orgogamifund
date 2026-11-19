@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../models/app_user.dart';
 import '../screens/add_expense_screen.dart';
 import '../screens/admin_approval_screen.dart';
+import '../screens/app_lock_screen.dart';
 import '../screens/committee_screen.dart';
 import '../screens/deposit_screen.dart';
 import '../screens/expense_list_screen.dart';
@@ -47,6 +48,17 @@ class _AuthRefresh extends ChangeNotifier {
   /// প্রথম auth/ব্যবহারকারী তথ্য এসেছে কি না — না আসা পর্যন্ত
   /// স্প্ল্যাশ দেখানো হয়, লগইন/হোমের সিদ্ধান্ত নেওয়া হয় না (m10)।
   bool authResolved = false;
+
+  /// M11: অ্যাপ-লক চালু থাকলে আনলক না হওয়া পর্যন্ত শুধু
+  /// /lock খোলে। লক শুধু ঢুকে থাকা অনুমোদিত ব্যবহারকারীর
+  /// ওপর পড়ে — /login, /pending, /apply কখনো আটকায় না।
+  bool appLocked = false;
+
+  void setAppLocked(bool locked) {
+    if (appLocked == locked) return;
+    appLocked = locked;
+    notifyListeners();
+  }
 
   Timer? _resubscribeTimer;
 
@@ -145,6 +157,21 @@ class AppRouter {
   /// সাইন-আপ বা সেটআপের পর লগইনের অবস্থা আবার পড়া।
   static Future<void> refreshAuth() => _refresh.reload();
 
+  /// M11: অ্যাপ লক করা (চালু থাকলে আনলক ছাড়া ভেতরে ঢোকা যায় না)।
+  static void lockApp() => _refresh.setAppLocked(true);
+
+  /// M11: বায়োমেট্রিক যাচাইয়ের পর অ্যাপ আনলক করা।
+  /// আনলকের সময় মনে রাখা হয় — বায়োমেট্রিক প্রম্পট নিজেই
+  /// কিছু যন্ত্রে pause/resume ঘটায়, আনলকের ঠিক পরেই যাতে
+  /// আবার লক না হয়ে যায় (main.dart-এ grace period)।
+  static void unlockApp() {
+    lastUnlockAt = DateTime.now();
+    _refresh.setAppLocked(false);
+  }
+
+  /// M11: শেষ আনলকের সময়।
+  static DateTime? lastUnlockAt;
+
   static final GoRouter router = GoRouter(
     initialLocation: '/splash',
     refreshListenable: _refresh,
@@ -183,6 +210,13 @@ class AppRouter {
         const allowed = ['/pending', '/apply', '/login'];
         return allowed.contains(loc) ? null : '/pending';
       }
+      // M11: অ্যাপ-লক চালু থাকলে আনলক না হওয়া পর্যন্ত শুধু /lock।
+      if (_refresh.appLocked) {
+        return loc == '/lock' ? null : '/lock';
+      }
+      if (loc == '/lock') {
+        return '/home';
+      }
       if (loc == '/login' || loc == '/pending' || loc == '/splash') {
         return '/home';
       }
@@ -192,6 +226,10 @@ class AppRouter {
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/lock',
+        builder: (context, state) => const AppLockScreen(),
       ),
       GoRoute(
         path: '/login',

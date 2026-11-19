@@ -86,6 +86,13 @@ class FirestoreService {
     required String description,
     required SamitiPurpose purpose,
     required int monthlyDepositAmount,
+    int admissionFee = 0,
+    int monthlyDueDay = 10,
+    int lateFineAmount = 0,
+    int minOptionalDeposit = 0,
+    bool optionalDepositEnabled = false,
+    BankDetails? bankDetails,
+    List<String> termsAndConditions = const [],
     required String by,
   }) =>
       branch.createBranch(
@@ -93,6 +100,13 @@ class FirestoreService {
         description: description,
         purpose: purpose,
         monthlyDepositAmount: monthlyDepositAmount,
+        admissionFee: admissionFee,
+        monthlyDueDay: monthlyDueDay,
+        lateFineAmount: lateFineAmount,
+        minOptionalDeposit: minOptionalDeposit,
+        optionalDepositEnabled: optionalDepositEnabled,
+        bankDetails: bankDetails,
+        termsAndConditions: termsAndConditions,
         by: by,
       );
   Future<void> updateBranch({
@@ -101,6 +115,14 @@ class FirestoreService {
     required String description,
     required SamitiPurpose purpose,
     required int monthlyDepositAmount,
+    required int admissionFee,
+    required int monthlyDueDay,
+    required int lateFineAmount,
+    required int minOptionalDeposit,
+    required bool optionalDepositEnabled,
+    String? treasurerUserId,
+    BankDetails? bankDetails,
+    required List<String> termsAndConditions,
     required String by,
   }) =>
       branch.updateBranch(
@@ -109,6 +131,14 @@ class FirestoreService {
         description: description,
         purpose: purpose,
         monthlyDepositAmount: monthlyDepositAmount,
+        admissionFee: admissionFee,
+        monthlyDueDay: monthlyDueDay,
+        lateFineAmount: lateFineAmount,
+        minOptionalDeposit: minOptionalDeposit,
+        optionalDepositEnabled: optionalDepositEnabled,
+        treasurerUserId: treasurerUserId,
+        bankDetails: bankDetails,
+        termsAndConditions: termsAndConditions,
         by: by,
       );
   Future<void> recountMemberCount(String branchId) =>
@@ -132,6 +162,23 @@ class FirestoreService {
   Stream<Member?> watchMember(String memberId) => member.watchMember(memberId);
   Future<Map<String, Member>> fetchMembersByIds(List<String> ids) =>
       member.fetchMembersByIds(ids);
+  Future<void> updateMember({
+    required String memberId,
+    required Map<String, dynamic> data,
+    Uint8List? photoBytes,
+    String by = '',
+  }) =>
+      member.updateMember(
+        memberId: memberId,
+        data: data,
+        photoBytes: photoBytes,
+        by: by,
+      );
+  Future<void> updateProfileName({
+    required String uid,
+    required String name,
+  }) =>
+      member.updateProfileName(uid: uid, name: name);
 
   // জমা ও পেমেন্ট মেথড
   Stream<List<Payment>> watchPendingPayments({String? branchId}) =>
@@ -147,6 +194,20 @@ class FirestoreService {
     required String reviewedBy,
   }) =>
       payment.rejectPayment(paymentId, reason: reason, reviewedBy: reviewedBy);
+  Future<void> updatePayment(Payment p, {required String by}) =>
+      payment.updatePayment(p, by: by);
+  Future<void> deletePayment(String paymentId, {required String by}) =>
+      payment.deletePayment(paymentId, by: by);
+  Future<bool> hasPaymentForMonth({
+    required String memberId,
+    required int forYear,
+    required int forMonth,
+  }) =>
+      payment.hasPaymentForMonth(
+        memberId: memberId,
+        forYear: forYear,
+        forMonth: forMonth,
+      );
   Stream<List<PaymentMethodConfig>> watchActivePaymentMethods({
     String? branchId,
   }) =>
@@ -175,6 +236,12 @@ class FirestoreService {
         by: by,
         methodName: methodName,
       );
+  Future<void> deletePaymentMethod(
+    String methodId, {
+    required String by,
+    required String methodName,
+  }) =>
+      payment.deletePaymentMethod(methodId, by: by, methodName: methodName);
   Future<bool> trxIdAlreadyUsed({
     required String paymentMethodId,
     required String trxId,
@@ -207,6 +274,18 @@ class FirestoreService {
     Uint8List? receiptBytes,
   }) =>
       this.expense.submitExpense(expense: expense, receiptBytes: receiptBytes);
+  Future<void> updateExpense({
+    required Expense expense,
+    Uint8List? receiptBytes,
+    String by = '',
+  }) =>
+      this.expense.updateExpense(
+            expense: expense,
+            receiptBytes: receiptBytes,
+            by: by,
+          );
+  Future<void> deleteExpense(String expenseId, {required String by}) =>
+      expense.deleteExpense(expenseId, by: by);
   Future<List<Expense>> fetchExpensesForMonth({
     required int year,
     required int month,
@@ -226,6 +305,10 @@ class FirestoreService {
   Stream<List<Loan>> watchMemberLoans(String memberId) =>
       loan.watchMemberLoans(memberId);
   Future<String> issueLoan(Loan l) => loan.issueLoan(l);
+  Future<void> updateLoan(Loan l, {required String by}) =>
+      loan.updateLoan(l, by: by);
+  Future<void> deleteLoan(String loanId, {required String by}) =>
+      loan.deleteLoan(loanId, by: by);
   Future<void> recordRepayment(
     String loanId,
     LoanRepayment repayment, {
@@ -270,6 +353,26 @@ class FirestoreService {
       governance.submitNotice(notice: notice, attachmentBytes: attachmentBytes);
   Stream<List<CommitteeMember>> watchCommittee({String? branchId}) =>
       governance.watchCommittee(branchId: branchId);
+  Future<String> addCommitteeMember(
+    CommitteeMember member, {
+    required String by,
+  }) =>
+      governance.addCommitteeMember(member, by: by);
+  Future<void> updateCommitteeMember(
+    CommitteeMember member, {
+    required String by,
+  }) =>
+      governance.updateCommitteeMember(member, by: by);
+  Future<void> removeCommitteeMember(
+    String committeeMemberId, {
+    required String by,
+    String designation = '',
+  }) =>
+      governance.removeCommitteeMember(
+        committeeMemberId,
+        by: by,
+        designation: designation,
+      );
 
   // সামগ্রিক হিসাব মেথড
   /// হোমের মোট হিসাব — অনুমোদিত জমা, মোট খরচ, সক্রিয়

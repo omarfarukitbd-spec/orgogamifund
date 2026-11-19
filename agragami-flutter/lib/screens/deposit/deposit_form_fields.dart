@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/branch.dart';
 import '../../models/payment_method.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/bn_digits.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/payment_method_card.dart';
@@ -155,7 +156,9 @@ class DepositFormFields extends StatelessWidget {
                   initialValue: year,
                   decoration: const InputDecoration(labelText: 'বছর'),
                   items: [
-                    for (var y = DateTime.now().year - 1;
+                    // m13: ৫ বছর পেছন পর্যন্ত — পুরোনো বকেয়া
+                    // জমা দেওয়া যায় (আগে শুধু এই বছর আর গত বছর)।
+                    for (var y = DateTime.now().year - 5;
                         y <= DateTime.now().year;
                         y++)
                       DropdownMenuItem(value: y, child: Text('$y')),
@@ -171,6 +174,7 @@ class DepositFormFields extends StatelessWidget {
           TextField(
             controller: amountController,
             keyboardType: TextInputType.number,
+            inputFormatters: const [BnDigitsOnlyFormatter()],
             decoration: const InputDecoration(
               labelText: 'টাকার পরিমাণ (৳)',
               prefixText: '৳ ',
@@ -183,6 +187,7 @@ class DepositFormFields extends StatelessWidget {
             TextField(
               controller: senderMobileController,
               keyboardType: TextInputType.phone,
+              inputFormatters: const [BnDigitsInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'যে নম্বর থেকে পাঠিয়েছেন',
                 prefixIcon: Icon(Icons.phone_outlined),

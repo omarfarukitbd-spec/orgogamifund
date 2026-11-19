@@ -7,11 +7,14 @@ import '../models/expense.dart';
 import '../models/membership.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/date_parser.dart';
+import '../utils/firebase_errors.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/not_member_gate.dart';
 import '../widgets/skeleton_loader.dart';
+import 'expenses/edit_expense_dialog.dart';
 import 'passbook_screen.dart';
 
 /// খরচের তালিকা — সমিতি বেছে নিলে শুধু ওই সমিতিরটা।
@@ -29,6 +32,49 @@ class ExpenseListScreen extends ConsumerStatefulWidget {
 
 class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
   String? _branchId;
+
+  Future<void> _deleteExpense(Expense e) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('খরচ মুছবেন?'),
+        content: Text(
+          '${formatTaka(e.amount)}-এর এই খরচটি মুছে যাবে। এই কাজ ফিরিয়ে নেওয়া যাবে না।',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(AppStrings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('মুছুন', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await ref.read(firestoreServiceProvider).deleteExpense(
+            e.id,
+            by: AuthService().uidOrEmpty,
+          );
+      if (!mounted) return;
+      invalidateTotals(ref);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('খরচ মুছা হয়েছে')),
+      );
+    } catch (err) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            firebaseErrorMessage(err, fallback: 'খরচ মুছা যায়নি — আবার চেষ্টা করুন'),
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -136,40 +182,72 @@ class _ExpenseListScreenState extends ConsumerState<ExpenseListScreen> {
               (e) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: AppCard(
-                  child: Row(
+                  child: Column(
                     children: [
-                      const ListIcon(icon: Icons.shopping_bag_outlined),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              e.description.isEmpty ? e.category : e.description,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
+                      Row(
+                        children: [
+                          const ListIcon(icon: Icons.shopping_bag_outlined),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  e.description.isEmpty
+                                      ? e.category
+                                      : e.description,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${e.category} • ${branchName(e.branchId)} • '
+                                  '${isMissingDate(e.date) ? "তারিখ নেই" : "${e.date.day}/${e.date.month}/${e.date.year}"}',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${e.category} • ${branchName(e.branchId)} • '
-                              '${isMissingDate(e.date) ? "তারিখ নেই" : "${e.date.day}/${e.date.month}/${e.date.year}"}',
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                color: Colors.grey,
+                          ),
+                          Text(
+                            formatTaka(e.amount),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (isAdmin)
+                        Row(
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => showDialog(
+                                context: context,
+                                builder: (_) => EditExpenseDialog(expense: e),
+                              ),
+                              icon: const Icon(Icons.edit_outlined, size: 16),
+                              label: const Text('বদলান'),
+                            ),
+                            const Spacer(),
+                            TextButton.icon(
+                              onPressed: () => _deleteExpense(e),
+                              icon: const Icon(
+                                Icons.delete_outlined,
+                                size: 16,
+                                color: AppColors.danger,
+                              ),
+                              label: const Text(
+                                'মুছুন',
+                                style: TextStyle(color: AppColors.danger),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      Text(
-                        formatTaka(e.amount),
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
                     ],
                   ),
                 ),

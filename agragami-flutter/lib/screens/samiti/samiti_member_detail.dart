@@ -6,15 +6,17 @@ import '../../models/branch.dart';
 import '../../models/member.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/firebase_errors.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../member/edit_member_dialog.dart';
 import '../passbook_screen.dart';
 
 /// সদস্য বা অ্যাডমিনের জন্য ভেতরের হিসাব — সদস্য তালিকা,
 /// মোট জমা, মোট খরচ, তহবিলের টাকা ও লেনদেন।
-class SamitiMemberDetail extends ConsumerWidget {
+class SamitiMemberDetail extends ConsumerStatefulWidget {
   final Branch branch;
   final bool isAdmin;
 
@@ -25,8 +27,44 @@ class SamitiMemberDetail extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final store = ref.watch(firestoreServiceProvider);
+  ConsumerState<SamitiMemberDetail> createState() => _SamitiMemberDetailState();
+}
+
+class _SamitiMemberDetailState extends ConsumerState<SamitiMemberDetail> {
+  bool _recounting = false;
+
+  Future<void> _recount() async {
+    if (_recounting) return;
+    setState(() => _recounting = true);
+    try {
+      await ref
+          .read(firestoreServiceProvider)
+          .recountMemberCount(widget.branch.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppStrings.recountDone)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            firebaseErrorMessage(
+              e,
+              fallback: 'সদস্য সংখ্যা মেলানো যায়নি — আবার চেষ্টা করুন',
+            ),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _recounting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final branch = widget.branch;
+    final isAdmin = widget.isAdmin;
     final totalsAsync = ref.watch(homeTotalsByBranchProvider(branch.id));
     final membersAsync = ref.watch(membersByBranchProvider(branch.id));
     final totals = totalsAsync.valueOrNull;
@@ -155,6 +193,14 @@ class SamitiMemberDetail extends ConsumerWidget {
             (m) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: AppCard(
+                // B7: অ্যাডমিন সদস্যের কার্ডে ট্যাপ করলে
+                // সম্পাদনার ডায়ালগ খোলে।
+                onTap: isAdmin
+                    ? () => showDialog(
+                          context: context,
+                          builder: (_) => EditMemberDialog(member: m),
+                        )
+                    : null,
                 child: Row(
                   children: [
                     CircleAvatar(
@@ -195,9 +241,23 @@ class SamitiMemberDetail extends ConsumerWidget {
                                   .withValues(alpha: 0.6),
                             ),
                           ),
+                          if (!m.active)
+                            const Text(
+                              'নিষ্ক্রিয় সদস্য',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.danger,
+                              ),
+                            ),
                         ],
                       ),
                     ),
+                    if (isAdmin)
+                      const Icon(
+                        Icons.edit_outlined,
+                        size: 18,
+                        color: AppColors.muted,
+                      ),
                   ],
                 ),
               ),
@@ -206,15 +266,11 @@ class SamitiMemberDetail extends ConsumerWidget {
         if (isAdmin) ...[
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () async {
-              await store.recountMemberCount(branch.id);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(AppStrings.recountDone)),
-                );
-              }
-            },
-            child: Text(AppStrings.recountMembers),
+            // m2: গোনার সময় বোতাম বন্ধ, ভুল হলে জানানো হয়।
+            onPressed: _recounting ? null : _recount,
+            child: Text(
+              _recounting ? AppStrings.loading : AppStrings.recountMembers,
+            ),
           ),
         ],
       ],

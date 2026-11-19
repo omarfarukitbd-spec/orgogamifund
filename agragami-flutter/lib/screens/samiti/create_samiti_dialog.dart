@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/branch.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
+import '../../utils/bn_digits.dart';
+import '../../utils/firebase_errors.dart';
+import '../../utils/validators.dart';
 
 /// নতুন সমিতি খোলার ফরম — শুধু অ্যাডমিন দেখতে পায়।
+/// লাইভ স্কিমার আর্থিক নিয়মগুলো খোলার সময়ই বসানো যায়
+/// (B8) — নতুন সমিতিতেও পুরোনো সমিতির মতো একই ক্ষেত্র থাকে।
 class CreateSamitiDialog extends ConsumerStatefulWidget {
   const CreateSamitiDialog({super.key});
 
@@ -20,7 +24,12 @@ class _CreateSamitiDialogState extends ConsumerState<CreateSamitiDialog> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _donationController = TextEditingController();
+  final _admissionController = TextEditingController(text: '0');
+  final _dueDayController = TextEditingController(text: '10');
+  final _lateFineController = TextEditingController(text: '0');
+  final _minOptionalController = TextEditingController(text: '0');
   SamitiPurpose _purpose = SamitiPurpose.madrasa;
+  bool _optionalEnabled = false;
   bool _saving = false;
 
   @override
@@ -28,6 +37,10 @@ class _CreateSamitiDialogState extends ConsumerState<CreateSamitiDialog> {
     _nameController.dispose();
     _descriptionController.dispose();
     _donationController.dispose();
+    _admissionController.dispose();
+    _dueDayController.dispose();
+    _lateFineController.dispose();
+    _minOptionalController.dispose();
     super.dispose();
   }
 
@@ -39,7 +52,12 @@ class _CreateSamitiDialogState extends ConsumerState<CreateSamitiDialog> {
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
         purpose: _purpose,
-        monthlyDepositAmount: int.parse(_donationController.text.trim()),
+        monthlyDepositAmount: parseAmount(_donationController.text) ?? 0,
+        admissionFee: parseAmount(_admissionController.text) ?? 0,
+        monthlyDueDay: parseAmount(_dueDayController.text) ?? 10,
+        lateFineAmount: parseAmount(_lateFineController.text) ?? 0,
+        minOptionalDeposit: parseAmount(_minOptionalController.text) ?? 0,
+        optionalDepositEnabled: _optionalEnabled,
         by: AuthService().uidOrEmpty,
       );
       if (!mounted) return;
@@ -47,13 +65,31 @@ class _CreateSamitiDialogState extends ConsumerState<CreateSamitiDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppStrings.samitiCreated)),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppStrings.samitiCreateFailed)),
+        SnackBar(
+          content: Text(
+            firebaseErrorMessage(e, fallback: AppStrings.samitiCreateFailed),
+          ),
+        ),
       );
     }
+  }
+
+  Widget _amountField({
+    required TextEditingController controller,
+    required String label,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label, suffixText: '৳'),
+      keyboardType: TextInputType.number,
+      inputFormatters: const [BnDigitsOnlyFormatter()],
+      validator: validator ?? (v) => validateAmount(v),
+    );
   }
 
   @override
@@ -93,21 +129,62 @@ class _CreateSamitiDialogState extends ConsumerState<CreateSamitiDialog> {
                 },
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              _amountField(
                 controller: _donationController,
-                decoration: InputDecoration(
-                  labelText: AppStrings.monthlyDonation,
-                  suffixText: '৳',
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'পরিমাণ লিখুন';
-                  if (int.tryParse(v.trim()) == null) {
-                    return 'শুধু সংখ্যা লিখুন';
-                  }
-                  return null;
-                },
+                label: AppStrings.monthlyDonation,
+              ),
+              const SizedBox(height: 12),
+              _amountField(
+                controller: _admissionController,
+                label: 'ভর্তি ফি (একবার)',
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _dueDayController,
+                      decoration: const InputDecoration(
+                        labelText: 'জমার শেষ দিন',
+                        suffixText: 'তারিখ',
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: const [BnDigitsOnlyFormatter()],
+                      validator: (v) => validateDueDay(v),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _amountField(
+                      controller: _lateFineController,
+                      label: 'বিলম্ব জরিমানা',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _amountField(
+                      controller: _minOptionalController,
+                      label: 'ঐচ্ছিক জমার ন্যূনতম',
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SwitchListTile(
+                      title: const Text(
+                        'ঐচ্ছিক জমা',
+                        style: TextStyle(fontSize: 13.5),
+                      ),
+                      value: _optionalEnabled,
+                      onChanged: (v) =>
+                          setState(() => _optionalEnabled = v),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               TextFormField(

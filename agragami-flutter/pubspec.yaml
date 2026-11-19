@@ -40,6 +40,8 @@ dependencies:
   url_launcher: ^6.3.0
   share_plus: ^10.1.2
   local_auth: ^2.2.0
+  # সেটিংস সংরক্ষণ — থিম, ভাষা আর বায়োমেট্রিক লক মনে রাখে
+  shared_preferences: ^2.3.0
 
 dev_dependencies:
   flutter_test:

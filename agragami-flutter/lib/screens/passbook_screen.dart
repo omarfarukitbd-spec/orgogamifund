@@ -324,6 +324,9 @@ class _PassbookContent extends ConsumerWidget {
             payments: payments,
             memberName: member.name,
             branchName: branchOrNull?.name ?? 'অগ্রগামী ফান্ড সমিতি',
+            // M9: অ্যাডমিন খাতা থেকেই জমা বদলাতে/মুছতে পারে।
+            isAdmin:
+                ref.watch(currentUserProvider).valueOrNull?.isAdmin ?? false,
           ),
           const SizedBox(height: 20),
         ],

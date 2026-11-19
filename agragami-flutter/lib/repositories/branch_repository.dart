@@ -46,12 +46,20 @@ class BranchRepository {
 
   /// নতুন সমিতি তৈরি করা — Branch.toMap() লাইভ স্কিমা
   /// অনুযায়ী লেখে, তাই নতুন সমিতিতেও পুরোনো সমিতির
-  /// মতো একই ক্ষেত্র থাকে।
+  /// মতো একই ক্ষেত্র থাকে (B8: আর্থিক নিয়মগুলোও এখন
+  /// খোলার সময়ই বসানো যায়)।
   Future<String> createBranch({
     required String name,
     required String description,
     required SamitiPurpose purpose,
     required int monthlyDepositAmount,
+    int admissionFee = 0,
+    int monthlyDueDay = 10,
+    int lateFineAmount = 0,
+    int minOptionalDeposit = 0,
+    bool optionalDepositEnabled = false,
+    BankDetails? bankDetails,
+    List<String> termsAndConditions = const [],
     required String by,
   }) async {
     final branch = Branch(
@@ -60,6 +68,13 @@ class BranchRepository {
       description: description,
       purpose: purpose,
       monthlyDepositAmount: monthlyDepositAmount,
+      admissionFee: admissionFee,
+      monthlyDueDay: monthlyDueDay,
+      lateFineAmount: lateFineAmount,
+      minOptionalDeposit: minOptionalDeposit,
+      optionalDepositEnabled: optionalDepositEnabled,
+      bankDetails: bankDetails,
+      termsAndConditions: termsAndConditions,
       startDate: DateTime.now(),
     );
     final data = branch.toMap()
@@ -73,23 +88,50 @@ class BranchRepository {
     return ref.id;
   }
 
-  /// সমিতির তথ্য আপডেট বা সম্পাদন করা
+  /// সমিতির তথ্য আপডেট বা সম্পাদন করা (B8) — লাইভ স্কিমার
+  /// সব আর্থিক ক্ষেত্র: মাসিক জমা, ভর্তি ফি, জমার শেষ দিন,
+  /// বিলম্ব জরিমানা, ঐচ্ছিক জমা, কোষাধ্যক্ষ, ব্যাংক তথ্য,
+  /// শর্তাবলি। পুরোনো `monthlyDonation` ক্ষেত্র মুছে দেওয়া
+  /// হয় — লাইভ ডকুমেন্ট `monthlyDepositAmount` ব্যবহার করে।
+  /// memberCount/balance/permissions এখান থেকে ছোঁয়া হয় না।
   Future<void> updateBranch({
     required String branchId,
     required String name,
     required String description,
     required SamitiPurpose purpose,
     required int monthlyDepositAmount,
+    required int admissionFee,
+    required int monthlyDueDay,
+    required int lateFineAmount,
+    required int minOptionalDeposit,
+    required bool optionalDepositEnabled,
+    String? treasurerUserId,
+    BankDetails? bankDetails,
+    required List<String> termsAndConditions,
     required String by,
   }) async {
     if (branchId.isEmpty) return;
-    await _db.collection(Collections.branches).doc(branchId).update({
+    final data = <String, dynamic>{
       'name': name,
       'description': description,
       'purpose': purpose.name,
       'monthlyDepositAmount': monthlyDepositAmount,
+      'monthlyDonation': FieldValue.delete(),
+      'admissionFee': admissionFee,
+      'monthlyDueDay': monthlyDueDay.clamp(1, 31),
+      'lateFineAmount': lateFineAmount,
+      'minOptionalDeposit': minOptionalDeposit,
+      'optionalDepositEnabled': optionalDepositEnabled,
+      'treasurerUserId': treasurerUserId,
+      'termsAndConditions': termsAndConditions,
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    };
+    if (bankDetails == null || bankDetails.isEmpty) {
+      data['bankDetails'] = FieldValue.delete();
+    } else {
+      data['bankDetails'] = bankDetails.toMap();
+    }
+    await _db.collection(Collections.branches).doc(branchId).update(data);
     await _audit.logAudit(
       action: 'update_branch',
       by: by,

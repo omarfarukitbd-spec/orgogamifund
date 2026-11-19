@@ -1,32 +1,82 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/payment.dart';
+import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
 import '../../services/voucher_share_service.dart';
-import '../../utils/date_parser.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/date_parser.dart';
+import '../../utils/firebase_errors.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/empty_state.dart';
 import '../passbook_screen.dart';
+import '../payments/edit_payment_dialog.dart';
 
 /// লেনদেনের খাতা — ফিল্টার, লেজার রো এবং এক-ক্লিকে রসিদ ভাউচার শেয়ার
-class PassbookLedger extends StatefulWidget {
+class PassbookLedger extends ConsumerStatefulWidget {
   final List<Payment> payments;
   final String memberName;
   final String branchName;
+  final bool isAdmin;
 
   const PassbookLedger({
     super.key,
     required this.payments,
     required this.memberName,
     required this.branchName,
+    this.isAdmin = false,
   });
 
   @override
-  State<PassbookLedger> createState() => _PassbookLedgerState();
+  ConsumerState<PassbookLedger> createState() => _PassbookLedgerState();
 }
 
-class _PassbookLedgerState extends State<PassbookLedger> {
+class _PassbookLedgerState extends ConsumerState<PassbookLedger> {
   String _filter = 'all';
+
+  Future<void> _deletePayment(Payment p) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('জমা মুছবেন?'),
+        content: Text(
+          '${formatTaka(p.amount)}-এর এই জমাটি মুছে যাবে। এই কাজ ফিরিয়ে নেওয়া যাবে না।',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(AppStrings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('মুছুন', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await ref.read(firestoreServiceProvider).deletePayment(
+            p.id,
+            by: AuthService().uidOrEmpty,
+          );
+      if (!mounted) return;
+      invalidateTotals(ref);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('জমা মুছা হয়েছে')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            firebaseErrorMessage(e, fallback: 'জমা মুছা যায়নি — আবার চেষ্টা করুন'),
+          ),
+        ),
+      );
+    }
+  }
 
   void _showVoucherDialog(BuildContext context, Payment p) {
     final isBn = AppStrings.isBangla;
@@ -106,6 +156,52 @@ class _PassbookLedgerState extends State<PassbookLedger> {
                 minimumSize: const Size.fromHeight(48),
               ),
             ),
+            // M9: অ্যাডমিন ভাউচার থেকেই জমা বদলাতে/মুছতে পারে।
+            if (widget.isAdmin) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        showDialog(
+                          context: context,
+                          builder: (_) => EditPaymentDialog(payment: p),
+                        );
+                      },
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('বদলান'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _deletePayment(p);
+                      },
+                      icon: const Icon(
+                        Icons.delete_outlined,
+                        size: 18,
+                        color: AppColors.danger,
+                      ),
+                      label: const Text(
+                        'মুছুন',
+                        style: TextStyle(color: AppColors.danger),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        side: const BorderSide(color: AppColors.danger),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 12),
           ],
         ),

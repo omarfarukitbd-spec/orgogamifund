@@ -61,7 +61,12 @@ class PaymentRepository {
     return doc.id;
   }
 
-  /// জমা অনুমোদন করা (রসিদ নম্বর জেনারেশনসহ)
+  /// জমা অনুমোদন করা (রসিদ নম্বর জেনারেশনসহ)।
+  /// m5: ট্রানজ্যাকশনে হয় — জমা এখনো pending না থাকলে
+  /// (আগেই যাচাই হয়ে গেছে) ব্যর্থ হয়, অনুমোদন-তারপর-বাতিল
+  /// ডাবল-ট্যাপে হতে পারে না। m14: `status` আর
+  /// `approvalStatus` দুটোই বদলানো হয় — পুরোনো অ্যাপ
+  /// approvalStatus পড়ে, একটা বদলালে দুটো মেলে না।
   Future<void> approvePayment(
     Payment payment, {
     required String reviewedBy,
@@ -72,25 +77,115 @@ class PaymentRepository {
         : payment.id.toUpperCase();
     final receipt =
         'REC-${now.year}${now.month.toString().padLeft(2, '0')}-$suffix';
-    await _db.collection(Collections.payments).doc(payment.id).update({
-      'status': PaymentStatus.approved.name,
-      'receiptNumber': receipt,
-      'reviewedBy': reviewedBy,
-      'reviewedAt': FieldValue.serverTimestamp(),
+    final ref = _db.collection(Collections.payments).doc(payment.id);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists) throw StateError('payment-not-found');
+      final data = snap.data()!;
+      final rawStatus =
+          ((data['status'] ?? data['approvalStatus']) as String?)
+              ?.toLowerCase();
+      if (rawStatus != PaymentStatus.pending.name) {
+        throw StateError('already-reviewed');
+      }
+      tx.update(ref, {
+        'status': PaymentStatus.approved.name,
+        'approvalStatus': PaymentStatus.approved.name.toUpperCase(),
+        'receiptNumber': receipt,
+        'reviewedBy': reviewedBy,
+        'reviewedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 
-  /// জমা বাতিল করা
+  /// জমা বাতিল করা (m5/m14: approvePayment-এর মতোই
+  /// ট্রানজ্যাকশন আর দুই status ফিল্ড)।
   Future<void> rejectPayment(
     String paymentId, {
     required String reason,
     required String reviewedBy,
   }) async {
-    await _db.collection(Collections.payments).doc(paymentId).update({
-      'status': PaymentStatus.rejected.name,
-      'rejectReason': reason,
-      'reviewedBy': reviewedBy,
-      'reviewedAt': FieldValue.serverTimestamp(),
+    final ref = _db.collection(Collections.payments).doc(paymentId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists) throw StateError('payment-not-found');
+      final data = snap.data()!;
+      final rawStatus =
+          ((data['status'] ?? data['approvalStatus']) as String?)
+              ?.toLowerCase();
+      if (rawStatus != PaymentStatus.pending.name) {
+        throw StateError('already-reviewed');
+      }
+      tx.update(ref, {
+        'status': PaymentStatus.rejected.name,
+        'approvalStatus': PaymentStatus.rejected.name.toUpperCase(),
+        'rejectReason': reason,
+        'reviewedBy': reviewedBy,
+        'reviewedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  /// জমা বদলানো (M9) — টাকা, মাস/বছর, TrxID, পাঠানোর নম্বর।
+  /// অবস্থা (status) এখান থেকে বদলানো যায় না — সেটা
+  /// অনুমোদনের কাজ। শুধু অ্যাডমিন করতে পারে (rules)।
+  Future<void> updatePayment(
+    Payment payment, {
+    required String by,
+  }) async {
+    if (payment.id.isEmpty) return;
+    await _db.collection(Collections.payments).doc(payment.id).update({
+      'amount': payment.amount,
+      'forMonth': payment.forMonth,
+      'forYear': payment.forYear,
+      'trxId': payment.trxId,
+      'transactionId': payment.trxId,
+      'senderMobile': payment.senderMobile,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await _audit.logAudit(
+      action: 'payment_updated',
+      by: by,
+      detail: 'জমা বদলানো হয়েছে: ${payment.amount} টাকা (${payment.id})',
+    );
+  }
+
+  /// জমা মুছা (M9) — ভুল জমা সংশোধনের শেষ উপায়।
+  /// হার্ড ডিলিট + অডিট লগ: সফট-ডিলিট হলে মোট হিসাব,
+  /// বকেয়া, রিপোর্ট — সব পড়ার পথে মুছা জমা বাদ দিতে
+  /// হতো, একটা পথ বাদ পড়লেই অঙ্ক ভুল হতো।
+  /// শুধু সুপার অ্যাডমিন মুছতে পারে (rules)।
+  Future<void> deletePayment(
+    String paymentId, {
+    required String by,
+  }) async {
+    if (paymentId.isEmpty) return;
+    await _db.collection(Collections.payments).doc(paymentId).delete();
+    await _audit.logAudit(
+      action: 'payment_deleted',
+      by: by,
+      detail: 'জমা মুছা হয়েছে ($paymentId)',
+    );
+  }
+
+  /// এই সদস্যের ওই মাসের (বাতিল নয় এমন) জমা আছে কি না (m7)।
+  /// memberId দিয়ে পড়ে ক্লায়েন্টে ছাঁকা হয় — নতুন ইনডেক্স
+  /// লাগে না, (memberId, date) ইনডেক্স আগেই আছে।
+  Future<bool> hasPaymentForMonth({
+    required String memberId,
+    required int forYear,
+    required int forMonth,
+  }) async {
+    if (memberId.isEmpty) return false;
+    final snap = await _db
+        .collection(Collections.payments)
+        .where('memberId', isEqualTo: memberId)
+        .get();
+    return snap.docs.any((d) {
+      final p = Payment.fromMap(d.id, d.data());
+      return p.forYear == forYear &&
+          p.forMonth == forMonth &&
+          p.status != PaymentStatus.rejected;
     });
   }
 
@@ -182,6 +277,29 @@ class PaymentRepository {
           : 'payment_method_deactivated',
       by: by,
       detail: '$methodName ${active ? 'চালু' : 'বন্ধ'} করা হয়েছে',
+    );
+  }
+
+  /// পেমেন্ট মেথড মুছা (M9) — শুধু তখনই, যখন এই মাধ্যম
+  /// দিয়ে কোনো জমা নেই। জমা থাকলে মুছলে পুরোনো জমার
+  /// মাধ্যমের ছাপ ভেঙে যেত। জমা থাকলে 'method-in-use' ছোড়ে।
+  Future<void> deletePaymentMethod(
+    String methodId, {
+    required String by,
+    required String methodName,
+  }) async {
+    if (methodId.isEmpty) return;
+    final used = await _db
+        .collection(Collections.payments)
+        .where('paymentMethodId', isEqualTo: methodId)
+        .limit(1)
+        .get();
+    if (used.docs.isNotEmpty) throw StateError('method-in-use');
+    await _db.collection(Collections.paymentMethods).doc(methodId).delete();
+    await _audit.logAudit(
+      action: 'payment_method_deleted',
+      by: by,
+      detail: 'পেমেন্ট মাধ্যম মুছা হয়েছে: $methodName ($methodId)',
     );
   }
 

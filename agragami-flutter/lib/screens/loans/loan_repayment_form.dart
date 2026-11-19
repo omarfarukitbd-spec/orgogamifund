@@ -5,6 +5,8 @@ import '../../models/payment_method.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/bn_digits.dart';
+import '../../utils/firebase_errors.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/payment_method_card.dart';
@@ -70,7 +72,7 @@ class _LoanRepaymentFormState extends ConsumerState<LoanRepaymentForm> {
       setState(() => _error = 'কীভাবে টাকা দিল, বেছে নিন');
       return;
     }
-    final amount = int.tryParse(_amount.text.trim());
+    final amount = parseAmount(_amount.text);
     if (amount == null || amount <= 0) {
       setState(() => _error = 'টাকার সঠিক পরিমাণ লিখুন');
       return;
@@ -127,11 +129,13 @@ class _LoanRepaymentFormState extends ConsumerState<LoanRepaymentForm> {
           trxId: trxId.isEmpty ? null : trxId,
           senderMobile: _senderMobile.text.trim().isEmpty
               ? null
-              : _senderMobile.text.trim(),
+              : toAsciiDigits(_senderMobile.text.trim()),
         ),
         recordedBy: AuthService().uidOrEmpty,
       );
       if (!mounted) return;
+      // M12: কিস্তি জমার পর মোট হিসাব তাজা হয়।
+      invalidateTotals(ref);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('কিস্তি জমা নেওয়া হয়েছে')),
       );
@@ -141,8 +145,13 @@ class _LoanRepaymentFormState extends ConsumerState<LoanRepaymentForm> {
         _senderMobile.clear();
         _methodId = null;
       });
-    } catch (_) {
-      setState(() => _error = 'জমা নেওয়া যায়নি — নেট দেখে আবার চেষ্টা করুন');
+    } catch (e) {
+      setState(
+        () => _error = firebaseErrorMessage(
+          e,
+          fallback: 'জমা নেওয়া যায়নি — নেট দেখে আবার চেষ্টা করুন',
+        ),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -178,6 +187,7 @@ class _LoanRepaymentFormState extends ConsumerState<LoanRepaymentForm> {
         TextField(
           controller: _amount,
           keyboardType: TextInputType.number,
+          inputFormatters: const [BnDigitsOnlyFormatter()],
           decoration: const InputDecoration(
             labelText: 'কত টাকা জমা দিল',
             prefixText: '৳ ',
@@ -190,6 +200,7 @@ class _LoanRepaymentFormState extends ConsumerState<LoanRepaymentForm> {
           TextField(
             controller: _senderMobile,
             keyboardType: TextInputType.phone,
+            inputFormatters: const [BnDigitsInputFormatter()],
             decoration: const InputDecoration(
               labelText: 'যে নম্বর থেকে পাঠিয়েছে',
               prefixIcon: Icon(Icons.phone_outlined),

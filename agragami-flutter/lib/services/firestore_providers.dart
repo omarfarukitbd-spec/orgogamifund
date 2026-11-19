@@ -198,6 +198,20 @@ final approvedPaymentsProvider =
   );
 });
 
+/// লেখার পর মোট হিসাবগুলো তাজা করা (M12)।
+/// হোম/সমিতির মোট, সাম্প্রতিক লেনদেন, মাসের রিপোর্ট আর
+/// অনুমোদিত জমা — সবই একবারের FutureProvider; লেখার পর
+/// invalidate না করলে অনুমোদন/খরচ/কিস্তির পরেও পুরোনো
+/// অঙ্ক দেখাত। family-কে invalidate করলে তার সব instance
+/// তাজা হয় (riverpod-এ family invalidate সব member-এ চলে)।
+void invalidateTotals(WidgetRef ref) {
+  ref.invalidate(homeTotalsForBranchesProvider);
+  ref.invalidate(homeTotalsByBranchProvider);
+  ref.invalidate(recentTransactionsProvider);
+  ref.invalidate(monthReportProvider);
+  ref.invalidate(approvedPaymentsProvider);
+}
+
 /// হোমের মোট হিসাব মডেল।
 /// তহবিল = অনুমোদিত জমা − খরচ − বকেয়া ঋণ — রিপোর্টের
 /// নিট হিসাবের সাথে মিলিয়ে, ঋণ বাদ না দিলে দুই জায়গায়

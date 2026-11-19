@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,16 +7,27 @@ import '../models/app_user.dart';
 import '../models/member.dart';
 import '../models/membership.dart';
 import '../services/firebase_service.dart';
+import '../services/storage_service.dart';
+import 'audit_repository.dart';
 
-final memberRepositoryProvider =
-    Provider<MemberRepository>((ref) => MemberRepository());
+final memberRepositoryProvider = Provider<MemberRepository>((ref) {
+  final auditRepo = ref.watch(auditRepositoryProvider);
+  return MemberRepository(auditRepository: auditRepo);
+});
 
 /// সদস্য এবং ব্যবহারকারী সংক্রান্ত ডেটাবেজ কার্যক্রমের রিপোজিটরি
 class MemberRepository {
   final FirebaseFirestore _db;
+  final StorageService _storage;
+  final AuditRepository _audit;
 
-  MemberRepository({FirebaseFirestore? db})
-      : _db = db ?? FirebaseService.instance.db;
+  MemberRepository({
+    FirebaseFirestore? db,
+    StorageService? storageService,
+    AuditRepository? auditRepository,
+  })  : _db = db ?? FirebaseService.instance.db,
+        _storage = storageService ?? StorageService(),
+        _audit = auditRepository ?? AuditRepository(db: db);
 
   /// নতুন ইউজারের ডকুমেন্ট তৈরি করা — সবসময় pending।
   /// Firestore rules শুধু role == 'pending' দিয়ে users ডকুমেন্ট
@@ -260,5 +273,51 @@ class MemberRepository {
               ? Member.fromMap(doc.id, doc.data()!)
               : null,
         );
+  }
+
+  /// সদস্যের রেকর্ড বদলানো (B7) — নাম, ফোন, ঠিকানা, এনআইডি,
+  /// জরুরি যোগাযোগ, ভর্তির তারিখ, ছবি, সক্রিয়/নিষ্ক্রিয়।
+  /// ছবি দিলে আগে Cloudinary-তে তোলা হয় — আপলোড ব্যর্থ হলে
+  /// UploadFailedException ছোড়া হয়, রেকর্ড বদলানো হয় না।
+  /// শুধু অ্যাডমিন করতে পারে (rules: members update অ্যাডমিন)।
+  Future<void> updateMember({
+    required String memberId,
+    required Map<String, dynamic> data,
+    Uint8List? photoBytes,
+    String by = '',
+  }) async {
+    if (memberId.isEmpty) return;
+    final updates = Map<String, dynamic>.from(data);
+    if (photoBytes != null) {
+      final photoUrl = await _storage.uploadBytes(
+        'members/$memberId/photo.jpg',
+        photoBytes,
+      );
+      if (photoUrl != null) updates['photoUrl'] = photoUrl;
+    }
+    updates['updatedAt'] = FieldValue.serverTimestamp();
+    await _db
+        .collection(Collections.members)
+        .doc(memberId)
+        .update(updates);
+    await _audit.logAudit(
+      action: 'member_updated',
+      by: by,
+      detail: 'সদস্যের তথ্য বদলানো হয়েছে ($memberId)',
+    );
+  }
+
+  /// নিজের প্রোফাইলের নাম বদলানো (M5) — নিজের users ডকুমেন্টে
+  /// শুধু নাম লেখা হয়। rules নিজেকে role/approvalStatus/
+  /// branchId/linkedMemberId ছাড়া বাকি সব বদলাতে দেয়।
+  Future<void> updateProfileName({
+    required String uid,
+    required String name,
+  }) async {
+    if (uid.isEmpty) return;
+    await _db.collection(Collections.users).doc(uid).update({
+      'name': name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 }

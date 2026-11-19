@@ -75,10 +75,17 @@ class LoanRepository {
     final ref = _db.collection(Collections.loans).doc(loanId);
     await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
-      if (!snap.exists || snap.data() == null) return;
+      // M7: ঋণ না থাকলে নিঃশব্দে সফল নয় — ভুল ছোড়া হয়,
+      // যাতে UI "জমা নেওয়া হয়েছে" মিথ্যা না বলে।
+      if (!snap.exists || snap.data() == null) {
+        throw StateError('loan-not-found');
+      }
       final loan = Loan.fromMap(snap.id, snap.data()!);
       final updated = [...loan.repayments, repayment];
       final repaid = updated.fold(0, (total, r) => total + r.amount);
+      // m6: বেশি জমার সীমা ট্রানজ্যাকশনের ভেতরে — একই
+      // সময়ে দুই কিস্তি এলে বাসি তথ্যে সীমা পেরিয়ে যেত।
+      if (repaid > loan.amount) throw StateError('overpayment');
       tx.update(ref, {
         'repayments': updated.map((r) => r.toMap()).toList(),
         'status': repaid >= loan.amount
@@ -91,6 +98,57 @@ class LoanRepository {
       by: recordedBy,
       detail:
           'ঋণের কিস্তি ${repayment.amount} টাকা (${repayment.methodLabel}) জমা নেওয়া হয়েছে',
+    );
+  }
+
+  /// ঋণ বদলানো (M9) — টাকা, কারণ, তারিখ, কিস্তির পরিকল্পনা।
+  /// টাকা ফেরত দেওয়া অঙ্কের নিচে নামানো যায় না।
+  Future<void> updateLoan(
+    Loan loan, {
+    required String by,
+  }) async {
+    if (loan.id.isEmpty) return;
+    if (loan.amount < loan.repaidTotal) {
+      throw StateError('amount-below-repaid');
+    }
+    await _db.collection(Collections.loans).doc(loan.id).update({
+      'amount': loan.amount,
+      'reason': loan.reason,
+      'dateIssued': Timestamp.fromDate(loan.dateIssued),
+      'monthlyInstallment': loan.monthlyInstallment,
+      'installmentMonths': loan.installmentMonths,
+      'status': loan.repaidTotal >= loan.amount
+          ? LoanStatus.repaid.name
+          : LoanStatus.active.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await _audit.logAudit(
+      action: 'loan_updated',
+      by: by,
+      detail: 'ঋণ বদলানো হয়েছে: ${loan.amount} টাকা (${loan.id})',
+    );
+  }
+
+  /// ঋণ মুছা (M9) — শুধু কিস্তি জমা হয়নি এমন ঋণ।
+  /// কিস্তি থাকলে মুছলে কিস্তির হিসাব হারিয়ে যেত।
+  /// শুধু সুপার অ্যাডমিন মুছতে পারে (rules)।
+  Future<void> deleteLoan(
+    String loanId, {
+    required String by,
+  }) async {
+    if (loanId.isEmpty) return;
+    final snap = await _db.collection(Collections.loans).doc(loanId).get();
+    if (snap.exists && snap.data() != null) {
+      final loan = Loan.fromMap(snap.id, snap.data()!);
+      if (loan.repayments.isNotEmpty) {
+        throw StateError('loan-has-repayments');
+      }
+    }
+    await _db.collection(Collections.loans).doc(loanId).delete();
+    await _audit.logAudit(
+      action: 'loan_deleted',
+      by: by,
+      detail: 'ঋণ মুছা হয়েছে ($loanId)',
     );
   }
 

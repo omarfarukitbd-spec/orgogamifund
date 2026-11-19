@@ -3,18 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_strings.dart';
-import '../models/member.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/skeleton_loader.dart';
+import 'member/edit_member_dialog.dart';
+import 'profile/edit_profile_dialog.dart';
 import 'profile/profile_settings_section.dart';
-
-final memberDetailStreamProvider =
-    StreamProvider.autoDispose.family<Member?, String>(
-  (ref, id) => ref.watch(firestoreServiceProvider).watchMember(id),
-);
 
 /// প্রোফাইল ও সেটিংস — নিজের তথ্য, পাসবই, আইডি কার্ড, থিম ও ভাষা নির্বাচন
 class ProfileScreen extends ConsumerWidget {
@@ -38,10 +34,13 @@ class ProfileScreen extends ConsumerWidget {
       ),
       data: (user) {
         final memberId = user?.linkedMemberId;
+        // M8: আলাদা করে বানানো memberDetailStreamProvider নয় —
+        // শেয়ার্ড টপ-লেভেল memberStreamProvider ব্যবহার হয়।
         final memberAsync = memberId == null
             ? null
-            : ref.watch(memberDetailStreamProvider(memberId));
+            : ref.watch(memberStreamProvider(memberId));
         final member = memberAsync?.valueOrNull;
+        final isAdmin = user?.isAdmin ?? false;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -50,55 +49,95 @@ class ProfileScreen extends ConsumerWidget {
             children: [
               // ব্যবহারকারী প্রোফাইল কার্ড
               AppCard(
-                child: Row(
+                child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 32,
-                      backgroundColor:
-                          theme.colorScheme.primary.withValues(alpha: 0.1),
-                      backgroundImage: member?.photoUrl != null &&
-                              member!.photoUrl!.isNotEmpty
-                          ? NetworkImage(member.photoUrl!)
-                          : null,
-                      child: member?.photoUrl == null ||
-                              member!.photoUrl!.isEmpty
-                          ? Icon(
-                              Icons.person_outlined,
-                              size: 36,
-                              color: theme.colorScheme.primary,
-                            )
-                          : null,
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 32,
+                          backgroundColor:
+                              theme.colorScheme.primary.withValues(alpha: 0.1),
+                          backgroundImage: member?.photoUrl != null &&
+                                  member!.photoUrl!.isNotEmpty
+                              ? NetworkImage(member.photoUrl!)
+                              : null,
+                          child: member?.photoUrl == null ||
+                                  member!.photoUrl!.isEmpty
+                              ? Icon(
+                                  Icons.person_outlined,
+                                  size: 36,
+                                  color: theme.colorScheme.primary,
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                member?.name ??
+                                    user?.name ??
+                                    user?.email ??
+                                    'সদস্য',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${AppStrings.memberCountLabel}: ${member?.id ?? '—'}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              Text(
+                                'ফোন: ${member?.phone ?? '—'}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    if (user != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
                         children: [
-                          Text(
-                            member?.name ?? user?.email ?? 'সদস্য',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
+                          TextButton.icon(
+                            onPressed: () => showDialog(
+                              context: context,
+                              builder: (_) =>
+                                  EditProfileDialog(user: user),
                             ),
+                            icon: const Icon(Icons.edit_outlined, size: 16),
+                            label: const Text('নাম বদলান'),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${AppStrings.memberCountLabel}: ${member?.id ?? '—'}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.colorScheme.onSurfaceVariant,
+                          // সদস্যের রেকর্ড (ফোন/ঠিকানা/ছবি)
+                          // শুধু অ্যাডমিন বদলাতে পারে (rules)।
+                          if (isAdmin && member != null) ...[
+                            const Spacer(),
+                            TextButton.icon(
+                              onPressed: () => showDialog(
+                                context: context,
+                                builder: (_) =>
+                                    EditMemberDialog(member: member),
+                              ),
+                              icon: const Icon(
+                                Icons.badge_outlined,
+                                size: 16,
+                              ),
+                              label: const Text('সদস্য তথ্য বদলান'),
                             ),
-                          ),
-                          Text(
-                            'ফোন: ${member?.phone ?? '—'}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
+                          ],
                         ],
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
