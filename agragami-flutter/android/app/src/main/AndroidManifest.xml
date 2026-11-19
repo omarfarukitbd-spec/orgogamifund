@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="agragami_fund"
+        android:label="অগ্রগামী ফান্ড"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

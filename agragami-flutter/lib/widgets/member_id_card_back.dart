@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../models/member.dart';
 import '../theme/app_theme.dart';
+import '../utils/member_qr.dart';
 
 /// কার্ডের পেছন দিক — সবুজ পটভূমি, জরুরি যোগাযোগ, সই ও কিউআর ছক।
 class MemberIdCardBack extends StatelessWidget {
@@ -65,9 +67,20 @@ class MemberIdCardBack extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: CustomPaint(
-                    size: const Size(76, 76),
-                    painter: QrPatternPainter(seed: member.id),
+                  // M7: আসল QR কোড — স্ক্যান করলে সদস্যের
+                  // পরিচয় পাওয়া যায় (আগে মনগড়া ছক ছিল)।
+                  child: QrImageView(
+                    data: MemberQr.dataFor(member.id),
+                    version: QrVersions.auto,
+                    size: 76,
+                    padding: EdgeInsets.zero,
+                    backgroundColor: Colors.white,
+                    errorCorrectionLevel: QrErrorCorrectLevel.M,
+                    errorStateBuilder: (context, error) => const Icon(
+                      Icons.qr_code_2_outlined,
+                      size: 48,
+                      color: AppColors.muted,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -122,68 +135,4 @@ class _SignLine extends StatelessWidget {
       ),
     );
   }
-}
-
-/// সদস্য নম্বর থেকে বানানো কোডের মতো ছক
-class QrPatternPainter extends CustomPainter {
-  final String seed;
-
-  QrPatternPainter({required this.seed});
-
-  List<List<bool>> grid() {
-    const size = 21;
-    var hash = 7;
-    for (final code in seed.codeUnits) {
-      hash = (hash * 31 + code) & 0x7fffffff;
-    }
-    var state = hash == 0 ? 12345 : hash;
-    bool next() {
-      state = (state * 1103515245 + 12345) & 0x7fffffff;
-      return state % 2 == 0;
-    }
-
-    final g = List.generate(
-      size,
-      (_) => List.generate(size, (_) => next()),
-    );
-    for (final corner in [
-      (0, 0),
-      (0, size - 7),
-      (size - 7, 0),
-    ]) {
-      for (var r = 0; r < 7; r++) {
-        for (var c = 0; c < 7; c++) {
-          final onBorder = r == 0 || r == 6 || c == 0 || c == 6;
-          final inCenter = r >= 2 && r <= 4 && c >= 2 && c <= 4;
-          g[corner.$1 + r][corner.$2 + c] = onBorder || inCenter;
-        }
-      }
-    }
-    return g;
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final g = grid();
-    final cell = size.width / g.length;
-    final paint = Paint()..color = AppColors.ink;
-    for (var r = 0; r < g.length; r++) {
-      for (var c = 0; c < g.length; c++) {
-        if (g[r][c]) {
-          canvas.drawRect(
-            Rect.fromLTWH(c * cell, r * cell, cell, cell),
-            paint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant QrPatternPainter oldDelegate) =>
-      oldDelegate.seed != seed;
-}
-
-List<List<bool>> qrPatternGrid(String seed) {
-  return QrPatternPainter(seed: seed).grid();
 }

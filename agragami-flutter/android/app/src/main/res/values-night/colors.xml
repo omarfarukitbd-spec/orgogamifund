@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- m15: ডার্ক মোডে চালুর পর্দা সাদা ঝলক দেয় না। -->
+    <color name="launch_background">#111412</color>
+</resources>

@@ -35,6 +35,10 @@ dependencies:
   # ছবি তোলা ও ফাইল বাছাই — সদস্যের ছবি ও এনআইডির জন্য
   image_picker: ^1.1.2
   file_picker: ^8.1.2
+  # সদস্য কার্ডের আসল QR কোড (M7) — qr প্যাকেজ PDF-এ
+  # মডিউল আঁকার জন্য, qr_flutter স্ক্রিনে দেখানোর জন্য
+  qr_flutter: ^4.1.0
+  qr: ^3.0.0
   # সহজ ইউটিলিটি
   intl: ^0.20.3
   url_launcher: ^6.3.0
@@ -52,7 +56,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-    - assets/icons/
     - assets/fonts/
   # অ্যাপের ফন্ট — কালপুরুষ। Regular অফিসিয়াল v0.258;
   # Bold-এর অফিসিয়াল সংস্করণ নেই বলে Regular থেকে বানানো

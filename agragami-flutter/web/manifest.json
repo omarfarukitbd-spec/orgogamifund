@@ -1,11 +1,11 @@
 {
-    "name": "agragami_fund",
-    "short_name": "agragami_fund",
+    "name": "অগ্রগামী ফান্ড",
+    "short_name": "অগ্রগামী ফান্ড",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B6B3A",
+    "theme_color": "#0B6B3A",
+    "description": "অগ্রগামী ফান্ড — দাখিল ব্যাচ ২০১৫-এর সুদমুক্ত কল্যাণ তহবিল।",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

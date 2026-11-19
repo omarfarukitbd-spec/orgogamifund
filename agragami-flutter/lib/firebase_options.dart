@@ -2,7 +2,8 @@
 // রিপো omarfarukitbd-spec/orgogamifund-এর google-services.json থেকে নেওয়া,
 // পুরোনো Kotlin অ্যাপের Firebase প্রজেক্টের সাথে একই — তাই পুরোনো
 // Firestore ডেটা যেমন আছে তেমনই ব্যবহার হবে।
-// এই ফাইল .gitignore-এ আছে — রিপোতে তুলবেন না।
+// এই ফাইল রিপোতে আছে — Firebase-এর কনফিগ মানগুলো গোপন নয়,
+// এগুলো পাবলিক শনাক্তকারী (আসল নিরাপত্তা Firestore rules-এ)।
 // iOS: রিপোতে GoogleService-Info.plist নেই, তাই iOS অপশন এখানে নেই।
 // iPhone-এ চালাতে Firebase Console থেকে iOS অ্যাপ নিবন্ধন করে
 // `flutterfire configure` চালাতে হবে।

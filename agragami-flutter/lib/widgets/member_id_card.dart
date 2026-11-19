@@ -4,6 +4,7 @@ import '../models/branch.dart';
 import '../models/member.dart';
 import '../theme/app_theme.dart';
 import 'app_icon.dart';
+import 'skeleton_loader.dart';
 
 export 'member_id_card_back.dart';
 
@@ -120,7 +121,21 @@ class _PhotoBox extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: url != null && url.isNotEmpty
-          ? Image.network(url, fit: BoxFit.cover)
+          ? Image.network(
+              url,
+              fit: BoxFit.cover,
+              // m8: ছবি আসার সময় ঝাপসা বাক্স, না পাওয়া
+              // গেলে ভাঙা ছবির বদলে ব্যক্তির আইকন।
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return const SkeletonLoader(height: 106, width: 88);
+              },
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.person_outlined,
+                size: 44,
+                color: AppColors.green,
+              ),
+            )
           : const Icon(
               Icons.person_outlined,
               size: 44,
@@ -163,7 +178,10 @@ class _Field extends StatelessWidget {
 }
 
 String _dateText(DateTime date) {
-  return '${date.day}/${date.month}/${date.year}';
+  // m9: শূন্য দিয়ে ভরাট — 5/3/2026 নয়, 05/03/2026।
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  return '$day/$month/${date.year}';
 }
 
 /// কার্ডের চওড়া-লম্বার অনুপাত (CR80)।

@@ -10,7 +10,6 @@ import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/not_member_gate.dart';
 import '../widgets/skeleton_loader.dart';
 import 'samiti/create_samiti_dialog.dart';
 

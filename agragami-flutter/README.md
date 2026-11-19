@@ -47,9 +47,11 @@ lib/
 - কনফিগ বসানো আছে — রিপো `omarfarukitbd-spec/orgogamifund`-এর
   `google-services.json` থেকে নেওয়া:
   `lib/firebase_options.dart` (Android + Web) আর
-  `android/app/google-services.json`। দুটোই `.gitignore`-এ আছে,
-  রিপোতে যাবে না।
-- Android প্যাকেজ নাম পুরোনো অ্যাপেরটাই — `com.helptrickbd.ogrogamifund`,
+  `android/app/google-services.json`। দুটোই রিপোতে আছে —
+  Firebase-এর এই কনফিগ মানগুলো গোপন নয়, এগুলো পাবলিক
+  শনাক্তকারী (আসল নিরাপত্তা Firestore rules-এ); তাই
+  `.gitignore`-এ রাখা হয়নি।
+- Android প্যাকেজ নাম পুরোনো অ্যাপেরটাই — `com.helptrickbd.ogrogami.app`,
   কারণ Firebase-এ এই নামেই Android অ্যাপ নিবন্ধিত আছে।
 - iOS-এর কনফিগ এখনো নেই — রিপোতে `GoogleService-Info.plist` নেই।
   iPhone-এ চালাতে Firebase Console থেকে iOS অ্যাপ নিবন্ধন করে

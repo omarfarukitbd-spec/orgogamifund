@@ -6,39 +6,46 @@ import '../theme/app_theme.dart';
 class AppIcon extends StatelessWidget {
   final IconData icon;
   final double size;
-  final Color color;
+  final Color? color;
 
-  const AppIcon(this.icon, {super.key, this.size = 24, this.color = AppColors.green});
+  const AppIcon(this.icon, {super.key, this.size = 24, this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Icon(icon, size: size, color: color);
+    // m6: ডিফল্ট রং থিমের primary — হালকা সবুজ ডার্ক
+    // মোডে ফিকে দেখাত।
+    return Icon(
+      icon,
+      size: size,
+      color: color ?? Theme.of(context).colorScheme.primary,
+    );
   }
 }
 
 /// রঙিন টাইলের ভেতরে আইকন — কার্ড আর তালিকায় ব্যবহার হবে।
 class IconTile extends StatelessWidget {
   final IconData icon;
-  final Color background;
-  final Color color;
+  final Color? background;
+  final Color? color;
 
   const IconTile({
     super.key,
     required this.icon,
-    this.background = AppColors.greenSoft,
-    this.color = AppColors.green,
+    this.background,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: background,
+        color: background ?? scheme.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(icon, color: color, size: 26),
+      child: Icon(icon, color: color ?? scheme.primary, size: 26),
     );
   }
 }
@@ -67,6 +74,19 @@ class AgragamiLogo extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
+        // m8: লোগো না পাওয়া গেলে ভাঙা ছবির বদলে অক্ষর।
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: AppColors.green,
+          alignment: Alignment.center,
+          child: Text(
+            'অ',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: size * 0.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
       ),
     );
   }

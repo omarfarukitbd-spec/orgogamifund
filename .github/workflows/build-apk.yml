@@ -1,9 +1,10 @@
 name: Build & Release Flutter APK
 
+# m19: রিলিজ শুধু v* ট্যাগ আর হাতে চালানো (workflow_dispatch)
+# থেকে হয় — main-এ প্রতিটা push-এ আর রিলিজ বানানো হয় না।
+# analyze/test গেট আলাদা ci.yml-এ চলে।
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -34,9 +35,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      # m19: Flutter পিন করা — channel: stable-এ ভবিষ্যতে 3.51+
+      # এলে বিল্ড ভাঙতে পারে।
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.50.0'
           channel: 'stable'
           cache: true
 
@@ -50,21 +54,46 @@ jobs:
             echo "Copied google-services.json from app/ to agragami-flutter/android/app/"
           fi
 
-      - name: Setup Consistent Debug Keystore
+      # M1: রিলিজ keystore GitHub secrets থেকে আসে — রিপোতে
+      # কোনো keystore নেই। Secrets (Settings → Secrets and
+      # variables → Actions): ANDROID_KEYSTORE_BASE64
+      # (ogrogami-release.jks-এর base64), ANDROID_KEYSTORE_PASSWORD,
+      # ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD।
+      # Secrets না থাকলে Gradle ডিবাগ সই দিয়ে বানায় — টেস্টের
+      # জন্য চলে, Play Store-এ যাবে না।
+      - name: Set up release signing keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         run: |
-          mkdir -p ~/.android
-          if [ -f "agragami-flutter/android/app/debug.keystore" ]; then
-            cp agragami-flutter/android/app/debug.keystore ~/.android/debug.keystore
-            echo "Installed local debug.keystore into ~/.android/debug.keystore"
-          fi
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > agragami-flutter/android/app/release.keystore
+          cat > agragami-flutter/android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=release.keystore
+          EOF
+          echo "Release keystore installed; the APK will be signed with it."
+
+      - name: Warn if release signing is not configured
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 == '' }}
+        run: |
+          echo "::warning::ANDROID_KEYSTORE_BASE64 secret is not set — the APK will be debug-signed (test-only, not Play Store ready). See fix-04-app-shell.md for the 4 secrets to add."
 
       - name: Install Flutter Dependencies
         working-directory: agragami-flutter
         run: flutter pub get
 
+      - name: Read app version from pubspec
+        id: version
+        run: |
+          VERSION=$(grep '^version:' agragami-flutter/pubspec.yaml | sed 's/version: //' | cut -d+ -f1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "App version: $VERSION"
+
       - name: Build Release APK
         working-directory: agragami-flutter
-        run: flutter build apk --release
+        # m20: build number প্রতি রানে বাড়ে — একই সংস্করণের
+        # দুই বিল্ড আলাদা থাকে, আপডেট চিনতে পারে।
+        run: flutter build apk --release --build-number=${{ github.run_number }}
 
       - name: Rename APK with Build Details
         run: |
@@ -81,13 +110,15 @@ jobs:
           retention-days: 30
 
       - name: Publish GitHub Release (Direct Download)
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true) || github.ref == 'refs/heads/main'
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0-flutter-build-${{ github.run_number }}
-          name: Ogrogami Fund Somithi ERP - Flutter Build #${{ github.run_number }}
+          # ট্যাগ থেকে চালালে ট্যাগটাই রিলিজের নাম; হাতে চালালে
+          # pubspec-এর সংস্করণ + রান নম্বর থেকে বানানো হয়।
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}-build-{1}', steps.version.outputs.version, github.run_number) }}
+          name: OgroGami Fund — ${{ github.ref_type == 'tag' && github.ref_name || format('v{0} build #{1}', steps.version.outputs.version, github.run_number) }}
           body: |
-            Automated Android APK build from GitHub Actions for Ogrogami Fund Somithi ERP (Flutter).
+            Automated Android APK build from GitHub Actions for OgroGami Fund (Flutter).
 
             Commit: `${{ github.sha }}`
             Branch: `${{ github.ref_name }}`

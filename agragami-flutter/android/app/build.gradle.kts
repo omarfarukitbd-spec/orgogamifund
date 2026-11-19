@@ -1,9 +1,34 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// M1: রিলিজ সইয়ের চাবি — android/key.properties থেকে পড়া হয়
+// (ফাইলটা .gitignore-এ আছে, রিপোতে যায় না)। ফাইল না থাকলে
+// রিলিজ ডিবাগ চাবি দিয়ে সই হয় (শুধু নিজের পরীক্ষার জন্য) —
+// Play Store-এ দেওয়ার APK সবসময় আসল চাবি দিয়ে সই করতে হবে।
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
+} else {
+    logger.warn(
+        "key.properties not found — release APK will be signed with the " +
+            "debug key. See android/key.properties.example."
+    )
+}
+
+fun keystoreProp(name: String): String =
+    keystoreProperties[name] as? String
+        ?: throw GradleException(
+            "key.properties is missing '$name' — " +
+                "see android/key.properties.example"
+        )
 
 android {
     // পুরোনো Kotlin অ্যাপের প্যাকেজ নাম — Firebase-এ এই নামেই
@@ -33,13 +58,14 @@ android {
     }
 
     signingConfigs {
-        getByName("debug") {
-            val keystoreFile = file("debug.keystore")
-            if (keystoreFile.exists()) {
-                storeFile = keystoreFile
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
+        // ডিবাগ সই: AGP-র ডিফল্ট ~/.android/debug.keystore ব্যবহার
+        // হয় — রিপোতে কমিট করা debug.keystore আর নেই (M1)।
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProp("keyAlias")
+                keyPassword = keystoreProp("keyPassword")
+                storeFile = file(keystoreProp("storeFile"))
+                storePassword = keystoreProp("storePassword")
             }
         }
     }
@@ -53,8 +79,10 @@ android {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // key.properties থাকলে আসল রিলিজ চাবি, না থাকলে
+            // ডিবাগ চাবি (শুধু স্থানীয় পরীক্ষার জন্য)।
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
     }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_strings.dart';
+import '../routes/app_router.dart';
 import '../services/notification_service.dart';
 import 'app_icon.dart';
 
@@ -50,6 +51,15 @@ class AgragamiAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                 ),
+                // m10: সব পড়া হিসেবে দাগানো — ব্যাজ শূন্য হয়।
+                if (notifications.isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      markAllNotificationsRead(ref);
+                      Navigator.pop(ctx);
+                    },
+                    child: Text(AppStrings.markAllRead),
+                  ),
                 IconButton(
                   onPressed: () => Navigator.pop(ctx),
                   icon: const Icon(Icons.close),
@@ -62,9 +72,7 @@ class AgragamiAppBar extends ConsumerWidget implements PreferredSizeWidget {
                 padding: const EdgeInsets.symmetric(vertical: 32),
                 child: Center(
                   child: Text(
-                    isBn
-                        ? 'কোনো নতুন নোটিফিকেশন নেই'
-                        : 'No new notifications',
+                    isBn ? 'কোনো নতুন নোটিফিকেশন নেই' : 'No new notifications',
                     style: const TextStyle(fontSize: 15, color: Colors.grey),
                   ),
                 ),
@@ -137,15 +145,10 @@ class AgragamiAppBar extends ConsumerWidget implements PreferredSizeWidget {
             () {
               if (context.canPop()) {
                 context.pop();
-              } else if (location.startsWith('/samiti/')) {
-                context.go('/samiti');
-              } else if (location.startsWith('/expenses/add')) {
-                context.go('/expenses');
-              } else if (location.startsWith('/loans/add') ||
-                  (location.startsWith('/loans/') && location != '/loans')) {
-                context.go('/loans');
               } else {
-                context.go('/home');
+                // m11: ফিরে যাওয়ার নিয়ম এক জায়গায়
+                // (backFallbackLocation) — খোলসের সাথে মেলে।
+                context.go(backFallbackLocation(location) ?? '/home');
               }
             },
       );

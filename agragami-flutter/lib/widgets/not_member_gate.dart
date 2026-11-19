@@ -1,31 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../l10n/app_strings.dart';
-import '../models/membership.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
 import 'app_button.dart';
-
-/// এখন ঢুকে থাকা ব্যবহারকারীর সব সমিতির সদস্যপদ —
-/// অনুমোদিত, বাকি, বাতিল — সবই আসে।
-/// ব্যক্তিগত তথ্য দেখানোর আগে স্ক্রিনগুলো এখান থেকে
-/// দেখে নেয় ব্যবহারকারী ওই সমিতির সদস্য কি না।
-final myMembershipsProvider = StreamProvider<List<Membership>>((ref) {
-  final user = ref.watch(currentUserProvider).valueOrNull;
-  final uid = user?.id ?? '';
-  if (uid.isEmpty) return const Stream<List<Membership>>.empty();
-  return ref.watch(firestoreServiceProvider).watchMyMemberships(uid);
-});
-
-/// সদস্যপদের তালিকা থেকে অনুমোদিত সমিতিগুলোর id —
-/// শুধু সেগুলোরই ব্যক্তিগত তথ্য দেখানো যাবে।
-List<String> approvedBranchIds(List<Membership> memberships) {
-  return memberships
-      .where((m) => m.isApproved)
-      .map((m) => m.branchId)
-      .toList();
-}
 
 /// সদস্য নয় — তাই তথ্য দেখানো যাবে না।
 /// কোনো নাম, টাকার সংখ্যা বা বকেয়া এখানে আসে না —
@@ -40,6 +16,9 @@ class NotMemberGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasBranch = branchId != null && branchId!.isNotEmpty;
+    // m6: থিম থেকে রং — হার্ড-কোড করা সবুজ/ধূসর ডার্ক
+    // মোডে ফিকে দেখাত।
+    final scheme = Theme.of(context).colorScheme;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -50,13 +29,13 @@ class NotMemberGate extends StatelessWidget {
             width: 96,
             height: 96,
             decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.1),
+              color: scheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.lock_outlined,
               size: 48,
-              color: Colors.green,
+              color: scheme.primary,
             ),
           ),
           const SizedBox(height: 16),
@@ -72,10 +51,8 @@ class NotMemberGate extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            hasBranch
-                ? AppStrings.notMemberBody
-                : AppStrings.notMemberAnyBody,
-            style: const TextStyle(fontSize: 15.5, color: Colors.grey),
+            hasBranch ? AppStrings.notMemberBody : AppStrings.notMemberAnyBody,
+            style: TextStyle(fontSize: 15.5, color: scheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),

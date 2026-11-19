@@ -59,7 +59,10 @@ String bengaliAuthErrorMessage(FirebaseAuthException e) {
 }
 
 /// লগইন, লগআউট আর অনুমোদনের অবস্থা দেখার কাজ এখানে।
-final authServiceProvider = Provider<AuthService>((ref) => AuthService());
+/// m25: একটাই শেয়ার্ড ইনস্ট্যান্স — প্রোভাইডার আর
+/// Riverpod-এর বাইরের জায়গা (রাউটার, main) একইটা ব্যবহার করে।
+final authServiceProvider =
+    Provider<AuthService>((ref) => AuthService.instance);
 
 final currentUserProvider = StreamProvider<AppUser?>((ref) {
   final service = ref.watch(authServiceProvider);
@@ -67,8 +70,13 @@ final currentUserProvider = StreamProvider<AppUser?>((ref) {
 });
 
 class AuthService {
+  static final AuthService instance = AuthService._();
+
+  AuthService._();
+  factory AuthService() => instance;
+
   final FirebaseService _fb = FirebaseService.instance;
-  final FirestoreService _store = FirestoreService();
+  final FirestoreService _store = FirestoreService.instance;
 
   /// লাইভ ব্যবহারকারী স্ট্রিম — Auth বদলালে সংশ্লিষ্ট users
   /// ডকুমেন্টের snapshots() শোনা হয়, যাতে অ্যাডমিন অনুমোদন
@@ -82,11 +90,8 @@ class AuthService {
   Stream<AppUser?> watchCurrentUser() {
     return _fb.auth.authStateChanges().asyncExpand((user) {
       if (user == null) return Stream<AppUser?>.value(null);
-      return _fb.db
-          .collection(Collections.users)
-          .doc(user.uid)
-          .snapshots()
-          .map((doc) => doc.exists && doc.data() != null
+      return _fb.db.collection(Collections.users).doc(user.uid).snapshots().map(
+          (doc) => doc.exists && doc.data() != null
               ? AppUser.fromMap(user.uid, doc.data()!)
               : null);
     });

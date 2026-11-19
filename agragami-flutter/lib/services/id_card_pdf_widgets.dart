@@ -1,8 +1,9 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:qr/qr.dart';
 
 import '../models/member.dart';
-import '../widgets/member_id_card.dart';
+import '../utils/member_qr.dart';
 
 /// আইডি কার্ডের PDF তৈরির সাধারণ উইজেট ও বিল্ডার
 class IdCardPdfWidgets {
@@ -42,18 +43,28 @@ class IdCardPdfWidgets {
     );
   }
 
-  static pw.Widget qrGrid(String seed) {
-    final grid = qrPatternGrid(seed);
+  /// M7: আসল QR কোডের মডিউল — কার্ডের স্ক্রিনের QR-এর
+  /// সাথে একই তথ্য (MemberQr)। মডিউল সংখ্যা তথ্যের
+  /// দৈর্ঘ্য অনুযায়ী বদলায়, তাই সেলের মাপ হিসাব করে
+  /// পুরো কোড ~50pt চওড়া রাখা হয়।
+  static pw.Widget qrGrid(String memberId) {
+    final qrCode = QrCode.fromData(
+      data: MemberQr.dataFor(memberId),
+      errorCorrectLevel: QrErrorCorrectLevel.M,
+    );
+    final qrImage = QrImage(qrCode);
+    final count = qrImage.moduleCount;
+    final cell = 50 / count;
     return pw.Column(
       children: [
-        for (var r = 0; r < grid.length; r++)
+        for (var r = 0; r < count; r++)
           pw.Row(
             children: [
-              for (var c = 0; c < grid.length; c++)
+              for (var c = 0; c < count; c++)
                 pw.Container(
-                  width: 2.4,
-                  height: 2.4,
-                  color: grid[r][c] ? ink : PdfColors.white,
+                  width: cell,
+                  height: cell,
+                  color: qrImage.isDark(r, c) ? ink : PdfColors.white,
                 ),
             ],
           ),

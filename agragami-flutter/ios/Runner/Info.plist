@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>agragami_fund</string>
+	<string>Agragami Fund</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -26,6 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>সদস্যের ছবি তুলতে ক্যামেরা লাগে। Camera is used to take member photos.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>অ্যাপ লক খুলতে ফেস আইডি ব্যবহার হয়। Face ID unlocks the app lock.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>আইডি কার্ডের ছবি সংরক্ষণ করতে ফটো লাইব্রেরিতে লেখা লাগে। Needed to save ID card images to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>সদস্যের ছবি বাছতে ফটো লাইব্রেরি লাগে। Photo library is used to choose member photos.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

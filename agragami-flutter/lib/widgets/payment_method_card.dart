@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/payment_method.dart';
-import '../theme/app_theme.dart';
 import 'app_card.dart';
 
 /// পেমেন্ট মাধ্যমের কার্ড — জমা আর কিস্তি, দুই জায়গায় একই চেহারা।
@@ -21,6 +20,7 @@ class PaymentMethodCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final icon = switch (method.type) {
       PaymentMethodType.mobileBanking => Icons.phone_android_outlined,
       PaymentMethodType.bank => Icons.account_balance_outlined,
@@ -34,10 +34,15 @@ class PaymentMethodCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: selected ? AppColors.greenTint : Colors.white,
+            // M8: থিম থেকে রং — ডার্ক মোডে সাদা কার্ডে হালকা
+            // লেখা আর দেখা যেত না।
+            color: selected
+                ? colorScheme.primary.withValues(alpha: 0.12)
+                : colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: selected ? AppColors.green : AppColors.line,
+              color:
+                  selected ? colorScheme.primary : colorScheme.outlineVariant,
               width: 2,
             ),
           ),
@@ -60,9 +65,9 @@ class PaymentMethodCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${method.typeLabel} • ${method.accountHolderName}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13.5,
-                        color: AppColors.muted,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -98,9 +103,9 @@ class PaymentMethodCard extends StatelessWidget {
                         method.instructions!.isNotEmpty)
                       Text(
                         method.instructions!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12.5,
-                          color: AppColors.muted,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                       ),
                   ],

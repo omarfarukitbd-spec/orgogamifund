@@ -10,7 +10,6 @@ import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
-import '../widgets/not_member_gate.dart';
 import 'home/home_samiti_section.dart';
 import 'passbook_screen.dart';
 

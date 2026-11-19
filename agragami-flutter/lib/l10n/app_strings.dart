@@ -7,6 +7,11 @@ class AppStrings {
 
   static String _s(String bn, String en) => isBangla ? bn : en;
 
+  // ভাষা — নাম সবসময় নিজের ভাষায় দেখানো হয়, যাতে
+  // ভাষা বদলানোর বোতাম সবাই চিনতে পারে।
+  static String get bangla => 'বাংলা';
+  static String get english => 'English';
+
   // সাধারণ
   static String get appName => _s('অগ্রগামী ফান্ড', 'Ogrogami Fund');
   static String get appTagline =>
@@ -55,10 +60,10 @@ class AppStrings {
   static String get googleAccountExistsDifferent => _s(
       'এই ইমেইল দিয়ে ইমেইল-পাসওয়ার্ডের অ্যাকাউন্ট আছে — সেইভাবে ঢুকুন',
       'An account exists with this email - please sign in with password');
-  static String get noAccount =>
-      _s('অ্যাকাউন্ট নেই? সদস্য হতে আবেদন করুন', 'No account? Apply for membership');
-  static String get firstSetupLink =>
-      _s('প্রথমবার অ্যাপ খুলছেন? অ্যাডমিন সেটআপ করুন', 'First time? Setup Admin');
+  static String get noAccount => _s('অ্যাকাউন্ট নেই? সদস্য হতে আবেদন করুন',
+      'No account? Apply for membership');
+  static String get firstSetupLink => _s(
+      'প্রথমবার অ্যাপ খুলছেন? অ্যাডমিন সেটআপ করুন', 'First time? Setup Admin');
   static String get loginWrong =>
       _s('ইমেইল বা পাসওয়ার্ড ভুল — আবার দেখুন', 'Invalid email or password');
   static String get loginNoNetwork =>
@@ -83,10 +88,11 @@ class AppStrings {
   static String get setupName => _s('আপনার নাম', 'Your Name');
   static String get setupButton =>
       _s('অ্যাডমিন অ্যাকাউন্ট বানান', 'Create Admin Account');
-  static String get setupAlreadyExists =>
-      _s('অ্যাডমিন আগেই তৈরি হয়েছে — লগইন করুন', 'Admin already exists - please log in');
-  static String get setupDone =>
-      _s('অ্যাডমিন অ্যাকাউন্ট তৈরি হয়েছে', 'Admin account created successfully');
+  static String get setupAlreadyExists => _s(
+      'অ্যাডমিন আগেই তৈরি হয়েছে — লগইন করুন',
+      'Admin already exists - please log in');
+  static String get setupDone => _s(
+      'অ্যাডমিন অ্যাকাউন্ট তৈরি হয়েছে', 'Admin account created successfully');
 
   // সাইন-আপ ও আবেদন
   static String get validEmail => _s('সঠিক ইমেইল দিন', 'Enter a valid email');
@@ -95,8 +101,9 @@ class AppStrings {
       'Password must be at least 6 characters');
   static String get passwordsDontMatch =>
       _s('দুটো পাসওয়ার্ড মেলেনি', 'Passwords do not match');
-  static String get emailInUse =>
-      _s('এই ইমেইল দিয়ে অ্যাকাউন্ট আছে — লগইন করুন', 'Email already in use - sign in');
+  static String get emailInUse => _s(
+      'এই ইমেইল দিয়ে অ্যাকাউন্ট আছে — লগইন করুন',
+      'Email already in use - sign in');
   static String get applyAccountFailed => _s(
       'অ্যাকাউন্ট খোলা যায়নি — আবার চেষ্টা করুন',
       'Account creation failed - try again');
@@ -127,8 +134,7 @@ class AppStrings {
   // বায়োমেট্রিক
   static String get biometricSuccess =>
       _s('বায়োমেট্রিক সফল হয়েছে', 'Biometric verified');
-  static String get biometricUnavailable => _s(
-      'এই ফোনে বায়োমেট্রিক চালু নেই',
+  static String get biometricUnavailable => _s('এই ফোনে বায়োমেট্রিক চালু নেই',
       'Biometrics are not available on this device');
   static String get biometricCancelled =>
       _s('বায়োমেট্রিক বাতিল', 'Verification cancelled');
@@ -140,22 +146,20 @@ class AppStrings {
   static String get totalFund => _s('মোট তহবিল', 'Total Fund');
   static String get totalMembers => _s('মোট সদস্য', 'Total Members');
   static String get dueThisMonth => _s('এই মাসে বকেয়া', 'Due This Month');
-  static String get pendingApprovals =>
-      _s('অনুমোদন বাকি', 'Pending Approvals');
-  static String get pendingDeposits =>
-      _s('জমা যাচাই বাকি', 'Pending Deposits');
+  static String get pendingApprovals => _s('অনুমোদন বাকি', 'Pending Approvals');
+  static String get pendingDeposits => _s('জমা যাচাই বাকি', 'Pending Deposits');
 
   // সমিতি
   static String get samitiList => _s('সমিতিসমূহ', 'Somithis');
-  static String get monthlyDonation =>
-      _s('মাসিক দান', 'Monthly Deposit');
+  static String get monthlyDonation => _s('মাসিক দান', 'Monthly Deposit');
   static String get createSamiti => _s('নতুন সমিতি খুলুন', 'Create Somithi');
   static String get samitiEmptyTitle =>
       _s('এখনো কোনো সমিতি তৈরি হয়নি', 'No Somithi created yet');
-  static String get samitiEmptyBody =>
-      _s('অ্যাডমিন নতুন সমিতি খুললে এখানে দেখা যাবে।', 'New Somithis will appear here.');
-  static String get samitiEmptyAdminBody =>
-      _s('প্রথম সমিতিটা খুলে শুরু করুন।', 'Create the first Somithi to get started.');
+  static String get samitiEmptyBody => _s(
+      'অ্যাডমিন নতুন সমিতি খুললে এখানে দেখা যাবে।',
+      'New Somithis will appear here.');
+  static String get samitiEmptyAdminBody => _s('প্রথম সমিতিটা খুলে শুরু করুন।',
+      'Create the first Somithi to get started.');
   static String get samitiNameLabel => _s('সমিতির নাম', 'Somithi Name');
   static String get samitiPurposeLabel =>
       _s('সমিতির উদ্দেশ্য', 'Somithi Purpose');
@@ -163,15 +167,16 @@ class AppStrings {
       _s('বিবরণ (ঐচ্ছিক)', 'Description (Optional)');
   static String get samitiCreated =>
       _s('সমিতি খোলা হয়েছে', 'Somithi created successfully');
-  static String get samitiCreateFailed =>
-      _s('সমিতি খোলা যায়নি — আবার চেষ্টা করুন।', 'Failed to create Somithi - try again.');
+  static String get samitiCreateFailed => _s(
+      'সমিতি খোলা যায়নি — আবার চেষ্টা করুন।',
+      'Failed to create Somithi - try again.');
   static String get memberCountLabel => _s('সদস্য', 'Members');
   static String get joinSamiti =>
       _s('সদস্য হতে আবেদন করুন', 'Apply for Membership');
   static String get alreadyMember =>
       _s('আপনি এই সমিতির সদস্য', 'You are a member of this Somithi');
-  static String get applicationPending =>
-      _s('এই সমিতিতে আপনার আবেদন বাকি আছে', 'Your application is pending review');
+  static String get applicationPending => _s(
+      'এই সমিতিতে আপনার আবেদন বাকি আছে', 'Your application is pending review');
   static String get applicationRejected =>
       _s('আপনার আবেদনটি বাতিল হয়েছে', 'Your application was rejected');
   static String get notMemberTitle =>
@@ -185,14 +190,14 @@ class AppStrings {
       'হিসাব দেখতে প্রথমে কোনো একটা সমিতির সদস্য হতে আবেদন করুন।',
       'Please join a Somithi to view financial records.');
   static String get viewSamitis => _s('সমিতিগুলো দেখুন', 'View Somithis');
-  static String get alreadyAppliedForBranch =>
-      _s('এই সমিতিতে আপনার আবেদন বাকি আছে', 'Application already pending for this Somithi');
+  static String get alreadyAppliedForBranch => _s(
+      'এই সমিতিতে আপনার আবেদন বাকি আছে',
+      'Application already pending for this Somithi');
   static String get alreadyMemberOfBranch =>
       _s('আপনি এই সমিতির সদস্য', 'You are already a member of this branch');
-  static String get lockedBranchNote =>
-      _s('এই সমিতির জন্যই আবেদন করছেন', 'Applying specifically for this Somithi');
-  static String get membersOnlyNote => _s(
-      'সদস্য হলে ভেতরের হিসাব দেখা যাবে।',
+  static String get lockedBranchNote => _s(
+      'এই সমিতির জন্যই আবেদন করছেন', 'Applying specifically for this Somithi');
+  static String get membersOnlyNote => _s('সদস্য হলে ভেতরের হিসাব দেখা যাবে।',
       'Internal records become accessible upon approval.');
   static String get recountMembers =>
       _s('সদস্য সংখ্যা আবার গুনুন', 'Recount Members');
@@ -209,16 +214,16 @@ class AppStrings {
       _s('লেনদেন নম্বর (TrxID)', 'Transaction ID (TrxID)');
   static String get depositSubmit => _s('জমা দিন', 'Submit Deposit');
   static String get depositPending => _s('যাচাইাধীন', 'Pending Review');
-  static String get depositSent =>
-      _s('জমা পাঠানো হয়েছে — যাচাইাধীন', 'Deposit submitted - pending approval');
+  static String get depositSent => _s(
+      'জমা পাঠানো হয়েছে — যাচাইাধীন', 'Deposit submitted - pending approval');
   static String get depositApproved =>
       _s('জমা অনুমোদন হয়েছে', 'Deposit approved');
 
   // সদস্য হওয়ার আবেদন
   static String get applyTitle =>
       _s('সদস্য হওয়ার আবেদন', 'Membership Application');
-  static String get applySent =>
-      _s('আবেদন জমা হয়েছে — অ্যাডমিন দেখছেন', 'Application submitted for review');
+  static String get applySent => _s(
+      'আবেদন জমা হয়েছে — অ্যাডমিন দেখছেন', 'Application submitted for review');
   static String get applyApproved =>
       _s('সদস্য অনুমোদন হয়েছে', 'Membership approved');
 
@@ -226,8 +231,7 @@ class AppStrings {
   static String get passbookTitle => _s('আমার পাসবই', 'My Passbook');
   static String get totalDeposit => _s('মোট জমা', 'Total Deposit');
   static String get dues => _s('বকেয়া', 'Dues');
-  static String get activeLoan =>
-      _s('চলতি কর্জে হাসানা', 'Active Loan');
+  static String get activeLoan => _s('চলতি কর্জে হাসানা', 'Active Loan');
   static String get pendingDepositTotal =>
       _s('যাচাইাধীন জমা', 'Pending Deposits');
   static String get ledgerTitle => _s('লেনদেনের খাতা', 'Transaction Ledger');
@@ -248,8 +252,7 @@ class AppStrings {
   static String get addExpense => _s('খরচ লিখুন', 'Add Expense');
 
   // কর্জে হাসানা ঋণ
-  static String get loanTitle =>
-      _s('কর্জে হাসানা ঋণ', 'Qard Hasan (Loan)');
+  static String get loanTitle => _s('কর্জে হাসানা ঋণ', 'Qard Hasan (Loan)');
   static String get issueLoan => _s('ঋণ দিন', 'Disburse Loan');
   static String get loanDetail => _s('ঋণের বিস্তারিত', 'Loan Details');
 
@@ -268,8 +271,7 @@ class AppStrings {
   static String get cancel => _s('বাতিল', 'Cancel');
   static String get searchHint =>
       _s('নাম, ফোন বা সদস্য নম্বর লিখুন', 'Search by name, phone or ID');
-  static String get emptyTitle =>
-      _s('এখানে এখনো কিছু নেই', 'Nothing here yet');
+  static String get emptyTitle => _s('এখানে এখনো কিছু নেই', 'Nothing here yet');
   static String get loading => _s('আসছে…', 'Loading...');
   static String get tryAgain => _s('আবার চেষ্টা করুন', 'Try Again');
 
@@ -279,6 +281,22 @@ class AppStrings {
   static String get themeDark => _s('ডার্ক মোড', 'Dark Mode');
   static String get themeSystem => _s('সিস্টেম ডিফল্ট', 'System Default');
   static String get languageTitle => _s('ভাষা', 'Language');
-  static String get bangla => _s('বাংলা', 'Bangla');
-  static String get english => _s('ইংরেজি', 'English');
+  // চালুর ভুল আর পাওয়া-না-যাওয়া পাতা (M3, m1, m13)
+  static String get startupErrorTitle => _s(
+      'সার্ভারের সাথে যুক্ত হওয়া যায়নি', 'Could not connect to the server');
+  static String get startupErrorBody => _s(
+      'অ্যাপের তথ্যের ব্যবস্থা (Firebase) চালু হয়নি — নেট দেখে আবার চেষ্টা করুন।',
+      'The app backend (Firebase) did not start — check your connection and try again.');
+  static String get notFoundTitle =>
+      _s('এই পাতাটি পাওয়া যায়নি', 'Page not found');
+  static String get notFoundBody => _s(
+      'আপনি যে ঠিকানায় যেতে চেয়েছেন সেটা এই অ্যাপে নেই।',
+      'The address you opened does not exist in this app.');
+  static String get backHome => _s('হোমে ফিরে যান', 'Back to Home');
+  static String get markAllRead => _s('সব পড়া হয়েছে', 'Mark all read');
+  static String get somethingWrong =>
+      _s('কিছু একটা ভুল হয়েছে', 'Something went wrong');
+  static String get restartAppHint => _s(
+      'অ্যাপ বন্ধ করে আবার খুললে ঠিক হয়ে যেতে পারে।',
+      'Closing and reopening the app may fix it.');
 }

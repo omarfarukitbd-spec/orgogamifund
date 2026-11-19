@@ -15,7 +15,6 @@ import '../utils/date_parser.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/not_member_gate.dart';
 import '../widgets/skeleton_loader.dart';
 
 /// নোটিশ বোর্ড — সবার জন্য লেখা নোটিশ আর সভার কার্যবিবরণী।

@@ -2,6 +2,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_strings.dart';
 import 'firestore_providers.dart';
+import 'settings_service.dart';
+
+/// m10: পড়া নোটিফিকেশনের id — SettingsService-এ সংরক্ষিত
+/// থাকে, চালুর সময় main.dart-এ পড়ে override করা হয়।
+final readNotificationIdsProvider =
+    StateProvider<Set<String>>((ref) => const {});
+
+/// m10: সব নোটিফিকেশন পড়া হিসেবে দাগানো — id গুলো
+/// সংরক্ষিত হয়, ব্যাজ যাতে আবার না গোনে।
+Future<void> markAllNotificationsRead(WidgetRef ref) async {
+  final items = ref.read(notificationsListProvider);
+  final ids = <String>{
+    ...ref.read(readNotificationIdsProvider),
+    ...items.map((i) => i.id),
+  };
+  ref.read(readNotificationIdsProvider.notifier).state = ids;
+  await SettingsService.saveReadNotificationIds(ids);
+}
 
 enum NotificationType {
   approval,
@@ -35,6 +53,7 @@ class AppNotificationItem {
 final notificationsListProvider =
     Provider.autoDispose<List<AppNotificationItem>>((ref) {
   final isBn = AppStrings.isBangla;
+  final readIds = ref.watch(readNotificationIdsProvider);
   final pendingApps =
       ref.watch(pendingApplicationsProvider(null)).valueOrNull ?? [];
   final pendingPayments = ref.watch(pendingPaymentsProvider).valueOrNull ?? [];
@@ -44,9 +63,11 @@ final notificationsListProvider =
 
   // অপেক্ষমাণ আবেদন নোটিফিকেশন
   if (pendingApps.isNotEmpty) {
+    final id = 'pending_apps_${pendingApps.length}';
     items.add(
       AppNotificationItem(
-        id: 'pending_apps_${pendingApps.length}',
+        id: id,
+        isRead: readIds.contains(id),
         title: isBn
             ? '${pendingApps.length}টি সদস্য আবেদন অপেক্ষমাণ'
             : '${pendingApps.length} Pending Applications',
@@ -62,9 +83,11 @@ final notificationsListProvider =
 
   // অপেক্ষমাণ জমা নোটিফিকেশন
   if (pendingPayments.isNotEmpty) {
+    final id = 'pending_payments_${pendingPayments.length}';
     items.add(
       AppNotificationItem(
-        id: 'pending_payments_${pendingPayments.length}',
+        id: id,
+        isRead: readIds.contains(id),
         title: isBn
             ? '${pendingPayments.length}টি জমা যাচাই বাকি'
             : '${pendingPayments.length} Pending Deposits',
@@ -80,9 +103,11 @@ final notificationsListProvider =
 
   // সাম্প্রতিক নোটিশ
   for (final n in notices.take(3)) {
+    final id = 'notice_${n.id}';
     items.add(
       AppNotificationItem(
-        id: 'notice_${n.id}',
+        id: id,
+        isRead: readIds.contains(id),
         title: n.title,
         body: n.body,
         timestamp: n.postedAt,

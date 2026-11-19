@@ -62,8 +62,13 @@ class AppColors {
 }
 
 class AppTheme {
+  // m5: Material 3 থিমে 2021 টাইপ স্কেল — 2014-এর
+  // blackMountainView আর ব্যবহার হয় না।
   static TextTheme _textTheme(Color color) {
-    return Typography.blackMountainView.apply(
+    final base = Typography.material2021(
+      platform: TargetPlatform.android,
+    ).black;
+    return base.apply(
       bodyColor: color,
       displayColor: color,
       fontFamily: 'Kalpurush',

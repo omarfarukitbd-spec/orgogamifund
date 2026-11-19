@@ -6,13 +6,40 @@ import '../models/expense.dart';
 import '../models/loan.dart';
 import '../models/member.dart';
 import '../models/member_application.dart';
+import '../models/membership.dart';
 import '../models/notice.dart';
 import '../models/payment.dart';
 import '../models/payment_method.dart';
+import 'firebase_service.dart';
 import 'firestore_service.dart';
 
+/// এখন ঢুকে থাকা ব্যবহারকারীর সব সমিতির সদস্যপদ —
+/// অনুমোদিত, বাকি, বাতিল — সবই আসে।
+/// ব্যক্তিগত তথ্য দেখানোর আগে স্ক্রিনগুলো এখান থেকে
+/// দেখে নেয় ব্যবহারকারী ওই সমিতির সদস্য কি না।
+/// m25: আগে not_member_gate.dart-এ ছিল, প্রোভাইডারদের
+/// সাথে এখানে আনা হয়েছে। currentUserProvider-এর বদলে
+/// authStateChanges শোনা হয় — নইলে auth_service-এর সাথে
+/// চক্রাকার import হয়ে যেত।
+final myMembershipsProvider =
+    StreamProvider.autoDispose<List<Membership>>((ref) {
+  final service = ref.watch(firestoreServiceProvider);
+  return FirebaseService.instance.auth.authStateChanges().asyncExpand(
+    (user) {
+      if (user == null) return const Stream<List<Membership>>.empty();
+      return service.watchMyMemberships(user.uid);
+    },
+  );
+});
+
+/// সদস্যপদের তালিকা থেকে অনুমোদিত সমিতিগুলোর id —
+/// শুধু সেগুলোরই ব্যক্তিগত তথ্য দেখানো যাবে।
+List<String> approvedBranchIds(List<Membership> memberships) {
+  return memberships.where((m) => m.isApproved).map((m) => m.branchId).toList();
+}
+
 /// সমস্ত সক্রিয় সমিতির শেয়ার্ড লাইভ স্ট্রিম
-final branchesStreamProvider = StreamProvider<List<Branch>>((ref) {
+final branchesStreamProvider = StreamProvider.autoDispose<List<Branch>>((ref) {
   final service = ref.watch(firestoreServiceProvider);
   return service.watchBranches();
 });
@@ -28,7 +55,7 @@ final branchStreamProvider =
 
 /// সমিতি অনুযায়ী সদস্যদের শেয়ার্ড লাইভ স্ট্রিম
 final membersByBranchProvider =
-    StreamProvider.family<List<Member>, String>((ref, branchId) {
+    StreamProvider.autoDispose.family<List<Member>, String>((ref, branchId) {
   final service = ref.watch(firestoreServiceProvider);
   return service.watchMembers(branchId: branchId.isEmpty ? null : branchId);
 });
@@ -55,8 +82,7 @@ final membersForUserProvider =
 final membersByIdsProvider = FutureProvider.autoDispose
     .family<Map<String, Member>, String>((ref, joinedIds) {
   final service = ref.watch(firestoreServiceProvider);
-  final ids =
-      joinedIds.isEmpty ? const <String>[] : joinedIds.split(',');
+  final ids = joinedIds.isEmpty ? const <String>[] : joinedIds.split(',');
   return service.fetchMembersByIds(ids);
 });
 
@@ -71,7 +97,8 @@ final pendingApplicationsProvider = StreamProvider.autoDispose
 });
 
 /// অপেক্ষমাণ জমার শেয়ার্ড লাইভ স্ট্রিম
-final pendingPaymentsProvider = StreamProvider<List<Payment>>((ref) {
+final pendingPaymentsProvider =
+    StreamProvider.autoDispose<List<Payment>>((ref) {
   final service = ref.watch(firestoreServiceProvider);
   return service.watchPendingPayments();
 });
@@ -85,7 +112,7 @@ final memberPaymentsProvider =
 
 /// পেমেন্ট মেথড কনফিগের শেয়ার্ড লাইভ স্ট্রিম
 final paymentMethodsProvider =
-    StreamProvider<List<PaymentMethodConfig>>((ref) {
+    StreamProvider.autoDispose<List<PaymentMethodConfig>>((ref) {
   final service = ref.watch(firestoreServiceProvider);
   return service.watchAllPaymentMethods();
 });
@@ -101,7 +128,7 @@ final activePaymentMethodsProvider = StreamProvider.autoDispose
 });
 
 /// নোটিশ বোর্ডের শেয়ার্ড লাইভ স্ট্রিম
-final noticesStreamProvider = StreamProvider<List<Notice>>((ref) {
+final noticesStreamProvider = StreamProvider.autoDispose<List<Notice>>((ref) {
   final service = ref.watch(firestoreServiceProvider);
   return service.watchNotices();
 });
@@ -116,7 +143,7 @@ final noticesForBranchProvider =
 
 /// পরিচালনা কমিটির শেয়ার্ড লাইভ স্ট্রিম
 final committeeStreamProvider =
-    StreamProvider<List<CommitteeMember>>((ref) {
+    StreamProvider.autoDispose<List<CommitteeMember>>((ref) {
   final service = ref.watch(firestoreServiceProvider);
   return service.watchCommittee();
 });
@@ -177,9 +204,8 @@ final homeTotalsByBranchProvider =
 /// এক মাসের হিসাব — রিপোর্ট স্ক্রিনের জন্য।
 /// FutureBuilder-এ build()-এর ভেতরে _load() ডাকার বদলে
 /// এই প্রোভাইডার ব্যবহার হয়, যাতে rebuild-এ আবার না পড়ে।
-final monthReportProvider = FutureProvider.autoDispose.family<
-    MonthTotals,
-    ({int year, int month, String? branchId})>((ref, arg) {
+final monthReportProvider = FutureProvider.autoDispose
+    .family<MonthTotals, ({int year, int month, String? branchId})>((ref, arg) {
   final service = ref.watch(firestoreServiceProvider);
   return service.loadMonthTotals(
     year: arg.year,

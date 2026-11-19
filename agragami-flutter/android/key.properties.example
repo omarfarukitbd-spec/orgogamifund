@@ -1,0 +1,18 @@
+# অগ্রগামী ফান্ড — রিলিজ সইয়ের চাবির তথ্য (M1)।
+# এই ফাইলটা কপি করে android/key.properties নামে বসান আর
+# আসল মানগুলো লিখুন। key.properties .gitignore-এ আছে —
+# কখনো রিপোতে তুলবেন না।
+#
+# storeFile: রিলিজ কি-স্টোর ফাইলের পুরো পথ। এই মেশিনে
+# বানানো কি-স্টোর ~/ogrogami-release.jks-এ আছে (alias
+# ogrogami, RSA 2048, 10000 দিন)। নিজের PC-তে বানাতে হলে:
+#   keytool -genkeypair -keystore ogrogami-release.jks \
+#     -alias ogrogami -keyalg RSA -keysize 2048 -validity 10000
+# কি-স্টোর আর পাসওয়ার্ড হারালে Play Store-এর অ্যাপ আর
+# আপডেট করা যাবে না — নিরাপদ জায়গায় ব্যাকআপ রাখুন।
+# CI-তে (GitHub Actions) চাবি Secrets দিয়ে বসানো হয় —
+# দেখুন .github/workflows/build-apk.yml।
+storePassword=REPLACE_WITH_STORE_PASSWORD
+keyPassword=REPLACE_WITH_KEY_PASSWORD
+keyAlias=ogrogami
+storeFile=/absolute/path/to/ogrogami-release.jks

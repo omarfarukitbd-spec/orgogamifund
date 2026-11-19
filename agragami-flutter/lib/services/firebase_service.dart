@@ -19,18 +19,27 @@ class FirebaseService {
   FirebaseFirestore get db => FirebaseFirestore.instance;
 
   /// অ্যাপ চালুর সময় একবার ডাকতে হবে।
-  /// কনফিগ না থাকলে বা নেট না থাকলে ব্যর্থ হবে — তখন অ্যাপ
-  /// তবু খুলবে, Firebase-এর কাজ হবে না (main.dart-এ ধরা আছে)।
+  /// কনফিগ না থাকলে বা নেট না থাকলে ব্যর্থ হবে — তখন M3-এর
+  /// চালুর ভুলের পাতা দেখায়, আবার চেষ্টা করা যায়।
+  /// আবার ডাকা নিরাপদ: Firebase আগেই চালু থাকলে আবার
+  /// চালু করা হয় না, সেটিংসও দ্বিতীয়বার বসানো হয় না।
   Future<void> init() async {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    if (_ready) return;
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
     // সেটিংস ঠিক একবারই বসানো যায় — এখানেই চূড়ান্ত।
     // অফলাইন ক্যাশ সীমাহীন, যাতে পুরোনো ডেটা হারিয়ে না যায়।
-    db.settings = const Settings(
-      persistenceEnabled: true,
-      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-    );
+    // আগেই বসানো থাকলে (আবার চালুর চেষ্টায়) ভুল অবজ্ঞা
+    // করা হয় — মান একই।
+    try {
+      db.settings = const Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+      );
+    } catch (_) {}
     _ready = true;
   }
 }
@@ -40,6 +49,7 @@ class FirebaseService {
 class Collections {
   static const String branches = 'branches';
   static const String members = 'members';
+
   /// একজনের এক সমিতির সদস্যপদ — id: `${userId}_${branchId}`।
   static const String memberships = 'memberships';
   static const String memberApplications = 'memberApplications';

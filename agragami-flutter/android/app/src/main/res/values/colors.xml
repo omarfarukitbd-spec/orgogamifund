@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- m15: চালুর পর্দার পটভূমি — রাতের values-night/colors.xml-এ গাঢ় রং। -->
+    <color name="launch_background">#FFFFFF</color>
+    <!-- m14: অ্যাডাপটিভ আইকনের পটভূমি। -->
+    <color name="ic_launcher_background">#0B6B3A</color>
+</resources>

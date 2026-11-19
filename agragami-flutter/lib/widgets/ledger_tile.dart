@@ -27,8 +27,12 @@ class LedgerRowItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bg = isGold ? AppColors.goldSoft : AppColors.greenSoft;
-    final fg = isGold ? AppColors.goldDark : theme.colorScheme.primary;
+    // m6: থিম থেকে রং — হালকা প্যাস্টেল চিপ ডার্ক মোডে
+    // ফিকে দেখাত।
+    final bg = isGold
+        ? AppColors.dueContainer(context)
+        : AppColors.incomeContainer(context);
+    final fg = isGold ? AppColors.moneyDue(context) : theme.colorScheme.primary;
 
     return InkWell(
       onTap: onTap,
@@ -64,8 +68,8 @@ class LedgerRowItem extends StatelessWidget {
                         subtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontSize: 13,
-                          color:
-                              theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.55),
                         ),
                       ),
                     ],
@@ -77,7 +81,7 @@ class LedgerRowItem extends StatelessWidget {
                     fontSize: 14.5,
                     fontWeight: FontWeight.w700,
                     color: isIncome
-                        ? AppColors.green
+                        ? AppColors.moneyIncome(context)
                         : theme.colorScheme.onSurface,
                   ),
                 ),
@@ -88,7 +92,7 @@ class LedgerRowItem extends StatelessWidget {
             Divider(
               height: 1,
               thickness: 1,
-              color: AppColors.line.withValues(alpha: 0.7),
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.7),
             ),
         ],
       ),
@@ -132,8 +136,10 @@ class PillTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = backgroundColor ?? AppColors.goldSoft;
-    final fg = textColor ?? AppColors.goldDark;
+    // m6: ডিফল্ট রং থিম থেকে — হালকা সোনালি চিপ ডার্ক
+    // মোডে ফিকে দেখাত। স্পষ্ট রং দিলে সেটাই চলে।
+    final bg = backgroundColor ?? AppColors.dueContainer(context);
+    final fg = textColor ?? AppColors.moneyDue(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),

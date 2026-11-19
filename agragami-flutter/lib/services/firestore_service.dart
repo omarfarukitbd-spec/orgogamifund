@@ -40,6 +40,21 @@ final firestoreServiceProvider = Provider<FirestoreService>((ref) {
 
 /// ডোমেন রিপোজিটরিগুলোর সমন্বয়ে গঠিত একক ফেসাড সার্ভিস
 class FirestoreService {
+  /// m25: Riverpod-এর বাইরের জায়গা (রাউটার, AuthService)
+  /// এই একটাই শেয়ার্ড ইনস্ট্যান্স ব্যবহার করে — প্রতিবার
+  /// নতুন FirestoreService() বানানো হয় না।
+  static final FirestoreService instance = FirestoreService._internal();
+
+  FirestoreService._internal()
+      : _db = FirebaseService.instance.db,
+        audit = AuditRepository(),
+        branch = BranchRepository(),
+        member = MemberRepository(),
+        payment = PaymentRepository(),
+        expense = ExpenseRepository(),
+        loan = LoanRepository(),
+        governance = GovernanceRepository();
+
   final FirebaseFirestore _db;
   final AuditRepository audit;
   final BranchRepository branch;
@@ -264,7 +279,8 @@ class FirestoreService {
     required int month,
     String? branchId,
   }) =>
-      payment.fetchPaymentsForMonth(year: year, month: month, branchId: branchId);
+      payment.fetchPaymentsForMonth(
+          year: year, month: month, branchId: branchId);
 
   // ব্যয় মেথড
   Stream<List<Expense>> watchExpenses({String? branchId}) =>
@@ -291,7 +307,8 @@ class FirestoreService {
     required int month,
     String? branchId,
   }) =>
-      expense.fetchExpensesForMonth(year: year, month: month, branchId: branchId);
+      expense.fetchExpensesForMonth(
+          year: year, month: month, branchId: branchId);
   Future<List<Expense>> fetchRecentExpenses({
     String? branchId,
     int limit = 2,
@@ -319,7 +336,8 @@ class FirestoreService {
       loan.fetchLoans(branchId: branchId);
 
   // নোটিশ, কমিটি ও আবেদন মেথড
-  Stream<List<MemberApplication>> watchPendingApplications({String? branchId}) =>
+  Stream<List<MemberApplication>> watchPendingApplications(
+          {String? branchId}) =>
       governance.watchPendingApplications(branchId: branchId);
   Future<String> submitMemberApplication({
     required MemberApplication application,
@@ -343,7 +361,8 @@ class FirestoreService {
     required String reason,
     required String reviewedBy,
   }) =>
-      governance.rejectApplication(applicationId, reason: reason, reviewedBy: reviewedBy);
+      governance.rejectApplication(applicationId,
+          reason: reason, reviewedBy: reviewedBy);
   Stream<List<Notice>> watchNotices({String? branchId}) =>
       governance.watchNotices(branchId: branchId);
   Future<String> submitNotice({
@@ -386,8 +405,7 @@ class FirestoreService {
         _db.collection(Collections.expenses);
     Query<Map<String, dynamic>> membersQuery =
         _db.collection(Collections.members);
-    Query<Map<String, dynamic>> loansQuery =
-        _db.collection(Collections.loans);
+    Query<Map<String, dynamic>> loansQuery = _db.collection(Collections.loans);
     if (branchId != null) {
       paymentsQuery = paymentsQuery.where('branchId', isEqualTo: branchId);
       expensesQuery = expensesQuery.where('branchId', isEqualTo: branchId);
@@ -410,9 +428,9 @@ class FirestoreService {
           : total;
     });
     final expenseTotal = r[1].docs.fold<int>(
-      0,
-      (total, d) => total + ((d.data()['amount'] as num?)?.toInt() ?? 0),
-    );
+          0,
+          (total, d) => total + ((d.data()['amount'] as num?)?.toInt() ?? 0),
+        );
     final activeCount = r[2].docs.where((d) {
       final s = (d.data()['status'] as String?)?.toLowerCase();
       return s == null || (s != 'left' && s != 'inactive');

@@ -65,4 +65,24 @@ class SettingsService {
       await prefs.setBool(_biometricLockKey, enabled);
     } catch (_) {}
   }
+
+  /// m10: পড়া নোটিফিকেশনের id সংরক্ষণ — ব্যাজ যাতে
+  /// পড়া নোটিফিকেশন আবার না গোনে।
+  static const _readNotificationsKey = 'readNotificationIds';
+
+  static Future<Set<String>> loadReadNotificationIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getStringList(_readNotificationsKey)?.toSet() ?? {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<void> saveReadNotificationIds(Set<String> ids) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_readNotificationsKey, ids.toList());
+    } catch (_) {}
+  }
 }

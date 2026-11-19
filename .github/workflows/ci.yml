@@ -1,0 +1,50 @@
+name: CI
+
+# M10: প্রতিটা push আর pull request-এ analyze + test চলে —
+# ভাঙা কোড main-এ ঢোকার আগেই ধরা পড়ে। APK বানানো আলাদা
+# build-apk.yml-এ হয় (শুধু v* ট্যাগ আর হাতে চালানো থেকে)।
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'agragami-flutter/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'agragami-flutter/**'
+      - '.github/workflows/ci.yml'
+
+jobs:
+  analyze-and-test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Flutter Dependencies
+        working-directory: agragami-flutter
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: agragami-flutter
+        run: flutter analyze
+
+      - name: Test
+        working-directory: agragami-flutter
+        run: flutter test

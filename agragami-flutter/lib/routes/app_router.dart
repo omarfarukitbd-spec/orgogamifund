@@ -18,6 +18,7 @@ import '../screens/loan_detail_screen.dart';
 import '../screens/loan_list_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/member_application_screen.dart';
+import '../screens/not_found_screen.dart';
 import '../screens/notice_board_screen.dart';
 import '../screens/passbook_screen.dart';
 import '../screens/payment_methods_screen.dart';
@@ -33,10 +34,10 @@ import '../services/firestore_service.dart';
 /// অনুমোদনের অবস্থা দেখে রাস্তা বদলে দেওয়ার কাজ।
 /// লগইন করা ব্যবহারকারীর অবস্থা বদলালে রাউটারকে জানিয়ে দেয়।
 class _AuthRefresh extends ChangeNotifier {
-  // রাউটার Riverpod-এর বাইরে চলে — তাই এখানে একটাই শেয়ার্ড
-  // ইনস্ট্যান্স রাখা হয়, প্রতিবার নতুন বানানো হয় না (m11)।
-  final AuthService _auth = AuthService();
-  final FirestoreService _store = FirestoreService();
+  // রাউটার Riverpod-এর বাইরে চলে — তাই শেয়ার্ড সিঙ্গেলটন
+  // ইনস্ট্যান্স ব্যবহার হয়, প্রতিবার নতুন বানানো হয় না (m25)।
+  final AuthService _auth = AuthService.instance;
+  final FirestoreService _store = FirestoreService.instance;
 
   AppUser? user;
 
@@ -175,77 +176,46 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: '/splash',
     refreshListenable: _refresh,
-    redirect: (context, state) {
-      final user = _refresh.user;
-      final loc = state.matchedLocation;
-      final hasUsers = _refresh.hasUsers;
-      // m10: প্রথম তথ্য না আসা পর্যন্ত স্প্ল্যাশ — লগইন স্ক্রিন
-      // ক্ষণিকের জন্য দেখিয়ে বিভ্রান্ত করা হয় না।
-      if (!_refresh.authResolved) {
-        return loc == '/splash' ? null : '/splash';
-      }
-      // কেউ নেই — প্রথম অ্যাডমিন না বানানো পর্যন্ত শুধু সেটআপ।
-      // (শুধু প্রমাণিত false হলেই — null মানে অজানা, সেটআপ নয়।)
-      if (hasUsers == false) {
-        return loc == '/setup' ? null : '/setup';
-      }
-      // B1 fail-closed: সেটআপ খুলবে শুধু hasUsers == false
-      // প্রমাণিত হলে। এখানে আসা মানেই hasUsers true বা অজানা —
-      // দুই ক্ষেত্রেই সেটআপ বন্ধ।
-      if (loc == '/setup') {
-        return user == null ? '/login' : '/home';
-      }
-      const open = ['/login', '/apply'];
-      if (user == null) {
-        // Firebase-এ ঢুকে আছে কিন্তু users ডকুমেন্ট নেই
-        // (মুছে গেছে বা বানানো যায়নি) — প্রোফাইল-নেই অবস্থা।
-        if (_refresh.signedIn) {
-          return loc == '/pending' ? null : '/pending';
-        }
-        return open.contains(loc) ? null : '/login';
-      }
-      // B2: অনুমোদন ছাড়া ভেতরে ঢোকা যাবে না — pending/rejected
-      // শুধু /pending, /apply আর /login দেখতে পারে।
-      if (!user.canEnter) {
-        const allowed = ['/pending', '/apply', '/login'];
-        return allowed.contains(loc) ? null : '/pending';
-      }
-      // M11: অ্যাপ-লক চালু থাকলে আনলক না হওয়া পর্যন্ত শুধু /lock।
-      if (_refresh.appLocked) {
-        return loc == '/lock' ? null : '/lock';
-      }
-      if (loc == '/lock') {
-        return '/home';
-      }
-      if (loc == '/login' || loc == '/pending' || loc == '/splash') {
-        return '/home';
-      }
-      return null;
-    },
+    // m1: অজানা রাস্তায় বন্ধুত্বপূর্ণ "পাওয়া যায়নি" পাতা।
+    errorBuilder: (context, state) => const NotFoundScreen(),
+    redirect: (context, state) => resolveRedirect(
+      authResolved: _refresh.authResolved,
+      hasUsers: _refresh.hasUsers,
+      user: _refresh.user,
+      signedIn: _refresh.signedIn,
+      appLocked: _refresh.appLocked,
+      location: state.matchedLocation,
+    ),
     routes: [
       GoRoute(
         path: '/splash',
+        name: 'splash',
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
         path: '/lock',
+        name: 'lock',
         builder: (context, state) => const AppLockScreen(),
       ),
       GoRoute(
         path: '/login',
+        name: 'login',
         builder: (context, state) =>
             LoginScreen(notice: state.uri.queryParameters['notice']),
       ),
       GoRoute(
         path: '/setup',
+        name: 'setup',
         builder: (context, state) => const FirstAdminSetupScreen(),
       ),
       GoRoute(
         path: '/pending',
+        name: 'pending',
         builder: (context, state) => const PendingApprovalScreen(),
       ),
       GoRoute(
         path: '/apply',
+        name: 'apply',
         builder: (context, state) => MemberApplicationScreen(
           lockedBranchId: state.uri.queryParameters['branchId'],
         ),
@@ -255,80 +225,173 @@ class AppRouter {
         routes: [
           GoRoute(
             path: '/home',
+            name: 'home',
             builder: (context, state) => const HomeScreen(),
           ),
           GoRoute(
             path: '/samiti',
+            name: 'samiti',
             builder: (context, state) => const SamitiListScreen(),
           ),
           GoRoute(
             path: '/samiti/:id',
+            name: 'samitiDetail',
             builder: (context, state) => SamitiDetailScreen(
               branchId: state.pathParameters['id'] ?? '',
             ),
           ),
           GoRoute(
             path: '/deposit',
+            name: 'deposit',
             builder: (context, state) => const DepositScreen(),
           ),
           GoRoute(
             path: '/payment-methods',
+            name: 'paymentMethods',
             builder: (context, state) => const PaymentMethodsScreen(),
           ),
           GoRoute(
             path: '/profile',
+            name: 'profile',
             builder: (context, state) => const ProfileScreen(),
           ),
           GoRoute(
             path: '/passbook',
+            name: 'passbook',
             builder: (context, state) => const PassbookScreen(),
           ),
           GoRoute(
             path: '/id-card',
+            name: 'idCard',
             builder: (context, state) => const IdCardScreen(),
           ),
           GoRoute(
             path: '/approval',
+            name: 'approval',
             builder: (context, state) => const AdminApprovalScreen(),
           ),
           GoRoute(
             path: '/expenses',
+            name: 'expenses',
             builder: (context, state) => const ExpenseListScreen(),
           ),
           GoRoute(
             path: '/expenses/add',
+            name: 'addExpense',
             builder: (context, state) => const AddExpenseScreen(),
           ),
           GoRoute(
             path: '/loans',
+            name: 'loans',
             builder: (context, state) => const LoanListScreen(),
           ),
           GoRoute(
             path: '/loans/add',
+            name: 'addLoan',
             builder: (context, state) => const IssueLoanScreen(),
           ),
           GoRoute(
             path: '/loans/:id',
+            name: 'loanDetail',
             builder: (context, state) => LoanDetailScreen(
               loanId: state.pathParameters['id'] ?? '',
             ),
           ),
           GoRoute(
             path: '/reports',
+            name: 'reports',
             builder: (context, state) => const ReportScreen(),
           ),
           GoRoute(
             path: '/notices',
+            name: 'notices',
             builder: (context, state) => const NoticeBoardScreen(),
           ),
           GoRoute(
             path: '/committee',
+            name: 'committee',
             builder: (context, state) => const CommitteeScreen(),
           ),
         ],
       ),
     ],
   );
+}
+
+/// রিডিরেক্ট সিদ্ধান্ত — খাঁটি ফাংশন, যাতে টেস্ট করা যায় (m28)।
+/// null মানে রিডিরেক্ট নেই; স্ট্রিং মানে যেতে হবে ওই পাতায়।
+/// গার্ডের নিয়ম: ঢুকে না থাকলে লগইন; অনুমোদন না পেলে শুধু
+/// /pending, /apply আর /login; কেউ না থাকলে (প্রমাণিত) শুধু
+/// /setup; অজানা মানেই সেটআপ বন্ধ (B1 fail-closed)।
+String? resolveRedirect({
+  required bool authResolved,
+  required bool? hasUsers,
+  required AppUser? user,
+  required bool signedIn,
+  required bool appLocked,
+  required String location,
+}) {
+  // m10: প্রথম তথ্য না আসা পর্যন্ত স্প্ল্যাশ — লগইন স্ক্রিন
+  // ক্ষণিকের জন্য দেখিয়ে বিভ্রান্ত করা হয় না।
+  if (!authResolved) {
+    return location == '/splash' ? null : '/splash';
+  }
+  // কেউ নেই — প্রথম অ্যাডমিন না বানানো পর্যন্ত শুধু সেটআপ।
+  // (শুধু প্রমাণিত false হলেই — null মানে অজানা, সেটআপ নয়।)
+  if (hasUsers == false) {
+    return location == '/setup' ? null : '/setup';
+  }
+  // B1 fail-closed: সেটআপ খুলবে শুধু hasUsers == false
+  // প্রমাণিত হলে। এখানে আসা মানেই hasUsers true বা অজানা —
+  // দুই ক্ষেত্রেই সেটআপ বন্ধ।
+  if (location == '/setup') {
+    return user == null ? '/login' : '/home';
+  }
+  const open = ['/login', '/apply'];
+  if (user == null) {
+    // Firebase-এ ঢুকে আছে কিন্তু users ডকুমেন্ট নেই
+    // (মুছে গেছে বা বানানো যায়নি) — প্রোফাইল-নেই অবস্থা।
+    if (signedIn) {
+      return location == '/pending' ? null : '/pending';
+    }
+    return open.contains(location) ? null : '/login';
+  }
+  // B2: অনুমোদন ছাড়া ভেতরে ঢোকা যাবে না — pending/rejected
+  // শুধু /pending, /apply আর /login দেখতে পারে।
+  if (!user.canEnter) {
+    const allowed = ['/pending', '/apply', '/login'];
+    return allowed.contains(location) ? null : '/pending';
+  }
+  // M11: অ্যাপ-লক চালু থাকলে আনলক না হওয়া পর্যন্ত শুধু /lock।
+  if (appLocked) {
+    return location == '/lock' ? null : '/lock';
+  }
+  if (location == '/lock') {
+    return '/home';
+  }
+  if (location == '/login' || location == '/pending' || location == '/splash') {
+    return '/home';
+  }
+  return null;
+}
+
+/// m11: ফিরে যাওয়ার শেয়ার্ড নিয়ম — পেছনে যাওয়ার কিছু না
+/// থাকলে কোন পাতায় যাবে। /home-এ null ফেরে (সেখানে খোলস
+/// প্রস্থানের ডায়ালগ দেখায়)। home_shell আর agragami_app_bar
+/// দুই জায়গায় একই ফাংশন চলে, যাতে নিয়ম আলাদা না হয়।
+String? backFallbackLocation(String location) {
+  if (location.startsWith('/samiti/') && location != '/samiti') {
+    return '/samiti';
+  }
+  if (location.startsWith('/expenses/add')) {
+    return '/expenses';
+  }
+  if (location.startsWith('/loans/add') ||
+      (location.startsWith('/loans/') && location != '/loans')) {
+    return '/loans';
+  }
+  if (location != '/home') return '/home';
+  return null;
 }
 
 /// নিচের মেনুর ৪টা আইটেম — মোবাইলে এটাই প্রধান নেভিগেশন।
@@ -347,6 +410,8 @@ class BottomNavItem {
 const List<BottomNavItem> bottomNavItems = [
   BottomNavItem(path: '/home', icon: Icons.home_outlined, label: 'হোম'),
   BottomNavItem(path: '/samiti', icon: Icons.groups_outlined, label: 'সমিতি'),
-  BottomNavItem(path: '/deposit', icon: Icons.payments_outlined, label: 'জমা দিন'),
-  BottomNavItem(path: '/profile', icon: Icons.person_outlined, label: 'প্রোফাইল'),
+  BottomNavItem(
+      path: '/deposit', icon: Icons.payments_outlined, label: 'জমা দিন'),
+  BottomNavItem(
+      path: '/profile', icon: Icons.person_outlined, label: 'প্রোফাইল'),
 ];

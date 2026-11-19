@@ -9,18 +9,29 @@ import '../widgets/app_icon.dart';
 
 /// অ্যাপের খোলস — মোবাইলে নিচের মেনু, কম্পিউটারে বামের সাইডবার।
 /// পুরোনো অ্যাপের লেআউট কপি করা হয়নি — এটা নতুন করে সাজানো।
-class HomeShell extends StatelessWidget {
+class HomeShell extends StatefulWidget {
   final Widget child;
 
   const HomeShell({super.key, required this.child});
 
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
   static const double _desktopBreakpoint = 900;
 
-  int _indexFor(String location) {
+  /// m27: শেষ দেখা ট্যাব — ট্যাব-বহির্ভূত পাতায় (যেমন
+  /// /expenses/add) নিচের মেনু যাতে ভুল করে হোম না দেখায়,
+  /// আগের ট্যাবই হাইলাইট থাকে।
+  int _lastTabIndex = 0;
+
+  /// ট্যাবের ইনডেক্স — ট্যাব নয় এমন পাতায় null (m27)।
+  int? _indexFor(String location) {
     for (var i = 0; i < bottomNavItems.length; i++) {
       if (location.startsWith(bottomNavItems[i].path)) return i;
     }
-    return 0;
+    return null;
   }
 
   String _titleFor(String location) {
@@ -45,6 +56,10 @@ class HomeShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     final isDesktop = MediaQuery.of(context).size.width >= _desktopBreakpoint;
+    // m27: ট্যাবের পাতায় এলে শেষ ট্যাব মনে রাখা — build
+    // চলাকালীনই মান বসে, আলাদা setState লাগে না।
+    final tabIndex = _indexFor(location);
+    if (tabIndex != null) _lastTabIndex = tabIndex;
 
     Future<bool> showExitDialog() async {
       final isBn = AppStrings.isBangla;
@@ -79,20 +94,18 @@ class HomeShell extends StatelessWidget {
     void handleBack() async {
       if (context.canPop()) {
         context.pop();
-      } else if (location.startsWith('/samiti/') && location != '/samiti') {
-        context.go('/samiti');
-      } else if (location.startsWith('/expenses/add')) {
-        context.go('/expenses');
-      } else if (location.startsWith('/loans/add') ||
-          (location.startsWith('/loans/') && location != '/loans')) {
-        context.go('/loans');
-      } else if (location != '/home') {
-        context.go('/home');
-      } else {
-        final exit = await showExitDialog();
-        if (exit) {
-          await SystemNavigator.pop();
-        }
+        return;
+      }
+      // m11: ফিরে যাওয়ার নিয়ম এক জায়গায়
+      // (backFallbackLocation) — অ্যাপ বারের সাথে মেলে।
+      final fallback = backFallbackLocation(location);
+      if (fallback != null) {
+        context.go(fallback);
+        return;
+      }
+      final exit = await showExitDialog();
+      if (exit) {
+        await SystemNavigator.pop();
       }
     }
 
@@ -110,10 +123,10 @@ class HomeShell extends StatelessWidget {
           body: Row(
             children: [
               _Sidebar(
-                selectedIndex: _indexFor(location),
+                location: location,
                 onSelect: (path) => context.go(path),
               ),
-              Expanded(child: child),
+              Expanded(child: widget.child),
             ],
           ),
           bottomNavigationBar: const _Footer(),
@@ -131,9 +144,9 @@ class HomeShell extends StatelessWidget {
           title: _titleFor(location),
           onBack: handleBack,
         ),
-        body: child,
+        body: widget.child,
         bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _indexFor(location),
+          currentIndex: _lastTabIndex,
           onTap: (i) => context.go(bottomNavItems[i].path),
           items: [
             BottomNavigationBarItem(
@@ -160,26 +173,77 @@ class HomeShell extends StatelessWidget {
 }
 
 class _Sidebar extends StatelessWidget {
-  final int selectedIndex;
+  final String location;
   final void Function(String path) onSelect;
 
-  const _Sidebar({required this.selectedIndex, required this.onSelect});
+  const _Sidebar({required this.location, required this.onSelect});
 
   @override
   Widget build(BuildContext context) {
     final items = [
       (path: '/home', icon: Icons.home_outlined, label: AppStrings.navHome),
-      (path: '/samiti', icon: Icons.groups_outlined, label: AppStrings.navSamiti),
-      (path: '/deposit', icon: Icons.payments_outlined, label: AppStrings.navDeposit),
-      (path: '/approval', icon: Icons.fact_check_outlined, label: AppStrings.navApproval),
-      (path: '/payment-methods', icon: Icons.account_balance_outlined, label: AppStrings.navPaymentMethods),
-      (path: '/expenses', icon: Icons.receipt_long_outlined, label: AppStrings.navExpenses),
-      (path: '/loans', icon: Icons.handshake_outlined, label: AppStrings.navLoans),
-      (path: '/reports', icon: Icons.bar_chart_outlined, label: AppStrings.navReports),
-      (path: '/notices', icon: Icons.campaign_outlined, label: AppStrings.navNotices),
-      (path: '/committee', icon: Icons.groups_outlined, label: AppStrings.navCommittee),
-      (path: '/profile', icon: Icons.settings_outlined, label: AppStrings.navProfile),
+      (
+        path: '/samiti',
+        icon: Icons.groups_outlined,
+        label: AppStrings.navSamiti
+      ),
+      (
+        path: '/deposit',
+        icon: Icons.payments_outlined,
+        label: AppStrings.navDeposit
+      ),
+      (
+        path: '/approval',
+        icon: Icons.fact_check_outlined,
+        label: AppStrings.navApproval
+      ),
+      (
+        path: '/payment-methods',
+        icon: Icons.account_balance_outlined,
+        label: AppStrings.navPaymentMethods
+      ),
+      (
+        path: '/expenses',
+        icon: Icons.receipt_long_outlined,
+        label: AppStrings.navExpenses
+      ),
+      (
+        path: '/loans',
+        icon: Icons.handshake_outlined,
+        label: AppStrings.navLoans
+      ),
+      (
+        path: '/reports',
+        icon: Icons.bar_chart_outlined,
+        label: AppStrings.navReports
+      ),
+      (
+        path: '/notices',
+        icon: Icons.campaign_outlined,
+        label: AppStrings.navNotices
+      ),
+      (
+        path: '/committee',
+        icon: Icons.groups_outlined,
+        label: AppStrings.navCommittee
+      ),
+      (
+        path: '/profile',
+        icon: Icons.settings_outlined,
+        label: AppStrings.navProfile
+      ),
     ];
+    // M6: সাইডবারের নিজের ইনডেক্স — এর ১১ আইটেমের সাথে
+    // নিচের মেনুর ৪ আইটেমের ইনডেক্স মেলে না, তাই আলাদা
+    // হিসাব। তালিকায় নেই এমন পাতায় (পাসবই, আইডি কার্ড)
+    // -1 — কিছু হাইলাইট হয় না।
+    var selectedIndex = -1;
+    for (var i = 0; i < items.length; i++) {
+      if (location.startsWith(items[i].path)) {
+        selectedIndex = i;
+        break;
+      }
+    }
     return Container(
       width: 240,
       color: AppColors.green,

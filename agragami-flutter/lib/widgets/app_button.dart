@@ -15,13 +15,20 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton.icon(
+    // m7: আইকন না থাকলে সাধারণ ElevatedButton — icon
+    // বোতামে খালি আইকনের ফাঁকা জায়গা লেখাটা ডানে সরিয়ে দিত।
+    final labelStyle =
+        const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w600);
+    if (icon != null) {
+      return ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 20),
+        label: Text(label, style: labelStyle),
+      );
+    }
+    return ElevatedButton(
       onPressed: onPressed,
-      icon: icon != null ? Icon(icon, size: 20) : const SizedBox.shrink(),
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w600),
-      ),
+      child: Text(label, style: labelStyle),
     );
   }
 }

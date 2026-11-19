@@ -4,6 +4,13 @@
 .pub-cache/
 .pub/
 build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Generated (flutter pub get বানায় — মেশিনভেদে বদলায়, রিপোতে যায় না)
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Runner/GeneratedPluginRegistrant.*
 
 # Firebase config
 ios/Runner/GoogleService-Info.plist
