@@ -8,9 +8,11 @@ import '../services/firestore_service.dart';
 import '../utils/firebase_errors.dart';
 import '../widgets/empty_state.dart';
 import 'approval/pending_applications_tab.dart';
+import 'approval/pending_edit_requests_tab.dart';
 import 'approval/pending_payments_tab.dart';
 
-/// অনুমোদন কেন্দ্র — নতুন সদস্য ও জমা যাচাইয়ের দুটি ট্যাব।
+/// অনুমোদন কেন্দ্র — নতুন সদস্য, জমা আর তথ্য সংশোধন
+/// যাচাইয়ের তিনটি ট্যাব।
 class AdminApprovalScreen extends ConsumerStatefulWidget {
   const AdminApprovalScreen({super.key});
 
@@ -120,17 +122,34 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
     // অপেক্ষমাণ কাজ দেখে — ফিল্টার ছাড়া পড়লে নিয়মে
     // (rules) বাধা পায়। সুপার অ্যাডমিন "সব সমিতি" দেখতে পারে।
     final isBranchAdmin = isAdmin && !(user?.isSuperAdmin ?? false);
+    // Phase 9 (G13): সমিতি বাঁধা না থাকা শাখা অ্যাডমিনের
+    // গার্ড — branchId null হলে ফিল্টার null হয়ে সব
+    // সমিতির আবেদন দেখাত (খরচ/ঋণ/রিপোর্টের মতোই বার্তা)।
+    if (isBranchAdmin &&
+        (user?.branchId == null || user!.branchId!.isEmpty)) {
+      return const Scaffold(
+        body: EmptyState(
+          icon: Icons.groups_outlined,
+          title: 'আপনার সমিতি ঠিক করা নেই',
+          message: 'সুপার অ্যাডমিনের সাথে যোগাযোগ করুন।',
+        ),
+      );
+    }
     final effectiveFilter = isBranchAdmin ? user!.branchId : _branchFilter;
     // M4: টপ-লেভেল family প্রোভাইডার — build()-এর ভেতরে নতুন
     // প্রোভাইডার বানানো হয় না, rebuild-এ স্ট্রিম বাঁচে।
     final applications =
         ref.watch(pendingApplicationsProvider(effectiveFilter));
     final payments = ref.watch(pendingPaymentsProvider(effectiveFilter));
+    // Phase 9 (G12): তথ্য সংশোধনের আবেদন — একই
+    // শাখা-ফিল্টার চলে।
+    final editRequests =
+        ref.watch(pendingEditRequestsProvider(effectiveFilter));
     final branchesAsync = ref.watch(branchesStreamProvider);
     final branches = branchesAsync.valueOrNull ?? const <Branch>[];
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
@@ -147,6 +166,7 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
             tabs: [
               Tab(text: 'নতুন সদস্য'),
               Tab(text: 'জমা যাচাই'),
+              Tab(text: 'তথ্য সংশোধন'),
             ],
           ),
         ),
@@ -174,6 +194,19 @@ class _AdminApprovalScreenState extends ConsumerState<AdminApprovalScreen> {
               onFilterChanged: (v) => setState(() => _branchFilter = v),
               onRetry: () =>
                   ref.invalidate(pendingPaymentsProvider(effectiveFilter)),
+              reviewer: reviewer,
+              store: store,
+              onRun: _run,
+              onAskReason: _askReason,
+            ),
+            PendingEditRequestsTab(
+              requestsAsync: editRequests,
+              branches: branches,
+              branchFilter: effectiveFilter,
+              isBranchAdmin: isBranchAdmin,
+              onFilterChanged: (v) => setState(() => _branchFilter = v),
+              onRetry: () =>
+                  ref.invalidate(pendingEditRequestsProvider(effectiveFilter)),
               reviewer: reviewer,
               store: store,
               onRun: _run,

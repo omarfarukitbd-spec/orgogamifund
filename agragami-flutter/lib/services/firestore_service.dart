@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/app_user.dart';
 import '../models/branch.dart';
 import '../models/committee_member.dart';
+import '../models/edit_request.dart';
 import '../models/expense.dart';
 import '../models/loan.dart';
 import '../models/member.dart';
@@ -411,6 +412,33 @@ class FirestoreService {
     Uint8List? attachmentBytes,
   }) =>
       governance.submitNotice(notice: notice, attachmentBytes: attachmentBytes);
+  // Phase 9 (G11): নোটিশ মোছা — শুধু সুপার অ্যাডমিন।
+  Future<void> deleteNotice(
+    String noticeId, {
+    required String by,
+    String title = '',
+  }) =>
+      governance.deleteNotice(noticeId, by: by, title: title);
+
+  // Phase 9 (G12): সদস্যের তথ্য সংশোধনের আবেদন।
+  Future<String> submitEditRequest({required EditRequest request}) =>
+      governance.submitEditRequest(request: request);
+  Stream<List<EditRequest>> watchPendingEditRequests({String? branchId}) =>
+      governance.watchPendingEditRequests(branchId: branchId);
+  Stream<EditRequest?> watchPendingEditRequestForMember(String memberId) =>
+      governance.watchPendingEditRequestForMember(memberId);
+  Future<void> approveEditRequest(
+    EditRequest request, {
+    required String reviewedBy,
+  }) =>
+      governance.approveEditRequest(request, reviewedBy: reviewedBy);
+  Future<void> rejectEditRequest(
+    String requestId, {
+    required String reason,
+    required String reviewedBy,
+  }) =>
+      governance.rejectEditRequest(requestId,
+          reason: reason, reviewedBy: reviewedBy);
   Stream<List<CommitteeMember>> watchCommittee({String? branchId}) =>
       governance.watchCommittee(branchId: branchId);
   Future<String> addCommitteeMember(

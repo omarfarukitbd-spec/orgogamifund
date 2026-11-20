@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../l10n/app_strings.dart';
 import '../routes/app_router.dart';
+import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/agragami_app_bar.dart';
 import '../widgets/app_icon.dart';
@@ -175,7 +177,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 }
 
-class _Sidebar extends StatelessWidget {
+class _Sidebar extends ConsumerWidget {
   final String location;
 
   /// রাউটের নাম দিয়ে নেভিগেট হয় (04-m2) — path শুধু
@@ -185,82 +187,101 @@ class _Sidebar extends StatelessWidget {
   const _Sidebar({required this.location, required this.onSelect});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final items = [
       (
         path: '/home',
         name: 'home',
         icon: Icons.home_outlined,
-        label: AppStrings.navHome
+        label: AppStrings.navHome,
+        adminOnly: false
       ),
       (
         path: '/samiti',
         name: 'samiti',
         icon: Icons.groups_outlined,
-        label: AppStrings.navSamiti
+        label: AppStrings.navSamiti,
+        adminOnly: false
       ),
       (
         path: '/deposit',
         name: 'deposit',
         icon: Icons.payments_outlined,
-        label: AppStrings.navDeposit
+        label: AppStrings.navDeposit,
+        adminOnly: false
       ),
       (
         path: '/approval',
         name: 'approval',
         icon: Icons.fact_check_outlined,
-        label: AppStrings.navApproval
+        label: AppStrings.navApproval,
+        adminOnly: true
       ),
       (
         path: '/payment-methods',
         name: 'paymentMethods',
         icon: Icons.account_balance_outlined,
-        label: AppStrings.navPaymentMethods
+        label: AppStrings.navPaymentMethods,
+        adminOnly: true
       ),
       (
         path: '/expenses',
         name: 'expenses',
         icon: Icons.receipt_long_outlined,
-        label: AppStrings.navExpenses
+        label: AppStrings.navExpenses,
+        adminOnly: false
       ),
       (
         path: '/loans',
         name: 'loans',
         icon: Icons.handshake_outlined,
-        label: AppStrings.navLoans
+        label: AppStrings.navLoans,
+        adminOnly: false
       ),
       (
         path: '/reports',
         name: 'reports',
         icon: Icons.bar_chart_outlined,
-        label: AppStrings.navReports
+        label: AppStrings.navReports,
+        adminOnly: false
       ),
       (
         path: '/notices',
         name: 'notices',
         icon: Icons.campaign_outlined,
-        label: AppStrings.navNotices
+        label: AppStrings.navNotices,
+        adminOnly: false
       ),
       (
         path: '/committee',
         name: 'committee',
         icon: Icons.groups_outlined,
-        label: AppStrings.navCommittee
+        label: AppStrings.navCommittee,
+        adminOnly: false
       ),
       (
         path: '/profile',
         name: 'profile',
         icon: Icons.settings_outlined,
-        label: AppStrings.navProfile
+        label: AppStrings.navProfile,
+        adminOnly: false
       ),
     ];
-    // M6: সাইডবারের নিজের ইনডেক্স — এর ১১ আইটেমের সাথে
+    // Phase 9 (G10): অ্যাডমিন-শুধু পাতার লিংক সাধারণ
+    // সদস্য দেখে না — নইলে খুলে "শুধু অ্যাডমিন" খালি পাতা
+    // পেত (ডেড-এন্ড লিংক)। মোবাইলের নিচের মেনুতে এই
+    // লিংকগুলো এমনিতেই নেই।
+    final isAdmin =
+        ref.watch(currentUserProvider).valueOrNull?.isAdmin ?? false;
+    final visibleItems =
+        items.where((i) => !i.adminOnly || isAdmin).toList();
+    // M6: সাইডবারের নিজের ইনডেক্স — এর আইটেমের সাথে
     // নিচের মেনুর ৪ আইটেমের ইনডেক্স মেলে না, তাই আলাদা
     // হিসাব। তালিকায় নেই এমন পাতায় (পাসবই, আইডি কার্ড)
     // -1 — কিছু হাইলাইট হয় না।
     var selectedIndex = -1;
-    for (var i = 0; i < items.length; i++) {
-      if (location.startsWith(items[i].path)) {
+    for (var i = 0; i < visibleItems.length; i++) {
+      if (location.startsWith(visibleItems[i].path)) {
         selectedIndex = i;
         break;
       }
@@ -292,14 +313,14 @@ class _Sidebar extends StatelessWidget {
           ),
           const Divider(color: Colors.white24, height: 1),
           const SizedBox(height: 8),
-          for (var i = 0; i < items.length; i++)
+          for (var i = 0; i < visibleItems.length; i++)
             ListTile(
               leading: Icon(
-                items[i].icon,
+                visibleItems[i].icon,
                 color: i == selectedIndex ? AppColors.gold : Colors.white70,
               ),
               title: Text(
-                items[i].label,
+                visibleItems[i].label,
                 style: TextStyle(
                   color: i == selectedIndex ? Colors.white : Colors.white70,
                   fontWeight:
@@ -311,7 +332,7 @@ class _Sidebar extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              onTap: () => onSelect(items[i].name),
+              onTap: () => onSelect(visibleItems[i].name),
             ),
         ],
       ),

@@ -21,10 +21,14 @@ class PassbookLedger extends ConsumerStatefulWidget {
 
   /// মানুষের পড়ার মতো সদস্য নম্বর (F15) — ভাউচারে দেখানো হয়।
   final String? memberNumber;
+
+  /// এই সমিতির জমা বদলাতে পারে কি না — শাখা-ভিত্তিক
+  /// (Phase 9, G9): সুপার অ্যাডমিন সব সমিতিতে পারে, শাখা
+  /// অ্যাডমিন শুধু নিজের সমিতিতে।
   final bool isAdmin;
 
   /// সুপার অ্যাডমিন কি না — "মুছুন" শুধু সুপার অ্যাডমিন
-  /// দেখে (F6); "বদলান" সব অ্যাডমিন দেখে।
+  /// দেখে (F6); "বদলান" এই সমিতির অ্যাডমিন দেখে।
   final bool isSuperAdmin;
 
   const PassbookLedger({

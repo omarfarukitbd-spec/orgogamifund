@@ -12,6 +12,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../utils/date_parser.dart';
+import '../utils/firebase_errors.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
@@ -35,6 +36,9 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
   bool _busy = false;
   bool _writing = false;
   String? _error;
+
+  /// যে নোটিশ মোছা চলছে — তার বোতাম বন্ধ থাকে।
+  String? _deletingId;
 
   @override
   void dispose() {
@@ -94,6 +98,55 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
         ),
       ),
     );
+  }
+
+  /// নোটিশ মোছা (Phase 9, G11) — শুধু সুপার অ্যাডমিন
+  /// (rules)। নিশ্চিতকরণ ডায়ালগ ছাড়া মোছা হয় না।
+  Future<void> _deleteNotice(Notice notice) async {
+    if (_deletingId != null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('নোটিশ মুছবেন?'),
+        content: Text(
+          '‘${notice.title}’ নোটিশটি মুছে যাবে। এই কাজ ফিরিয়ে নেওয়া যাবে না।',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(AppStrings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('মুছুন', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    setState(() => _deletingId = notice.id);
+    try {
+      await ref.read(firestoreServiceProvider).deleteNotice(
+            notice.id,
+            by: AuthService().uidOrEmpty,
+            title: notice.title,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('নোটিশ মোছা হয়েছে')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            firebaseErrorMessage(e, fallback: 'নোটিশ মোছা যায়নি — আবার চেষ্টা করুন'),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _deletingId = null);
+    }
   }
 
   Future<void> _submit() async {
@@ -398,6 +451,20 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
                               ),
                             ),
                           ),
+                          // Phase 9 (G11): নোটিশ মোছা — শুধু
+                          // সুপার অ্যাডমিন (rules)।
+                          if (isSuperAdmin)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete_outlined,
+                                size: 20,
+                                color: Colors.red,
+                              ),
+                              tooltip: 'নোটিশ মুছুন',
+                              onPressed: _deletingId == n.id
+                                  ? null
+                                  : () => _deleteNotice(n),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 8),

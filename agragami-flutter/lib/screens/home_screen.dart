@@ -191,8 +191,10 @@ class HomeScreen extends ConsumerWidget {
           const SectionTitle('সাম্প্রতিক লেনদেন'),
           _RecentTransactionsCard(scopedIds: scopedIds),
 
-          // সদস্য না হলে আবেদনের ব্যানার
-          if (!isAdmin && !isMember) ...[
+          // সদস্য না হলে আবেদনের ব্যানার — Phase 9 (G7):
+          // সদস্য নয় এমন অ্যাডমিনও ব্যানার আর "সমিতি দেখুন"
+          // বোতাম পায়; আগে !isAdmin শর্তে লুকানো থাকত।
+          if (!isMember) ...[
             const SizedBox(height: 16),
             AppCard(
               child: Column(

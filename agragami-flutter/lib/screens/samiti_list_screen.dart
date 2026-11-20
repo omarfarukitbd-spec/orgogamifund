@@ -7,6 +7,7 @@ import '../models/membership.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/admin_branch_scope.dart';
 import '../utils/samiti_apply.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
@@ -37,6 +38,11 @@ class SamitiListScreen extends ConsumerWidget {
     // F6: সমিতি বানানো শুধু সুপার অ্যাডমিনের কাজ (rules:
     // branches create শুধু সুপার অ্যাডমিন)।
     final isSuperAdmin = userAsync.valueOrNull?.isSuperAdmin ?? false;
+    // Phase 9 (G6): "আপনি অ্যাডমিন" ট্যাগ শাখা-ভিত্তিক —
+    // কার্ডকে রোল আর বাঁধা সমিতি জানানো হয়।
+    final isBranchAdmin =
+        userAsync.valueOrNull?.isBranchAdmin ?? false;
+    final adminBranchId = userAsync.valueOrNull?.branchId;
 
     return Scaffold(
       floatingActionButton: isSuperAdmin
@@ -98,7 +104,9 @@ class SamitiListScreen extends ConsumerWidget {
                 _SamitiCardItem(
                   branch: b,
                   membership: membershipFor(b.id),
-                  isAdmin: isAdmin,
+                  isSuperAdmin: isSuperAdmin,
+                  isBranchAdmin: isBranchAdmin,
+                  adminBranchId: adminBranchId,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -113,12 +121,16 @@ class SamitiListScreen extends ConsumerWidget {
 class _SamitiCardItem extends StatelessWidget {
   final Branch branch;
   final Membership? membership;
-  final bool isAdmin;
+  final bool isSuperAdmin;
+  final bool isBranchAdmin;
+  final String? adminBranchId;
 
   const _SamitiCardItem({
     required this.branch,
     required this.membership,
-    required this.isAdmin,
+    required this.isSuperAdmin,
+    required this.isBranchAdmin,
+    required this.adminBranchId,
   });
 
   IconData _iconForPurpose(SamitiPurpose purpose) {
@@ -140,6 +152,15 @@ class _SamitiCardItem extends StatelessWidget {
     final showApply = shouldShowApplyButton(
       isApprovedMember: isApproved,
       isPendingApplication: isPending,
+    );
+    // Phase 9 (G6): "আপনি অ্যাডমিন" ট্যাগ শুধু এই সমিতির
+    // অ্যাডমিন হলে — শাখা অ্যাডমিন অন্য সমিতির কার্ডে আর
+    // ট্যাগ দেখে না। সুপার অ্যাডমিন সব সমিতির অ্যাডমিন।
+    final isAdminOfBranch = isAdminForBranch(
+      isSuperAdmin: isSuperAdmin,
+      isBranchAdmin: isBranchAdmin,
+      adminBranchId: adminBranchId,
+      branchId: branch.id,
     );
     final iconData = _iconForPurpose(branch.purpose);
 
@@ -232,7 +253,8 @@ class _SamitiCardItem extends StatelessWidget {
           // অ্যাডমিন ট্যাগ আর সদস্যপদের অবস্থা আলাদা আলাদা
           // দেখানো হয়। আগে অ্যাডমিন হলে শুধু ট্যাগ দেখা যেত,
           // আবেদনের বোতাম কখনো আসত না।
-          if (isAdmin) ...[
+          // Phase 9 (G6): ট্যাগ শুধু এই সমিতির অ্যাডমিনের।
+          if (isAdminOfBranch) ...[
             const PillTag(
               text: 'আপনি অ্যাডমিন',
               backgroundColor: AppColors.goldSoft,

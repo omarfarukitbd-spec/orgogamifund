@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/app_user.dart';
 import '../models/committee_member.dart';
+import '../models/edit_request.dart';
 import '../models/member.dart';
 import '../models/member_application.dart';
 import '../models/membership.dart';
@@ -327,6 +328,153 @@ class GovernanceRepository {
     data['attachmentUrl'] = attachmentUrl;
     await doc.set(data);
     return doc.id;
+  }
+
+  /// নোটিশ মোছা (Phase 9, G11) — rules: শুধু সুপার অ্যাডমিন।
+  Future<void> deleteNotice(
+    String noticeId, {
+    required String by,
+    String title = '',
+  }) async {
+    if (noticeId.isEmpty) return;
+    await _db.collection(Collections.notices).doc(noticeId).delete();
+    await _audit.logAudit(
+      action: 'notice_deleted',
+      by: by,
+      detail: 'নোটিশ মোছা হয়েছে: $title ($noticeId)',
+    );
+  }
+
+  /// সদস্যের তথ্য সংশোধনের আবেদন জমা (Phase 9, G12)।
+  /// rules (§8): memberId আবেদনকারীর linkedMemberId-এর
+  /// সাথে মিলতে হয়। একই সদস্যের প্রক্রিয়াধীন আবেদন
+  /// থাকলে 'already-pending' ছোড়ে — ডাবল-ট্যাপে দুই
+  /// আবেদন জমা হয় না।
+  Future<String> submitEditRequest({
+    required EditRequest request,
+  }) async {
+    final existing = await _db
+        .collection(Collections.editRequests)
+        .where('memberId', isEqualTo: request.memberId)
+        .get();
+    final hasPending = existing.docs.any(
+      (d) => d.data()['status'] == EditRequestStatus.pending.name,
+    );
+    if (hasPending) throw StateError('already-pending');
+    final doc = _db.collection(Collections.editRequests).doc();
+    await doc.set(request.toMap());
+    return doc.id;
+  }
+
+  /// অপেক্ষমাণ সংশোধন-আবেদনের লাইভ স্ট্রিম (Phase 9, G12)।
+  /// editRequests-এর কোনো composite index নেই, তাই
+  /// status-ফিল্টারের সাথে orderBy করা হয় না — নতুন-আগে
+  /// সাজানো আর সমিতি-ফিল্টার ক্লায়েন্টে করা হয়।
+  Stream<List<EditRequest>> watchPendingEditRequests({String? branchId}) {
+    return _db
+        .collection(Collections.editRequests)
+        .where('status', isEqualTo: EditRequestStatus.pending.name)
+        .snapshots()
+        .map((snap) {
+      var list = snap.docs
+          .map((d) => EditRequest.fromMap(d.id, d.data()))
+          .toList();
+      if (branchId != null) {
+        list = list.where((r) => r.branchId == branchId).toList();
+      }
+      list.sort((a, b) => b.requestedAt.compareTo(a.requestedAt));
+      return list;
+    });
+  }
+
+  /// একজন সদস্যের প্রক্রিয়াধীন সংশোধন-আবেদন (Phase 9,
+  /// G12) — প্রোফাইলে "আবেদন প্রক্রিয়াধীন" অবস্থা
+  /// দেখানোর জন্য। memberId দিয়ে এক-ক্ষেত্রের প্রশ্ন —
+  /// composite index লাগে না।
+  Stream<EditRequest?> watchPendingEditRequestForMember(String memberId) {
+    return _db
+        .collection(Collections.editRequests)
+        .where('memberId', isEqualTo: memberId)
+        .snapshots()
+        .map((snap) {
+      final pending = snap.docs
+          .map((d) => EditRequest.fromMap(d.id, d.data()))
+          .where((r) => r.status == EditRequestStatus.pending)
+          .toList();
+      if (pending.isEmpty) return null;
+      pending.sort((a, b) => b.requestedAt.compareTo(a.requestedAt));
+      return pending.first;
+    });
+  }
+
+  /// সংশোধন-আবেদন অনুমোদন (Phase 9, G12) — ট্রানজ্যাকশনে
+  /// হয়: আবেদন এখনো pending না থাকলে 'already-reviewed'
+  /// ছোড়ে (ডাবল-ট্যাপে দুইবার প্রয়োগ হয় না); সদস্যের
+  /// রেকর্ডে শুধু অনুমোদিত ক্ষেত্র (ফোন, ঠিকানা) বসে আর
+  /// আবেদন approved হয়। বদলানো মান আবেদনের লাইভ
+  /// স্ন্যাপশট থেকে নেওয়া হয়, পাঠানো অবজেক্ট থেকে নয়।
+  Future<void> approveEditRequest(
+    EditRequest request, {
+    required String reviewedBy,
+  }) async {
+    final reqRef =
+        _db.collection(Collections.editRequests).doc(request.id);
+    final memberRef =
+        _db.collection(Collections.members).doc(request.memberId);
+    await _db.runTransaction((tx) async {
+      final reqSnap = await tx.get(reqRef);
+      if (!reqSnap.exists ||
+          reqSnap.data()?['status'] != EditRequestStatus.pending.name) {
+        throw StateError('already-reviewed');
+      }
+      final changes =
+          Map<String, dynamic>.from((reqSnap.data()?['changes'] as Map?) ?? {});
+      // শুধু অনুমোদিত ক্ষেত্রই বদলায় — ফোন আর ঠিকানা।
+      // অন্য কোনো ক্ষেত্র আবেদনে এলেও সদস্যের রেকর্ডে বসে না।
+      final allowed = <String, dynamic>{};
+      if (changes['phone'] is String) allowed['phone'] = changes['phone'];
+      if (changes['address'] is String) {
+        allowed['address'] = changes['address'];
+      }
+      if (allowed.isNotEmpty) tx.update(memberRef, allowed);
+      tx.update(reqRef, {
+        'status': EditRequestStatus.approved.name,
+        'reviewedBy': reviewedBy,
+        'reviewedAt': FieldValue.serverTimestamp(),
+      });
+    });
+    await _audit.logAudit(
+      action: 'edit_request_approved',
+      by: reviewedBy,
+      detail: 'সদস্যের তথ্য সংশোধনের আবেদন অনুমোদন (${request.memberName})',
+    );
+  }
+
+  /// সংশোধন-আবেদন বাতিল (Phase 9, G12) — আগেই যাচাই
+  /// হয়ে থাকলে 'already-reviewed' ছোড়ে।
+  Future<void> rejectEditRequest(
+    String requestId, {
+    required String reason,
+    required String reviewedBy,
+  }) async {
+    final reqRef =
+        _db.collection(Collections.editRequests).doc(requestId);
+    final reqSnap = await reqRef.get();
+    if (!reqSnap.exists ||
+        reqSnap.data()?['status'] != EditRequestStatus.pending.name) {
+      throw StateError('already-reviewed');
+    }
+    await reqRef.update({
+      'status': EditRequestStatus.rejected.name,
+      'rejectReason': reason,
+      'reviewedBy': reviewedBy,
+      'reviewedAt': FieldValue.serverTimestamp(),
+    });
+    await _audit.logAudit(
+      action: 'edit_request_rejected',
+      by: reviewedBy,
+      detail: 'সদস্যের তথ্য সংশোধনের আবেদন বাতিল ($requestId)',
+    );
   }
 
   /// পরিচালনা কমিটির তালিকা পর্যবেক্ষণ (সর্বোচ্চ ২০০ জন)

@@ -53,6 +53,9 @@ class Collections {
   /// একজনের এক সমিতির সদস্যপদ — id: `${userId}_${branchId}`।
   static const String memberships = 'memberships';
   static const String memberApplications = 'memberApplications';
+
+  /// সদস্যের তথ্য সংশোধনের আবেদন (Phase 9, G12)।
+  static const String editRequests = 'editRequests';
   static const String payments = 'payments';
   static const String paymentMethods = 'paymentMethods';
   static const String expenses = 'expenses';

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/app_user.dart';
 import '../models/branch.dart';
 import '../models/committee_member.dart';
+import '../models/edit_request.dart';
 import '../models/expense.dart';
 import '../models/loan.dart';
 import '../models/member.dart';
@@ -125,6 +126,24 @@ final pendingPaymentsProvider = StreamProvider.autoDispose
     .family<List<Payment>, String?>((ref, branchId) {
   final service = ref.watch(firestoreServiceProvider);
   return service.watchPendingPayments(branchId: branchId);
+});
+
+/// অপেক্ষমাণ তথ্য-সংশোধন আবেদনের শেয়ার্ড লাইভ স্ট্রিম
+/// (Phase 9, G12) — অনুমোদন কেন্দ্রের তৃতীয় ট্যাবের জন্য।
+/// সমিতি অনুযায়ী ফিল্টার করা যায় — branchId null মানে সব
+/// সমিতি (শুধু সুপার অ্যাডমিন)।
+final pendingEditRequestsProvider = StreamProvider.autoDispose
+    .family<List<EditRequest>, String?>((ref, branchId) {
+  final service = ref.watch(firestoreServiceProvider);
+  return service.watchPendingEditRequests(branchId: branchId);
+});
+
+/// একজন সদস্যের প্রক্রিয়াধীন তথ্য-সংশোধন আবেদন (Phase 9,
+/// G12) — প্রোফাইলে "আবেদন প্রক্রিয়াধীন" অবস্থা দেখানোর জন্য।
+final pendingEditRequestForMemberProvider =
+    StreamProvider.autoDispose.family<EditRequest?, String>((ref, memberId) {
+  final service = ref.watch(firestoreServiceProvider);
+  return service.watchPendingEditRequestForMember(memberId);
 });
 
 /// একজন সদস্যের সমস্ত জমার লাইভ স্ট্রিম — পাসবইয়ের জন্য।

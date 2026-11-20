@@ -7,6 +7,7 @@ import '../models/member.dart';
 import '../models/payment.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../utils/admin_branch_scope.dart';
 import '../utils/dues.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
@@ -162,6 +163,7 @@ class _PassbookContent extends ConsumerWidget {
     final memberAsync = ref.watch(memberStreamProvider(memberId));
     final paymentsAsync = ref.watch(memberPaymentsProvider(memberId));
     final branchesAsync = ref.watch(branchesStreamProvider);
+    final currentUser = ref.watch(currentUserProvider).valueOrNull;
 
     if (memberAsync.isLoading || paymentsAsync.isLoading || branchesAsync.isLoading) {
       return const Padding(padding: EdgeInsets.all(16), child: SkeletonCardList());
@@ -328,11 +330,17 @@ class _PassbookContent extends ConsumerWidget {
             memberNumber: member.displayNumber,
             // M9: অ্যাডমিন খাতা থেকেই জমা বদলাতে/মুছতে পারে।
             // F6: "মুছুন" শুধু সুপার অ্যাডমিন দেখে।
-            isAdmin:
-                ref.watch(currentUserProvider).valueOrNull?.isAdmin ?? false,
-            isSuperAdmin:
-                ref.watch(currentUserProvider).valueOrNull?.isSuperAdmin ??
-                    false,
+            // Phase 9 (G9): "বদলান" শুধু এই সমিতির অ্যাডমিন
+            // দেখে — শাখা অ্যাডমিন অন্য সমিতির পাসবইয়ে
+            // বোতাম দেখে সেভে বাধা পেত (rules: payments
+            // update শুধু নিজের সমিতির অ্যাডমিন)।
+            isAdmin: isAdminForBranch(
+              isSuperAdmin: currentUser?.isSuperAdmin ?? false,
+              isBranchAdmin: currentUser?.isBranchAdmin ?? false,
+              adminBranchId: currentUser?.branchId,
+              branchId: member.branchId,
+            ),
+            isSuperAdmin: currentUser?.isSuperAdmin ?? false,
           ),
           const SizedBox(height: 20),
         ],
